@@ -35,6 +35,9 @@ File -> Import... -> Maven -> Existing Maven Projects
 ### Build and install the required LOCKSS daemon jar files:
 run `initBuild`
 
+### Set up the TDB tree:
+Edit ./buildLaawsMdx and set the TDB_DIR variable properly.
+
 ### Build the web service:
 `./buildLaawsConfig`
 
