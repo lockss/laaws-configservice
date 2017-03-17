@@ -25,43 +25,15 @@
  in this Software without prior written authorization from Stanford University.
 
  */
-package org.lockss.laaws.config.client;
+package org.lockss.laaws.config.api.factories;
 
-import java.util.Properties;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.MediaType;
+import org.lockss.laaws.config.api.AusApiService;
+import org.lockss.laaws.config.api.impl.AusApiServiceImpl;
 
-/**
- * Client for the putConfig() operation.
- */
-public class PutConfigClient extends BaseClient {
+public class AusApiServiceFactory {
+  private final static AusApiService service = new AusApiServiceImpl();
 
-  public static void main(String[] args) throws Exception {
-    for (int i = 0; i < args.length; i++) {
-      System.out.println("arg[" + i + "] = " + args[i]);
-    }
-
-    Properties params = new Properties();
-
-    for (int i = 0; i < args.length; i++) {
-      int sepLoc = args[i].trim().indexOf("=");
-
-      if (sepLoc > 0 && sepLoc < args[i].length() - 1) {
-	params.put(args[i].substring(0, sepLoc),
-	    args[i].substring(sepLoc + 1));
-      }
-    }
-
-    System.out.println("params = '" + params + "'");
-
-    if (params.size() > 0) {
-      Properties result = getWebTarget().path("config").request()
-	  .put(Entity.entity(params, MediaType.APPLICATION_JSON_TYPE),
-	      Properties.class);
-      System.out.println("result = " + result);
-    } else {
-      System.err.println("ERROR: Missing command line argument(s) "
-	  + "with configuration parameter(s) to be stored.");
-    }
+  public static AusApiService getAusApi() {
+    return service;
   }
 }

@@ -27,16 +27,15 @@
  */
 package org.lockss.laaws.config.client;
 
-import org.lockss.laaws.config.model.ConfigurationMap;
+import java.util.Properties;
 
 /**
  * Client for the getConfig() operation.
  */
 public class GetConfigClient extends BaseClient {
-
   public static void main(String[] args) throws Exception {
-    ConfigurationMap result =
-	getWebTarget().path("config").request().get(ConfigurationMap.class);
+    Properties result =
+	getWebTarget().path("config").request().get(Properties.class);
     System.out.println("result = " + result);
   }
 }

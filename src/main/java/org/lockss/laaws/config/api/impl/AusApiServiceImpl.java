@@ -25,33 +25,29 @@
  in this Software without prior written authorization from Stanford University.
 
  */
-package org.lockss.laaws.config.api;
+package org.lockss.laaws.config.api.impl;
+
 import java.util.Properties;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+import org.apache.log4j.Logger;
+import org.lockss.config.TdbAu;
+import org.lockss.config.TdbUtil;
+import org.lockss.laaws.config.api.ApiException;
+import org.lockss.laaws.config.api.AusApiService;
 
 /**
- * Base provider of access to the configuration.
+ * Implementation of the base provider of access to Archival Unit
+ * configurations.
  */
-public abstract class ConfigApiService {
-  /**
-   * Provides the full stored configuration.
-   * 
-   * @param securityContext
-   *          A SecurityContext providing access to security related
-   *          information.
-   * @return a Response with any data that needs to be returned to the runtime.
-   * @throws ApiException
-   *           if there are problems.
-   */
-  public abstract Response getConfig(SecurityContext securityContext)
-      throws ApiException;
+public class AusApiServiceImpl extends AusApiService {
+  private static Logger log = Logger.getLogger(AusApiServiceImpl.class);
 
   /**
-   * Stores configuration items.
+   * Provides the title database of an AU given the AU identifier.
    * 
-   * @param configuration
-   *          A Properties with the configuration to be stored.
+   * @param auid
+   *          A String with the AU identifier.
    * @param securityContext
    *          A SecurityContext providing access to security related
    *          information.
@@ -59,6 +55,28 @@ public abstract class ConfigApiService {
    * @throws ApiException
    *           if there are problems.
    */
-  public abstract Response putConfig(Properties configuration,
-      SecurityContext securityContext) throws ApiException;
+  @Override
+  public Response getTdbAu(String auid, SecurityContext securityContext)
+      throws ApiException {
+    if (log.isDebugEnabled()) log.debug("auid = " + auid);
+
+    try {
+      TdbAu tdbAu = TdbUtil.getTdbAu(auid);
+
+      if (tdbAu != null) {
+	tdbAu.prettyLog(2);
+	Properties properties = tdbAu.toProperties();
+	if (log.isDebugEnabled()) log.debug("properties = " + properties);
+	return Response.ok().entity(properties).build();
+      } else {
+	String message = "No Archival Unit found for auid = '" + auid + "'";
+	log.error(message);
+	return Response.status(404).entity(message).type("text/plain").build();
+      }
+    } catch (Exception e) {
+      String message = "Cannot getTdbAu()";
+      log.error(message, e);
+      throw new ApiException(1, message + ": " + e.getMessage());
+    }
+  }
 }

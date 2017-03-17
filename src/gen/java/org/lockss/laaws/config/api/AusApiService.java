@@ -25,43 +25,27 @@
  in this Software without prior written authorization from Stanford University.
 
  */
-package org.lockss.laaws.config.client;
+package org.lockss.laaws.config.api;
 
-import java.util.Properties;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
 
 /**
- * Client for the putConfig() operation.
+ * Base provider of access to the configuration information of an AU.
  */
-public class PutConfigClient extends BaseClient {
-
-  public static void main(String[] args) throws Exception {
-    for (int i = 0; i < args.length; i++) {
-      System.out.println("arg[" + i + "] = " + args[i]);
-    }
-
-    Properties params = new Properties();
-
-    for (int i = 0; i < args.length; i++) {
-      int sepLoc = args[i].trim().indexOf("=");
-
-      if (sepLoc > 0 && sepLoc < args[i].length() - 1) {
-	params.put(args[i].substring(0, sepLoc),
-	    args[i].substring(sepLoc + 1));
-      }
-    }
-
-    System.out.println("params = '" + params + "'");
-
-    if (params.size() > 0) {
-      Properties result = getWebTarget().path("config").request()
-	  .put(Entity.entity(params, MediaType.APPLICATION_JSON_TYPE),
-	      Properties.class);
-      System.out.println("result = " + result);
-    } else {
-      System.err.println("ERROR: Missing command line argument(s) "
-	  + "with configuration parameter(s) to be stored.");
-    }
-  }
+public abstract class AusApiService {
+  /**
+   * Provides the title database of an AU given the AU identifier.
+   * 
+   * @param auid
+   *          A String with the AU identifier.
+   * @param securityContext
+   *          A SecurityContext providing access to security related
+   *          information.
+   * @return a Response with any data that needs to be returned to the runtime.
+   * @throws ApiException
+   *           if there are problems.
+   */
+  public abstract Response getTdbAu(String auid,
+      SecurityContext securityContext) throws ApiException;
 }

@@ -39,21 +39,23 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
-import org.lockss.laaws.config.api.factories.ConfigApiServiceFactory;
+import org.lockss.laaws.config.api.factories.AusApiServiceFactory;
 import org.lockss.rs.auth.Roles;
 
 /**
- * Provider of access to the system configuration.
+ * Provider of access to the configuration information of Archival Units.
  */
-@Path("/config")
+@Path("/aus")
 @Produces({ "application/json" })
-@Api(value = "/config")
-public class ConfigApi  {
-  private final ConfigApiService delegate =
-      ConfigApiServiceFactory.getConfigApi();
+@Api(value = "/aus")
+public class AusApi  {
+  private final AusApiService delegate = AusApiServiceFactory.getAusApi();
 
   /**
-   * Provides the full stored configuration.
+   * Provides the title database for an AU given the AU identifier.
+   * 
+   * @param auid
+   *          A String with the AU identifier.
    * @param securityContext
    *          A SecurityContext providing access to security related
    *          information.
@@ -62,14 +64,15 @@ public class ConfigApi  {
    *           if there are problems.
    */
   @GET
-  @Path("/")
+  @Path("/{auid}")
   @Produces({ "application/json" })
-  @ApiOperation(value = "Get the configuration",
-  notes = "Get the full stored configuration",
+  @ApiOperation(value = "Get the title database of an AU",
+  notes = "Get the title database of an AU given the AU identifier",
   response = Properties.class,
-  authorizations = {@Authorization(value = "basicAuth")}, tags={ "config", })
+  authorizations = {@Authorization(value = "basicAuth")}, tags={ "aus", })
   @ApiResponses(value = { 
-      @ApiResponse(code = 200, message = "The configuration items",
+      @ApiResponse(code = 200,
+	  message = "The title database of the specified AU",
 	  response = Properties.class),
       @ApiResponse(code = 500, message = "Internal server error",
       response = Properties.class),
@@ -77,43 +80,11 @@ public class ConfigApi  {
       message = "Some or all of the system is not available",
       response = Properties.class) })
   @RolesAllowed(Roles.ROLE_ANY) // Allow any authenticated user.
-  public Response getConfig(@Context SecurityContext securityContext)
-    throws ApiException {
-    return delegate.getConfig(securityContext);
-  }
-
-  /**
-   * Stores a configuration item.
-   * 
-   * @param configuration
-   *          A Properties with the configuration to be stored.
-   * @param securityContext
-   *          A SecurityContext providing access to security related
-   *          information.
-   * @return a Response with any data that needs to be returned to the runtime.
-   * @throws ApiException
-   *           if there are problems.
-   */
-  @PUT
-  @Path("/")
-  @Produces({ "application/json" })
-  @ApiOperation(value = "Store configuration items",
-  notes = "Store the given key/value pairs",
-  response = void.class,
-  authorizations = {@Authorization(value = "basicAuth")}, tags={ "config", })
-  @ApiResponses(value = { 
-      @ApiResponse(code = 200, message = "The configuration items",
-	  response = Properties.class),
-      @ApiResponse(code = 500, message = "Internal server error",
-      response = Properties.class),
-      @ApiResponse(code = 503,
-      message = "Some or all of the system is not available",
-      response = Properties.class) })
-  @RolesAllowed(Roles.ROLE_ANY) // Allow any authenticated user.
-  public Response putConfig(
-      @ApiParam(value = "The configuration items to be stored" ,required=true)
-      Properties configuration,
+  public Response getTdbAu(
+      @ApiParam(value =
+      "The identifier of the AU for which the title database is requested",
+      required=true) @PathParam("auid") String auid,
       @Context SecurityContext securityContext) throws ApiException {
-        return delegate.putConfig(configuration,securityContext);
+    return delegate.getTdbAu(auid,securityContext);
   }
 }

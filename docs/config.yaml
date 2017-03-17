@@ -42,6 +42,8 @@ tags:
     description: Default section
   - name: config
     description: Tasks on the configuration
+  - name: aus
+    description: Tasks on the configuration
 schemes:
   - https
 produces:
@@ -57,24 +59,24 @@ paths:
     put:
       tags:
         - config
-      summary: Store a configuration item
-      description: Store the given key/value pair
+      summary: Store configuration items
+      description: Store the given key/value pairs
       operationId: putConfig
       consumes: []
       produces:
         - application/json
       parameters:
-        - name: 'configurationMap'
+        - name: 'properties'
           in: body
-          description: The configuration item to be stored
+          description: The configuration items to be stored
           required: true
           schema:
-            $ref: '#/definitions/configurationMap'
+            $ref: '#/definitions/properties'
       responses:
         '200':
           description: The configuration items
           schema:
-            $ref: '#/definitions/configurationMap'
+            $ref: '#/definitions/properties'
         '500':
           description: Internal server error
         '503':
@@ -92,15 +94,42 @@ paths:
         '200':
           description: The configuration items
           schema:
-            $ref: '#/definitions/configurationMap'
+            $ref: '#/definitions/properties'
+        '500':
+          description: Internal server error
+        '503':
+          description: Some or all of the system is not available
+  '/aus/{auid}':
+    get:
+      tags:
+        - aus
+      summary: Get the title database of an AU
+      description: Get the title database of an AU given the AU identifier
+      operationId: getTdbAu
+      consumes: []
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the title database is requested
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The title database of the specified AU
+          schema:
+            $ref: '#/definitions/properties'
+        '404':
+          description: AU not found
         '500':
           description: Internal server error
         '503':
           description: Some or all of the system is not available
 definitions:
-  configurationMap:
+  properties:
     type: object
-    description: The map of configuration items.
+    description: The map of items.
     additionalProperties:
       type: string
       description: The value of the configuration for the key.

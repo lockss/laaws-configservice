@@ -27,15 +27,14 @@
  */
 package org.lockss.laaws.config.api.impl;
 
+import java.util.Properties;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import org.apache.log4j.Logger;
-import org.lockss.app.LockssDaemon;
 import org.lockss.config.ConfigManager;
 import org.lockss.config.Configuration;
 import org.lockss.laaws.config.api.ApiException;
 import org.lockss.laaws.config.api.ConfigApiService;
-import org.lockss.laaws.config.model.ConfigurationMap;
 
 /**
  * Implementation of the base provider of access to the configuration.
@@ -45,6 +44,7 @@ public class ConfigApiServiceImpl extends ConfigApiService {
 
   /**
    * Provides the full stored configuration.
+   * 
    * @param securityContext
    *          A SecurityContext providing access to security related
    *          information.
@@ -58,8 +58,7 @@ public class ConfigApiServiceImpl extends ConfigApiService {
     if (log.isDebugEnabled()) log.debug("Invoked");
 
     try {
-      ConfigurationMap result =
-	  convertConfig(ConfigManager.getCurrentConfig());
+      Properties result = convertConfig(ConfigManager.getCurrentConfig());
       if (log.isDebugEnabled()) log.debug("result = " + result);
       return Response.ok().entity(result).build();
     } catch (Exception e) {
@@ -70,10 +69,10 @@ public class ConfigApiServiceImpl extends ConfigApiService {
   }
 
   /**
-   * Stores a configuration item.
+   * Stores configuration items.
    * 
    * @param configuration
-   *          A ConfigurationMap with the configuration to be stored.
+   *          A Properties with the configuration to be stored.
    * @param securityContext
    *          A SecurityContext providing access to security related
    *          information.
@@ -82,15 +81,15 @@ public class ConfigApiServiceImpl extends ConfigApiService {
    *           if there are problems.
    */
   @Override
-  public Response putConfig(ConfigurationMap configuration,
+  public Response putConfig(Properties configuration,
       SecurityContext securityContext) throws ApiException {
     if (log.isDebugEnabled()) log.debug("Invoked");
 
     try {
       Configuration updates = ConfigManager.newConfiguration();
 
-      for (String key : configuration.keySet()) {
-	updates.put(key, configuration.get(key));
+      for (Object key : configuration.keySet()) {
+	updates.put((String)key, (String)configuration.get((String)key));
       }
 
       if (log.isDebugEnabled()) log.debug("updates = " + updates);
@@ -100,7 +99,7 @@ public class ConfigApiServiceImpl extends ConfigApiService {
 
       ConfigManager.getConfigManager().setCurrentConfig(updates);
 
-      ConfigurationMap result = convertConfig(currentConfig);
+      Properties result = convertConfig(currentConfig);
       if (log.isDebugEnabled()) log.debug("result = " + result);
       return Response.ok().entity(result).build();
     } catch (Exception e) {
@@ -113,6 +112,7 @@ public class ConfigApiServiceImpl extends ConfigApiService {
 
   /**
    * Provides the full stored configuration.
+   * 
    * @param securityContext
    *          A SecurityContext providing access to security related
    *          information.
@@ -120,10 +120,10 @@ public class ConfigApiServiceImpl extends ConfigApiService {
    * @throws ApiException
    *           if there are other problems.
    */
-  private ConfigurationMap convertConfig(Configuration config) {
+  private Properties convertConfig(Configuration config) {
     if (log.isDebugEnabled()) log.debug("Invoked");
 
-    ConfigurationMap result = new ConfigurationMap();
+    Properties result = new Properties();
 
     for (String key : config.keySet()) {
       String value = config.get(key);

@@ -25,52 +25,23 @@
  in this Software without prior written authorization from Stanford University.
 
  */
-package org.lockss.laaws.config.model;
+package org.lockss.laaws.config.client;
 
-import java.util.Objects;
-import io.swagger.annotations.ApiModel;
-import java.util.HashMap;
+import java.net.URLEncoder;
+import java.util.Properties;
 
 /**
- * The map of configuration items.
+ * Client for the getTdbAu() operation.
  */
-@ApiModel(description = "The map of configuration items.")
-public class ConfigurationMap extends HashMap<String, String> {
-  private static final long serialVersionUID = -5240872398092297617L;
+public class GetTdbAuClient extends BaseClient {
+  public static void main(String[] args) throws Exception {
+    System.out.println("args[0] = " + args[0]);
 
-  @Override
-  public boolean equals(java.lang.Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    return true;
-  }
+    String encodedAuId = URLEncoder.encode(args[0], "UTF-8");
+    System.out.println("encodedAuId = '" + encodedAuId + "'");
 
-  @Override
-  public int hashCode() {
-    return Objects.hash(super.hashCode());
-  }
-
-  @Override
-  public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("class ConfigurationMap {\n");
-    sb.append("    ").append(toIndentedString(super.toString())).append("\n");
-    sb.append("}");
-    return sb.toString();
-  }
-
-  /**
-   * Convert the given object to string with each line indented by 4 spaces
-   * (except the first line).
-   */
-  private String toIndentedString(java.lang.Object o) {
-    if (o == null) {
-      return "null";
-    }
-    return o.toString().replace("\n", "\n    ");
+    Properties result = getWebTarget().path("aus").path(encodedAuId)
+	.request().get(Properties.class);
+    System.out.println("result = " + result);
   }
 }

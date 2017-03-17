@@ -55,6 +55,8 @@ public class LaawsConfigApp extends LockssDaemon {
       new ManagerDesc(KEYSTORE_MANAGER,
 	  "org.lockss.daemon.LockssKeyStoreManager"),
       new ManagerDesc(ACCOUNT_MANAGER, "org.lockss.account.AccountManager"),
+      // start plugin manager after generic services
+      new ManagerDesc(PLUGIN_MANAGER, "org.lockss.plugin.PluginManager")
   };
 
   public static void main( String[] args ) {
@@ -75,7 +77,12 @@ public class LaawsConfigApp extends LockssDaemon {
     try {
       laawsConfigApp =
 	  new LaawsConfigApp(opts.getPropUrls(), opts.getGroupNames());
+
       laawsConfigApp.startDaemon();
+
+      // Install loadable plugin support
+      laawsConfigApp.getPluginManager().startLoadablePlugins();
+
       // raise priority after starting other threads, so we won't get
       // locked out and fail to exit when told.
       Thread.currentThread().setPriority(Thread.NORM_PRIORITY + 2);
