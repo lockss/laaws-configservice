@@ -29,13 +29,14 @@ package org.lockss.laaws.config.api;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+import org.lockss.laaws.config.model.ConfigExchange;
 
 /**
  * Base provider of access to the configuration information of an AU.
  */
 public abstract class AusApiService {
   /**
-   * Provides the title database of an AU given the AU identifier.
+   * Deletes the configuration for an AU given the AU identifier.
    * 
    * @param auid
    *          A String with the AU identifier.
@@ -46,6 +47,51 @@ public abstract class AusApiService {
    * @throws ApiException
    *           if there are problems.
    */
-  public abstract Response getTdbAu(String auid,
+  public abstract Response deleteAuConfig(String auid,
       SecurityContext securityContext) throws ApiException;
+
+  /**
+   * Provides the configuration for all AUs.
+   * 
+   * @param securityContext
+   *          A SecurityContext providing access to security related
+   *          information.
+   * @return a Response with any data that needs to be returned to the runtime.
+   * @throws ApiException
+   *           if there are problems.
+   */
+  public abstract Response getAllAuConfig(SecurityContext securityContext)
+      throws ApiException;
+
+  /**
+   * Provides the configuration of an AU given the AU identifier.
+   * 
+   * @param auid
+   *          A String with the AU identifier.
+   * @param securityContext
+   *          A SecurityContext providing access to security related
+   *          information.
+   * @return a Response with any data that needs to be returned to the runtime.
+   * @throws ApiException
+   *           if there are problems.
+   */
+  public abstract Response getAuConfig(String auid,
+      SecurityContext securityContext) throws ApiException;
+
+  /**
+   * Stores the provided configuration for an AU given the AU identifier.
+   * 
+   * @param auid
+   *          A String with the AU identifier.
+   * @param configExchange
+   *          A ConfigExchange with the AU configuration.
+   * @param securityContext
+   *          A SecurityContext providing access to security related
+   *          information.
+   * @return a Response with any data that needs to be returned to the runtime.
+   * @throws ApiException
+   *           if there are problems.
+   */
+  public abstract Response putAuConfig(String auid, ConfigExchange
+      configExchange, SecurityContext securityContext) throws ApiException;
 }

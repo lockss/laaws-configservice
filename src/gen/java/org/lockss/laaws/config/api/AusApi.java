@@ -33,26 +33,100 @@ import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Authorization;
-import java.util.Properties;
 import javax.annotation.security.RolesAllowed;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import org.lockss.laaws.config.api.factories.AusApiServiceFactory;
+import org.lockss.laaws.config.model.ConfigExchange;
 import org.lockss.rs.auth.Roles;
 
 /**
  * Provider of access to the configuration information of Archival Units.
  */
 @Path("/aus")
+@Consumes({ "application/json" })
 @Produces({ "application/json" })
 @Api(value = "/aus")
 public class AusApi  {
   private final AusApiService delegate = AusApiServiceFactory.getAusApi();
 
   /**
-   * Provides the title database for an AU given the AU identifier.
+   * Deletes the configuration for an AU given the AU identifier.
+   * 
+   * @param auid
+   *          A String with the AU identifier.
+   * @param securityContext
+   *          A SecurityContext providing access to security related
+   *          information.
+   * @return a Response with any data that needs to be returned to the runtime.
+   * @throws ApiException
+   *           if there are problems.
+   */
+  @DELETE
+  @Path("/{auid}")
+  @Consumes({ "application/json" })
+  @Produces({ "application/json" })
+  @ApiOperation(value = "Delete the configuration of an AU",
+  notes = "Delete the configuration of an AU given the AU identifier",
+  response = ConfigExchange.class,
+  authorizations = {@Authorization(value = "basicAuth")}, tags={ "aus", })
+  @ApiResponses(value = { 
+      @ApiResponse(code = 200,
+	  message = "The deleted configuration of the specified AU",
+	  response = ConfigExchange.class),
+      @ApiResponse(code = 404, message = "AU not found",
+      response = ConfigExchange.class),
+      @ApiResponse(code = 500, message = "Internal server error",
+      response = ConfigExchange.class),
+      @ApiResponse(code = 503,
+      message = "Some or all of the system is not available",
+      response = ConfigExchange.class) })
+  @RolesAllowed(Roles.ROLE_AU_ADMIN) // Allow an AU administrative user.
+  public Response deleteAuConfig(
+      @ApiParam(value =
+      "The identifier of the AU for which the configuration is to be deleted",
+      required=true) @PathParam("auid") String auid,
+      @Context SecurityContext securityContext) throws ApiException {
+    return delegate.deleteAuConfig(auid, securityContext);
+  }
+
+  /**
+   * Provides the configuration for all AUs.
+   * 
+   * @param securityContext
+   *          A SecurityContext providing access to security related
+   *          information.
+   * @return a Response with any data that needs to be returned to the runtime.
+   * @throws ApiException
+   *           if there are problems.
+   */
+  @GET
+  @Path("/")
+  @Consumes({ "application/json" })
+  @Produces({ "application/json" })
+  @ApiOperation(value = "Get the configuration of all AUs",
+  notes = "Get the configuration of all AUs",
+  response = ConfigExchange.class,
+  authorizations = {@Authorization(value = "basicAuth")}, tags={ "aus", })
+  @ApiResponses(value = { 
+      @ApiResponse(code = 200,
+	  message = "The configuration of all AUs",
+	  response = ConfigExchange.class),
+      @ApiResponse(code = 500, message = "Internal server error",
+      response = ConfigExchange.class),
+      @ApiResponse(code = 503,
+      message = "Some or all of the system is not available",
+      response = ConfigExchange.class) })
+  @RolesAllowed(Roles.ROLE_ANY) // Allow any authenticated user.
+  public Response getAllAuConfig(@Context SecurityContext securityContext)
+      throws ApiException {
+    return delegate.getAllAuConfig(securityContext);
+  }
+
+  /**
+   * Provides the configuration for an AU given the AU identifier.
    * 
    * @param auid
    *          A String with the AU identifier.
@@ -65,26 +139,73 @@ public class AusApi  {
    */
   @GET
   @Path("/{auid}")
+  @Consumes({ "application/json" })
   @Produces({ "application/json" })
-  @ApiOperation(value = "Get the title database of an AU",
-  notes = "Get the title database of an AU given the AU identifier",
-  response = Properties.class,
+  @ApiOperation(value = "Get the configuration of an AU",
+  notes = "Get the configuration of an AU given the AU identifier",
+  response = ConfigExchange.class,
   authorizations = {@Authorization(value = "basicAuth")}, tags={ "aus", })
   @ApiResponses(value = { 
       @ApiResponse(code = 200,
-	  message = "The title database of the specified AU",
-	  response = Properties.class),
+	  message = "The configuration of the specified AU",
+	  response = ConfigExchange.class),
+      @ApiResponse(code = 404, message = "AU not found",
+      response = ConfigExchange.class),
       @ApiResponse(code = 500, message = "Internal server error",
-      response = Properties.class),
+      response = ConfigExchange.class),
       @ApiResponse(code = 503,
       message = "Some or all of the system is not available",
-      response = Properties.class) })
+      response = ConfigExchange.class) })
   @RolesAllowed(Roles.ROLE_ANY) // Allow any authenticated user.
-  public Response getTdbAu(
+  public Response getAuConfig(
       @ApiParam(value =
-      "The identifier of the AU for which the title database is requested",
+      "The identifier of the AU for which the configuration is requested",
       required=true) @PathParam("auid") String auid,
       @Context SecurityContext securityContext) throws ApiException {
-    return delegate.getTdbAu(auid,securityContext);
+    return delegate.getAuConfig(auid, securityContext);
+  }
+
+  /**
+   * Stores the provided configuration for an AU given the AU identifier.
+   * 
+   * @param auid
+   *          A String with the AU identifier.
+   * @param configExchange
+   *          A ConfigExchange with the AU configuration.
+   * @param securityContext
+   *          A SecurityContext providing access to security related
+   *          information.
+   * @return a Response with any data that needs to be returned to the runtime.
+   * @throws ApiException
+   *           if there are problems.
+   */
+  @PUT
+  @Path("/{auid}")
+  @Consumes({ "application/json" })
+  @Produces({ "application/json" })
+  @ApiOperation(value = "Store the configuration of an AU",
+  notes = "Store the configuration of an AU given the AU identifier",
+  response = ConfigExchange.class,
+  authorizations = {@Authorization(value = "basicAuth")}, tags={ "aus", })
+  @ApiResponses(value = { 
+      @ApiResponse(code = 200,
+	  message = "The configuration of the specified AU",
+	  response = ConfigExchange.class),
+      @ApiResponse(code = 404, message = "AU not found",
+      response = ConfigExchange.class),
+      @ApiResponse(code = 500, message = "Internal server error",
+      response = ConfigExchange.class),
+      @ApiResponse(code = 503,
+      message = "Some or all of the system is not available",
+      response = ConfigExchange.class) })
+  @RolesAllowed(Roles.ROLE_AU_ADMIN) // Allow an AU administrative user.
+  public Response putAuConfig(
+      @ApiParam(value =
+      "The identifier of the AU for which the configuration is to be stored",
+      required=true) @PathParam("auid") String auid,
+      @ApiParam(value = "The configuration items to be stored" ,required=true)
+      ConfigExchange configExchange, @Context SecurityContext securityContext)
+	  throws ApiException {
+      return delegate.putAuConfig(auid, configExchange, securityContext);
   }
 }

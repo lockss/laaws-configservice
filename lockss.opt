@@ -147,4 +147,6 @@ org.lockss.openUrlResolver.urlCacheFromWs.isUrlCachedWs.userName=lockss-u
 #### End metadata service specific options.
 ####
 
+# No authentication for the demo.
+#org.lockss.restAuth.authenticationType=basic
 org.lockss.ui.port=8082

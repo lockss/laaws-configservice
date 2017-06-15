@@ -25,23 +25,29 @@
  in this Software without prior written authorization from Stanford University.
 
  */
-package org.lockss.laaws.config.api;
+package org.lockss.laaws.config.client;
 
-import java.io.IOException;
-import javax.servlet.*;
-import javax.servlet.http.HttpServletResponse;
+import java.util.List;
+import javax.ws.rs.core.Response;
 
-public class ApiOriginFilter implements javax.servlet.Filter {
-    public void doFilter(ServletRequest request, ServletResponse response,
-            FilterChain chain) throws IOException, ServletException {
-        HttpServletResponse res = (HttpServletResponse) response;
-        res.addHeader("Access-Control-Allow-Origin", "*");
-        res.addHeader("Access-Control-Allow-Methods", "GET, DELETE, PUT");
-        res.addHeader("Access-Control-Allow-Headers", "Content-Type");
-        chain.doFilter(request, response);
+/**
+ * Client for the getConfigLoadedurls() operation.
+ */
+public class GetConfigLoadedurlsClient extends BaseClient {
+  public static void main(String[] args) throws Exception {
+    Response response =
+	getWebTarget().path("config/loadedurls").request().get();
+
+    int status = response.getStatus();
+    System.out.println("status = " + status);
+    System.out.println("statusInfo = " + response.getStatusInfo());
+
+    if (status == 200) {
+      List<String> result = response.readEntity(List.class);
+      System.out.println("result = " + result);
+    } else {
+      Object result = response.readEntity(Object.class);
+      System.out.println("result = " + result);
     }
-
-    public void destroy() {}
-
-    public void init(FilterConfig filterConfig) throws ServletException {}
+  }
 }

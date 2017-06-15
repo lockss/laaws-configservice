@@ -44,7 +44,7 @@ Edit ./buildLaawsMdx and set the TDB_DIR variable properly.
 This will use port 8888 during the build. To use, for example, port 8889,
 instead, either edit the value of $service_port in ./buildLaawsConfig or run:
 
-`./buildLaawsConfig 8889`
+`./buildLaawsConfig -Dswarm.http.port=8889`
 
 The result of the build is a so-called "uber JAR" file which includes the
 project code plus all its dependencies and which is located at
@@ -57,7 +57,7 @@ project code plus all its dependencies and which is located at
 This will listen to port 8888. To use, for example, port 8889, instead, either
 edit the value of $service_port in ./runLaawsConfig or run:
 
-`./runLaawsConfig 8889`
+`./runLaawsConfig -Dswarm.http.port=8889`
 
 The log is at ./logs/laawsconfig.log
 
@@ -67,10 +67,13 @@ The log is at ./logs/laawsconfig.log
 This will use port 8888 for both steps. To use, for example, port 8889, instead,
 either edit the value of $service_port in ./buildAndRunLaawsConfig or run:
 
-`./buildAndRunLaawsConfig 8889`
+`./buildAndRunLaawsConfig -Dswarm.http.port=8889`
 
 ### Stop:
 `./stopLaawsConfig`
 
 ### API is documented at:
-#### localhost:8888/docs/
+#### localhost:8888/swagger-ui/
+
+Type`http://localhost:8888/swagger.json` in the swagger instance to view
+the docs and test against running server.

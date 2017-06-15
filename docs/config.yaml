@@ -46,6 +46,8 @@ tags:
     description: Tasks on the configuration
 schemes:
   - https
+consumes:
+  - application/json
 produces:
   - application/json
 securityDefinitions:
@@ -55,28 +57,37 @@ securityDefinitions:
 security:
   - basicAuth: []
 paths:
-  '/config':
+  '/config/{sectionName}':
     put:
       tags:
         - config
-      summary: Store configuration items
-      description: Store the given key/value pairs
+      summary: Modify the named configuration
+      description: Modify the configuration properties for a given name
       operationId: putConfig
-      consumes: []
+      consumes:
+        - application/json
       produces:
         - application/json
       parameters:
-        - name: 'properties'
+        - name: 'sectionName'
+          in: path
+          description: The name of the section for which the configuration is\
+            \ to be modified
+          required: true
+          type: string
+        - name: 'configModSpec'
           in: body
-          description: The configuration items to be stored
+          description: The configuration properties to be modified
           required: true
           schema:
-            $ref: '#/definitions/properties'
+            $ref: '#/definitions/configModSpec'
       responses:
         '200':
-          description: The configuration items
+          description: The named configuration after it's modified
           schema:
-            $ref: '#/definitions/properties'
+            $ref: '#/definitions/configExchange'
+        '404':
+          description: Configuration section not found
         '500':
           description: Internal server error
         '503':
@@ -84,42 +95,228 @@ paths:
     get:
       tags:
         - config
-      summary: Get the configuration
-      description: Get the full stored configuration
+      summary: Get the named configuration
+      description: Get the configuration items stored for a given name
       operationId: getConfig
-      consumes: []
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'sectionName'
+          in: path
+          description: The name of the section for which the configuration is\
+            \ requested
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The named configuration
+          schema:
+            $ref: '#/definitions/configExchange'
+        '404':
+          description: Configuration section not found
+        '500':
+          description: Internal server error
+        '503':
+          description: Some or all of the system is not available
+    delete:
+      tags:
+        - config
+      summary: Delete the named configuration
+      description: Delete the configuration for a given name
+      operationId: deleteConfig
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'sectionName'
+          in: path
+          description: The name of the section for which the configuration is\
+            \ to be deleted
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The named configuration that has been deleted
+          schema:
+            $ref: '#/definitions/configExchange'
+        '404':
+          description: Configuration section not found
+        '500':
+          description: Internal server error
+        '503':
+          description: Some or all of the system is not available
+  '/config/loadedurls':
+    get:
+      tags:
+        - config
+      summary: Get the URLs from which the configuration was loaded
+      description: Get the URLs from which the configuration was actually\
+        \ loaded, reflecting any failover to local copies
+      operationId: getLoadedUrlList
+      consumes:
+        - application/json
       produces:
         - application/json
       responses:
         '200':
-          description: The configuration items
+          description: The URLs from which the configuration was loaded
           schema:
-            $ref: '#/definitions/properties'
+            type: array
+            items:
+              type: string
+        '500':
+          description: Internal server error
+        '503':
+          description: Some or all of the system is not available
+  '/config/lastupdatetime':
+    get:
+      tags:
+        - config
+      summary: Get the timestamp when the configuration was last updated
+      description: Get the timestamp when the configuration was last updated
+      operationId: getLastUpdateTime
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: The timestamp when the configuration was last updated
+          schema:
+            type: string
+            format: date-time
+        '500':
+          description: Internal server error
+        '503':
+          description: Some or all of the system is not available
+  '/config/reload':
+    put:
+      tags:
+        - config
+      summary: Request a configuration reload
+      description: Request that the stored configuration is reloaded
+      operationId: requestReload
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: OK
+        '500':
+          description: Internal server error
+        '503':
+          description: Some or all of the system is not available
+  '/aus':
+    get:
+      tags:
+        - aus
+      summary: Get the configurations of all AUs
+      description: Get the configuration of all AUs
+      operationId: getAllAuConfig
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: The configuration of all AUs
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/configExchange'
         '500':
           description: Internal server error
         '503':
           description: Some or all of the system is not available
   '/aus/{auid}':
-    get:
+    put:
       tags:
         - aus
-      summary: Get the title database of an AU
-      description: Get the title database of an AU given the AU identifier
-      operationId: getTdbAu
-      consumes: []
+      summary: Store the configuration of an AU
+      description: Store the configuration of an AU given the AU identifier
+      operationId: putAuConfig
+      consumes:
+        - application/json
       produces:
         - application/json
       parameters:
         - name: 'auid'
           in: path
-          description: The identifier of the AU for which the title database is requested
+          description: The identifier of the AU for which the configuration is\
+            \ to be stored
+          required: true
+          type: string
+        - name: 'configExchange'
+          in: body
+          description: The configuration items to be stored
+          required: true
+          schema:
+            $ref: '#/definitions/configExchange'
+      responses:
+        '200':
+          description: The configuration of the specified AU after it's stored
+          schema:
+            $ref: '#/definitions/configExchange'
+        '404':
+          description: AU not found
+        '500':
+          description: Internal server error
+        '503':
+          description: Some or all of the system is not available
+    get:
+      tags:
+        - aus
+      summary: Get the configuration of an AU
+      description: Get the configuration of an AU given the AU identifier
+      operationId: getAuConfig
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the configuration is\
+            \ requested
           required: true
           type: string
       responses:
         '200':
-          description: The title database of the specified AU
+          description: The configuration of the specified AU
           schema:
-            $ref: '#/definitions/properties'
+            $ref: '#/definitions/configExchange'
+        '404':
+          description: AU not found
+        '500':
+          description: Internal server error
+        '503':
+          description: Some or all of the system is not available
+    delete:
+      tags:
+        - aus
+      summary: Delete the the configuration of an AU
+      description: Delete the configuration of an AU given the AU identifier
+      operationId: deleteAuConfig
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the configuration is\
+            \ to be deleted
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The deleted configuration of the specified AU
+          schema:
+            $ref: '#/definitions/configExchange'
         '404':
           description: AU not found
         '500':
@@ -127,9 +324,37 @@ paths:
         '503':
           description: Some or all of the system is not available
 definitions:
-  properties:
+  configModSpec:
     type: object
-    description: The map of items.
-    additionalProperties:
-      type: string
-      description: The value of the configuration for the key.
+    required:
+      - header
+      - updates
+      - deletes
+    properties:
+      header:
+        type: string
+        description: A file header string
+      updates:
+        type: object
+        description: The map of configuration items that are modified
+        additionalProperties:
+          type: string
+          description: The value of the configuration for the key
+      deletes:
+        type: array
+        items:
+          type: string
+        description: The set of configuration keys to be deleted
+    description: The encapsulation of a set of configuration modifications
+  configExchange:
+    type: object
+    required:
+      - props
+    properties:
+      props:
+        type: object
+        description: The map of configuration items
+        additionalProperties:
+          type: string
+          description: The value of the configuration for the key
+    description: The encapsulation of a set of configuration properties

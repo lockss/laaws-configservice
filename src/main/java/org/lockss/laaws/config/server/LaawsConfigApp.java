@@ -56,7 +56,14 @@ public class LaawsConfigApp extends LockssDaemon {
 	  "org.lockss.daemon.LockssKeyStoreManager"),
       new ManagerDesc(ACCOUNT_MANAGER, "org.lockss.account.AccountManager"),
       // start plugin manager after generic services
-      new ManagerDesc(PLUGIN_MANAGER, "org.lockss.plugin.PluginManager")
+      new ManagerDesc(PLUGIN_MANAGER, "org.lockss.plugin.PluginManager"),
+      // Start the COUNTER reports manager.
+      new ManagerDesc(COUNTER_REPORTS_MANAGER,
+	  "org.lockss.exporter.counter.CounterReportsManager"),
+      // NOTE: Any managers that are needed to decide whether a servlet is to be
+      // enabled or not (through ServletDescr.isEnabled()) need to appear before
+      // the AdminServletManager on the next line.
+      new ManagerDesc(SERVLET_MANAGER, "org.lockss.servlet.AdminServletManager")
   };
 
   public static void main( String[] args ) {

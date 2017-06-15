@@ -26,16 +26,63 @@
 
  */
 package org.lockss.laaws.config.api;
-import java.util.Properties;
+
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+import org.lockss.laaws.config.model.ConfigModSpec;
 
 /**
  * Base provider of access to the configuration.
  */
 public abstract class ConfigApiService {
+
+  public static final String SECTION_NAME_CLUSTER = "cluster";
+  public static final String SECTION_NAME_UI_IP_ACCESS = "ui_ip_access";
+  public static final String SECTION_NAME_PROXY_IP_ACCESS = "proxy_ip_access";
+  public static final String SECTION_NAME_PLUGIN = "plugin";
+  public static final String SECTION_NAME_AU = "au";
+  public static final String SECTION_NAME_TITLE_DB = "titledb";
+  public static final String SECTION_NAME_ICP_SERVER = "icp_server";
+  public static final String SECTION_NAME_AUDIT_PROXY = "audit_proxy";
+  public static final String SECTION_NAME_CONTENT_SERVERS = "content_servers";
+  public static final String SECTION_NAME_ACCESS_GROUPS = "access_groups";
+  public static final String SECTION_NAME_CRAWL_PROXY = "crawl_proxy";
+  public static final String SECTION_NAME_EXPERT = "expert";
+  public static final String SECTION_NAME_ALERT = "alert";
+  public static final String SECTION_NAME_CRONSTATE = "cronstate";
+
   /**
-   * Provides the full stored configuration.
+   * Deletes the configuration for a section given the section name.
+   * 
+   * @param sectionName
+   *          A String with the section name.
+   * @param securityContext
+   *          A SecurityContext providing access to security related
+   *          information.
+   * @return a Response with any data that needs to be returned to the runtime.
+   * @throws ApiException
+   *           if there are problems.
+   */
+  public abstract Response deleteConfig(String sectionName,
+      SecurityContext securityContext) throws ApiException;
+
+  /**
+   * Provides the configuration for a section given the section name.
+   * 
+   * @param sectionName
+   *          A String with the section name.
+   * @param securityContext
+   *          A SecurityContext providing access to security related
+   *          information.
+   * @return a Response with any data that needs to be returned to the runtime.
+   * @throws ApiException
+   *           if there are problems.
+   */
+  public abstract Response getConfig(String sectionName,
+      SecurityContext securityContext) throws ApiException;
+
+  /**
+   * Provides the timestamp of the last time the configuration was updated.
    * 
    * @param securityContext
    *          A SecurityContext providing access to security related
@@ -44,14 +91,12 @@ public abstract class ConfigApiService {
    * @throws ApiException
    *           if there are problems.
    */
-  public abstract Response getConfig(SecurityContext securityContext)
+  public abstract Response getLastUpdateTime(SecurityContext securityContext)
       throws ApiException;
 
   /**
-   * Stores configuration items.
+   * Provides the URLs from which the configuration was loaded.
    * 
-   * @param configuration
-   *          A Properties with the configuration to be stored.
    * @param securityContext
    *          A SecurityContext providing access to security related
    *          information.
@@ -59,6 +104,36 @@ public abstract class ConfigApiService {
    * @throws ApiException
    *           if there are problems.
    */
-  public abstract Response putConfig(Properties configuration,
-      SecurityContext securityContext) throws ApiException;
+  public abstract Response getLoadedUrlList(SecurityContext securityContext)
+      throws ApiException;
+
+  /**
+   * Modifies the configuration for a section given the section name.
+   * 
+   * @param sectionName
+   *          A String with the section name.
+   * @param configModSpec
+   *          A ConfigModSpec with the configuration modifications.
+   * @param securityContext
+   *          A SecurityContext providing access to security related
+   *          information.
+   * @return a Response with any data that needs to be returned to the runtime.
+   * @throws ApiException
+   *           if there are problems.
+   */
+  public abstract Response putConfig(String sectionName, ConfigModSpec
+      configModSpec, SecurityContext securityContext) throws ApiException;
+
+  /**
+   * Requests a reload of the configuration.
+   * 
+   * @param securityContext
+   *          A SecurityContext providing access to security related
+   *          information.
+   * @return a Response with any data that needs to be returned to the runtime.
+   * @throws ApiException
+   *           if there are problems.
+   */
+  public abstract Response requestReload(SecurityContext securityContext)
+      throws ApiException;
 }
