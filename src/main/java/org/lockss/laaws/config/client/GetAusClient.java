@@ -27,6 +27,8 @@
  */
 package org.lockss.laaws.config.client;
 
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.lockss.laaws.config.model.ConfigExchange;
 
@@ -35,7 +37,12 @@ import org.lockss.laaws.config.model.ConfigExchange;
  */
 public class GetAusClient extends BaseClient {
   public static void main(String[] args) throws Exception {
-    Response response = getWebTarget().path("aus").request().get();
+    WebTarget webTarget = getWebTarget().path("aus");
+    System.out.println("webTarget.getUri() = " + webTarget.getUri());
+
+    Response response = webTarget.request().header("Content-Type",
+	MediaType.APPLICATION_JSON_TYPE).get();
+
     int status = response.getStatus();
     System.out.println("status = " + status);
     System.out.println("statusInfo = " + response.getStatusInfo());

@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.lockss.laaws.config.model.ConfigExchange;
@@ -44,6 +45,10 @@ import org.lockss.laaws.config.model.ConfigModSpec;
 public class PutConfigSnidClient extends BaseClient {
 
   public static void main(String[] args) throws Exception {
+    for (int i = 0; i < args.length; i++) {
+      System.out.println("args[" + i + "] = " + args[i]);
+    }
+
     if (args.length < 1) {
       System.err.println("ERROR: Missing command line arguments with the name "
 	  + "of the section to have its configuration modified and its "
@@ -89,8 +94,12 @@ public class PutConfigSnidClient extends BaseClient {
       modSpec.setUpdates(updates);
       modSpec.setDeletes(deletes);
 
-      Response response = getWebTarget().path("config").path(encodedSectionName)
-	  .request().put(Entity.entity(modSpec,
+      WebTarget webTarget =
+  	getWebTarget().path("config").path(encodedSectionName);
+      System.out.println("webTarget.getUri() = " + webTarget.getUri());
+
+      Response response = webTarget.request().header("Content-Type",
+  	MediaType.APPLICATION_JSON_TYPE).put(Entity.entity(modSpec,
 	      MediaType.APPLICATION_JSON_TYPE));
 
       int status = response.getStatus();

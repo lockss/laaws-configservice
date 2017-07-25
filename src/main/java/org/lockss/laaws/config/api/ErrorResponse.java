@@ -25,34 +25,19 @@
  in this Software without prior written authorization from Stanford University.
 
  */
-package org.lockss.laaws.config.client;
-
-import java.util.Date;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+package org.lockss.laaws.config.api;
 
 /**
- * Client for the getConfigLastupdatetime() operation.
+ * Error response definition for JSON conversion.
  */
-public class GetConfigLastupdatetimeClient extends BaseClient {
-  public static void main(String[] args) throws Exception {
-    WebTarget webTarget = getWebTarget().path("config/lastupdatetime");
-    System.out.println("webTarget.getUri() = " + webTarget.getUri());
+public class ErrorResponse {
+  private String message;
 
-    Response response = webTarget.request().header("Content-Type",
-	MediaType.APPLICATION_JSON_TYPE).get();
+  public ErrorResponse(String message) {
+    this.message = message;
+  }
 
-    int status = response.getStatus();
-    System.out.println("status = " + status);
-    System.out.println("statusInfo = " + response.getStatusInfo());
-
-    if (status == 200) {
-      Date result = response.readEntity(Date.class);
-      System.out.println("result = " + result);
-    } else {
-      Object result = response.readEntity(Object.class);
-      System.out.println("result = " + result);
-    }
+  public String getMessage() {
+    return message;
   }
 }

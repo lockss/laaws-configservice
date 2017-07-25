@@ -86,8 +86,12 @@ paths:
           description: The named configuration after it's modified
           schema:
             $ref: '#/definitions/configExchange'
-        '404':
-          description: Configuration section not found
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized request
+        '403':
+          description: Forbidden request
         '500':
           description: Internal server error
         '503':
@@ -114,8 +118,10 @@ paths:
           description: The named configuration
           schema:
             $ref: '#/definitions/configExchange'
-        '404':
-          description: Configuration section not found
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized request
         '500':
           description: Internal server error
         '503':
@@ -142,8 +148,12 @@ paths:
           description: The named configuration that has been deleted
           schema:
             $ref: '#/definitions/configExchange'
-        '404':
-          description: Configuration section not found
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized request
+        '403':
+          description: Forbidden request
         '500':
           description: Internal server error
         '503':
@@ -167,6 +177,8 @@ paths:
             type: array
             items:
               type: string
+        '401':
+          description: Unauthorized request
         '500':
           description: Internal server error
         '503':
@@ -188,6 +200,8 @@ paths:
           schema:
             type: string
             format: date-time
+        '401':
+          description: Unauthorized request
         '500':
           description: Internal server error
         '503':
@@ -198,7 +212,7 @@ paths:
         - config
       summary: Request a configuration reload
       description: Request that the stored configuration is reloaded
-      operationId: requestReload
+      operationId: putConfigReload
       consumes:
         - application/json
       produces:
@@ -206,6 +220,10 @@ paths:
       responses:
         '200':
           description: OK
+        '401':
+          description: Unauthorized request
+        '403':
+          description: Forbidden request
         '500':
           description: Internal server error
         '503':
@@ -228,6 +246,8 @@ paths:
             type: array
             items:
               $ref: '#/definitions/configExchange'
+        '401':
+          description: Unauthorized request
         '500':
           description: Internal server error
         '503':
@@ -261,8 +281,12 @@ paths:
           description: The configuration of the specified AU after it's stored
           schema:
             $ref: '#/definitions/configExchange'
-        '404':
-          description: AU not found
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized request
+        '403':
+          description: Forbidden request
         '500':
           description: Internal server error
         '503':
@@ -289,8 +313,10 @@ paths:
           description: The configuration of the specified AU
           schema:
             $ref: '#/definitions/configExchange'
-        '404':
-          description: AU not found
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized request
         '500':
           description: Internal server error
         '503':
@@ -317,8 +343,12 @@ paths:
           description: The deleted configuration of the specified AU
           schema:
             $ref: '#/definitions/configExchange'
-        '404':
-          description: AU not found
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized request
+        '403':
+          description: Forbidden request
         '500':
           description: Internal server error
         '503':

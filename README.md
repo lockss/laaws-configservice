@@ -36,44 +36,36 @@ File -> Import... -> Maven -> Existing Maven Projects
 run `initBuild`
 
 ### Set up the TDB tree:
-Edit ./buildLaawsMdx and set the TDB_DIR variable properly.
+Edit ./runLaawsConfig and set the TDB_DIR variable properly.
 
 ### Build the web service:
 `./buildLaawsConfig`
 
-This will use port 8888 during the build. To use, for example, port 8889,
-instead, either edit the value of $service_port in ./buildLaawsConfig or run:
-
-`./buildLaawsConfig -Dswarm.http.port=8889`
+This will run the tests as a pre-requisite for the build.
 
 The result of the build is a so-called "uber JAR" file which includes the
 project code plus all its dependencies and which is located at
 
-`./target/laaws-config-service-swarm.jar`
+`./target/laaws-configuration-service-0.0.1-SNAPSHOT.jar`
 
 ### Run the web service:
 `./runLaawsConfig`
 
-This will listen to port 8888. To use, for example, port 8889, instead, either
-edit the value of $service_port in ./runLaawsConfig or run:
-
-`./runLaawsConfig -Dswarm.http.port=8889`
+This will use port 54420. To use another port, edit the value of the
+`server.port` property in file
+`src/main/resources/application.properties`.
 
 The log is at ./logs/laawsconfig.log
 
 ### Build and run the web service:
 `./buildAndRunLaawsConfig`
 
-This will use port 8888 for both steps. To use, for example, port 8889, instead,
-either edit the value of $service_port in ./buildAndRunLaawsConfig or run:
+This will use port 54420. To use another port, edit the value of the
+`server.port` property in file
+`src/main/resources/application.properties`.
 
-`./buildAndRunLaawsConfig -Dswarm.http.port=8889`
+### API is documented at:
+#### http://localhost:54420/swagger-ui.html
 
 ### Stop:
 `./stopLaawsConfig`
-
-### API is documented at:
-#### localhost:8888/swagger-ui/
-
-Type`http://localhost:8888/swagger.json` in the swagger instance to view
-the docs and test against running server.

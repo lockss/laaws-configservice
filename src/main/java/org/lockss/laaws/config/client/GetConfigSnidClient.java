@@ -28,6 +28,8 @@
 package org.lockss.laaws.config.client;
 
 import java.net.URLEncoder;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.lockss.laaws.config.model.ConfigExchange;
 
@@ -36,6 +38,10 @@ import org.lockss.laaws.config.model.ConfigExchange;
  */
 public class GetConfigSnidClient extends BaseClient {
   public static void main(String[] args) throws Exception {
+    for (int i = 0; i < args.length; i++) {
+      System.out.println("args[" + i + "] = " + args[i]);
+    }
+
     if (args.length < 1) {
       System.err.println("ERROR: Missing command line argument with the name "
 	  + "of the section for which its configuration is to be retrieved.");
@@ -45,8 +51,12 @@ public class GetConfigSnidClient extends BaseClient {
 	URLEncoder.encode(args[0].toLowerCase(), "UTF-8");
     System.out.println("encodedSectionName = " + encodedSectionName);
 
-    Response response = getWebTarget().path("config")
-	.path(encodedSectionName).request().get();
+    WebTarget webTarget =
+	getWebTarget().path("config").path(encodedSectionName);
+    System.out.println("webTarget.getUri() = " + webTarget.getUri());
+
+    Response response = webTarget.request().header("Content-Type",
+	MediaType.APPLICATION_JSON_TYPE).get();
 
     int status = response.getStatus();
     System.out.println("status = " + status);

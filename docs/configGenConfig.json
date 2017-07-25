@@ -31,6 +31,8 @@
   "apiPackage":"org.lockss.laaws.config.api",
   "invokerPackage":"org.lockss.laaws.config",
   "hideGenerationTimestamp": true,
-  "title": "LAAWS Configuration Service"
+  "dateLibrary":"java8",
+  "title": "LAAWS Configuration Service",
+  "java8": true,
+  "library":"spring-boot"
 }
-

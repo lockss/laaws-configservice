@@ -28,6 +28,8 @@
 package org.lockss.laaws.config.client;
 
 import java.net.URLEncoder;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.lockss.laaws.config.model.ConfigExchange;
 
@@ -36,6 +38,10 @@ import org.lockss.laaws.config.model.ConfigExchange;
  */
 public class GetAusAuidClient extends BaseClient {
   public static void main(String[] args) throws Exception {
+    for (int i = 0; i < args.length; i++) {
+      System.out.println("args[" + i + "] = " + args[i]);
+    }
+
     if (args.length < 1) {
       System.err.println("ERROR: Missing command line argument with the "
 	  + "identifier of the Archival Unit for which its configuration is "
@@ -45,8 +51,11 @@ public class GetAusAuidClient extends BaseClient {
     String encodedAuId = URLEncoder.encode(args[0], "UTF-8");
     System.out.println("encodedAuId = '" + encodedAuId + "'");
 
-    Response response =
-	getWebTarget().path("aus").path(encodedAuId).request().get();
+    WebTarget webTarget = getWebTarget().path("aus").path(encodedAuId);
+    System.out.println("webTarget.getUri() = " + webTarget.getUri());
+
+    Response response = webTarget.request().header("Content-Type",
+	MediaType.APPLICATION_JSON_TYPE).get();
 
     int status = response.getStatus();
     System.out.println("status = " + status);

@@ -22,30 +22,5 @@
 # be used in advertising or otherwise to promote the sale, use or other dealings
 # in this Software without prior written authorization from Stanford University.
 #
-echo Cleaning up build directory...
-rm -rf build
-mkdir build
-cd build
-
-echo Copying source files...
-cp -r ../config .
-cp ../pom.xml .
-cp -r ../poms .
-cp -r ../src .
-
-echo Copying test files...
-cp ../test/buildLaawsConfig .
-cp -r ../test/cache .
-cp -r ../test/config .
-cp -r ../test/tdbxml .
-
-# Build the service in the build subdirectory.
-./buildLaawsConfig
-
-# Copy the service just built to the appropriate directory.
-rm -rf ../target
-cp -r target ..
-
-echo Cleaning up build directory...
-cd ..
-rm -rf build
+org.lockss.restAuth.authenticationType=basic
+org.lockss.ui.port=54425

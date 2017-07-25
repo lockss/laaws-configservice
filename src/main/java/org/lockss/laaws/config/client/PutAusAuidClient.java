@@ -31,6 +31,7 @@ import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.lockss.laaws.config.model.ConfigExchange;
@@ -41,6 +42,10 @@ import org.lockss.laaws.config.model.ConfigExchange;
 public class PutAusAuidClient extends BaseClient {
 
   public static void main(String[] args) throws Exception {
+    for (int i = 0; i < args.length; i++) {
+      System.out.println("args[" + i + "] = " + args[i]);
+    }
+
     if (args.length < 1) {
       System.err.println("ERROR: Missing command line arguments with the "
 	  + "identifier of the Archival Unit for which its configuration is "
@@ -73,8 +78,12 @@ public class PutAusAuidClient extends BaseClient {
 
     config.setProps(props);
 
-    Response response = getWebTarget().path("aus").path(encodedAuId)
-	.request().put(Entity.entity(config, MediaType.APPLICATION_JSON_TYPE));
+    WebTarget webTarget = getWebTarget().path("aus").path(encodedAuId);
+    System.out.println("webTarget.getUri() = " + webTarget.getUri());
+
+    Response response = webTarget.request().header("Content-Type",
+	MediaType.APPLICATION_JSON_TYPE).put(Entity.entity(config,
+	    MediaType.APPLICATION_JSON_TYPE));
 
     int status = response.getStatus();
     System.out.println("status = " + status);

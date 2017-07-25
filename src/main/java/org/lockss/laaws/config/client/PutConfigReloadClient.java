@@ -27,6 +27,9 @@
  */
 package org.lockss.laaws.config.client;
 
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 /**
@@ -34,8 +37,12 @@ import javax.ws.rs.core.Response;
  */
 public class PutConfigReloadClient extends BaseClient {
   public static void main(String[] args) throws Exception {
-    Response response =
-	getWebTarget().path("config/reload").request().put(null);
+    WebTarget webTarget = getWebTarget().path("config/reload");
+    System.out.println("webTarget.getUri() = " + webTarget.getUri());
+
+    Response response = webTarget.request().header("Content-Type",
+	MediaType.APPLICATION_JSON_TYPE).put(Entity.entity("{}",
+	    MediaType.APPLICATION_JSON_TYPE));
 
     int status = response.getStatus();
     System.out.println("status = " + status);
