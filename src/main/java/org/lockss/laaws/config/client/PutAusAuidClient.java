@@ -27,14 +27,12 @@
  */
 package org.lockss.laaws.config.client;
 
-import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import org.lockss.laaws.config.model.ConfigExchange;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 
 /**
  * Client for the putAusAuid() operation.
@@ -51,9 +49,6 @@ public class PutAusAuidClient extends BaseClient {
 	  + "identifier of the Archival Unit for which its configuration is "
 	  + "to be stored and the configuration to be stored.");
     }
-
-    String encodedAuId = URLEncoder.encode(args[0], "UTF-8");
-    System.out.println("encodedAuId = '" + encodedAuId + "'");
 
     if (args.length < 2) {
       System.err.println("ERROR: Missing command line arguments with the "
@@ -78,23 +73,15 @@ public class PutAusAuidClient extends BaseClient {
 
     config.setProps(props);
 
-    WebTarget webTarget = getWebTarget().path("aus").path(encodedAuId);
-    System.out.println("webTarget.getUri() = " + webTarget.getUri());
+    String url = baseUri + "/aus/" + args[0];
 
-    Response response = webTarget.request().header("Content-Type",
-	MediaType.APPLICATION_JSON_TYPE).put(Entity.entity(config,
-	    MediaType.APPLICATION_JSON_TYPE));
+    ResponseEntity<ConfigExchange> response = getRestTemplate().exchange(url,
+	HttpMethod.PUT, new HttpEntity<ConfigExchange>(config,
+	    getHttpHeaders()), ConfigExchange.class);
 
-    int status = response.getStatus();
+    int status = response.getStatusCodeValue();
     System.out.println("status = " + status);
-    System.out.println("statusInfo = " + response.getStatusInfo());
-
-    if (status == 200) {
-      ConfigExchange result = response.readEntity(ConfigExchange.class);
-      System.out.println("result = " + result);
-    } else {
-      Object result = response.readEntity(Object.class);
-      System.out.println("result = " + result);
-    }
+    ConfigExchange result = response.getBody();
+    System.out.println("result = " + result);
   }
 }

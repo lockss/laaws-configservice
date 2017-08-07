@@ -28,31 +28,24 @@
 package org.lockss.laaws.config.client;
 
 import java.util.Date;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 
 /**
  * Client for the getConfigLastupdatetime() operation.
  */
 public class GetConfigLastupdatetimeClient extends BaseClient {
   public static void main(String[] args) throws Exception {
-    WebTarget webTarget = getWebTarget().path("config/lastupdatetime");
-    System.out.println("webTarget.getUri() = " + webTarget.getUri());
+    String url = baseUri + "/config/lastupdatetime";
 
-    Response response = webTarget.request().header("Content-Type",
-	MediaType.APPLICATION_JSON_TYPE).get();
+    ResponseEntity<Date> response = getRestTemplate().exchange(url,
+	HttpMethod.GET, new HttpEntity<String>(null, getHttpHeaders()),
+	Date.class);
 
-    int status = response.getStatus();
+    int status = response.getStatusCodeValue();
     System.out.println("status = " + status);
-    System.out.println("statusInfo = " + response.getStatusInfo());
-
-    if (status == 200) {
-      Date result = response.readEntity(Date.class);
-      System.out.println("result = " + result);
-    } else {
-      Object result = response.readEntity(Object.class);
-      System.out.println("result = " + result);
-    }
+    Date result = response.getBody();
+    System.out.println("result = " + result);
   }
 }

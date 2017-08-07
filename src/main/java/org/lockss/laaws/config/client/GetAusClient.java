@@ -27,32 +27,25 @@
  */
 package org.lockss.laaws.config.client;
 
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import org.lockss.laaws.config.model.ConfigExchange;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 
 /**
  * Client for the getAus() operation.
  */
 public class GetAusClient extends BaseClient {
   public static void main(String[] args) throws Exception {
-    WebTarget webTarget = getWebTarget().path("aus");
-    System.out.println("webTarget.getUri() = " + webTarget.getUri());
+    String url = baseUri + "/aus";
 
-    Response response = webTarget.request().header("Content-Type",
-	MediaType.APPLICATION_JSON_TYPE).get();
+    ResponseEntity<ConfigExchange> response = getRestTemplate().exchange(url,
+	HttpMethod.GET, new HttpEntity<String>(null, getHttpHeaders()),
+	ConfigExchange.class);
 
-    int status = response.getStatus();
+    int status = response.getStatusCodeValue();
     System.out.println("status = " + status);
-    System.out.println("statusInfo = " + response.getStatusInfo());
-
-    if (status == 200) {
-      ConfigExchange result = response.readEntity(ConfigExchange.class);
-      System.out.println("result = " + result);
-    } else {
-      Object result = response.readEntity(Object.class);
-      System.out.println("result = " + result);
-    }
+    ConfigExchange result = response.getBody();
+    System.out.println("result = " + result);
   }
 }

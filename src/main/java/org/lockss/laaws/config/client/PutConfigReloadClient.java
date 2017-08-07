@@ -27,28 +27,24 @@
  */
 package org.lockss.laaws.config.client;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 
 /**
  * Client for the putConfigReload() operation.
  */
 public class PutConfigReloadClient extends BaseClient {
   public static void main(String[] args) throws Exception {
-    WebTarget webTarget = getWebTarget().path("config/reload");
-    System.out.println("webTarget.getUri() = " + webTarget.getUri());
+    String url = baseUri + "/config/reload";
 
-    Response response = webTarget.request().header("Content-Type",
-	MediaType.APPLICATION_JSON_TYPE).put(Entity.entity("{}",
-	    MediaType.APPLICATION_JSON_TYPE));
+    ResponseEntity<Object> response = getRestTemplate().exchange(url,
+	HttpMethod.PUT, new HttpEntity<String>(null, getHttpHeaders()),
+	Object.class);
 
-    int status = response.getStatus();
+    int status = response.getStatusCodeValue();
     System.out.println("status = " + status);
-    System.out.println("statusInfo = " + response.getStatusInfo());
-
-    Object result = response.readEntity(Object.class);
+    Object result = response.getBody();
     System.out.println("result = " + result);
   }
 }

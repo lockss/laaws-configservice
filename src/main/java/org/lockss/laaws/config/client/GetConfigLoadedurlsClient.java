@@ -28,32 +28,24 @@
 package org.lockss.laaws.config.client;
 
 import java.util.List;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 
 /**
  * Client for the getConfigLoadedurls() operation.
  */
 public class GetConfigLoadedurlsClient extends BaseClient {
   public static void main(String[] args) throws Exception {
-    WebTarget webTarget = getWebTarget().path("config/loadedurls");
-    System.out.println("webTarget.getUri() = " + webTarget.getUri());
+    String url = baseUri + "/config/loadedurls";
 
-    Response response = webTarget.request().header("Content-Type",
-	MediaType.APPLICATION_JSON_TYPE).get();
+    ResponseEntity<List> response = getRestTemplate().exchange(url,
+	HttpMethod.GET, new HttpEntity<String>(null, getHttpHeaders()),
+	List.class);
 
-    int status = response.getStatus();
+    int status = response.getStatusCodeValue();
     System.out.println("status = " + status);
-    System.out.println("statusInfo = " + response.getStatusInfo());
-
-    if (status == 200) {
-      @SuppressWarnings("unchecked")
-      List<String> result = response.readEntity(List.class);
-      System.out.println("result = " + result);
-    } else {
-      Object result = response.readEntity(Object.class);
-      System.out.println("result = " + result);
-    }
+    List<String> result = response.getBody();
+    System.out.println("result = " + result);
   }
 }
