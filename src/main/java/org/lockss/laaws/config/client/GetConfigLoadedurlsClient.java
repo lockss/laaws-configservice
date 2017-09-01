@@ -39,12 +39,14 @@ public class GetConfigLoadedurlsClient extends BaseClient {
   public static void main(String[] args) throws Exception {
     String url = baseUri + "/config/loadedurls";
 
+    @SuppressWarnings("rawtypes")
     ResponseEntity<List> response = getRestTemplate().exchange(url,
 	HttpMethod.GET, new HttpEntity<String>(null, getHttpHeaders()),
 	List.class);
 
     int status = response.getStatusCodeValue();
     System.out.println("status = " + status);
+    @SuppressWarnings("unchecked")
     List<String> result = response.getBody();
     System.out.println("result = " + result);
   }

@@ -27,10 +27,14 @@
  */
 package org.lockss.laaws.config.client;
 
+import java.net.URI;
+import java.util.Collections;
 import org.lockss.laaws.config.model.ConfigExchange;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.util.UriComponents;
+import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * Client for the getConfigSnid() operation.
@@ -46,9 +50,18 @@ public class GetConfigSnidClient extends BaseClient {
 	  + "of the section for which its configuration is to be retrieved.");
     }
 
-    String url = baseUri + "/config/" + args[0].toLowerCase();
+    String template = baseUri + "/config/{snid}";
 
-    ResponseEntity<ConfigExchange> response = getRestTemplate().exchange(url,
+    // Create the URI of the request to the REST service.
+    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
+	.build().expand(Collections.singletonMap("snid",
+	    args[0].toLowerCase()));
+
+    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
+	.build().encode().toUri();
+    System.out.println("uri = " + uri);
+
+    ResponseEntity<ConfigExchange> response = getRestTemplate().exchange(uri,
 	HttpMethod.GET, new HttpEntity<String>(null, getHttpHeaders()),
 	ConfigExchange.class);
 

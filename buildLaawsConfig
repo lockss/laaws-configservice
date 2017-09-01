@@ -30,7 +30,6 @@ cd build
 echo Copying source files...
 cp -r ../config .
 cp ../pom.xml .
-cp -r ../poms .
 cp -r ../src .
 
 echo Copying test files...

@@ -27,10 +27,14 @@
  */
 package org.lockss.laaws.config.client;
 
+import java.net.URI;
+import java.util.Collections;
 import org.lockss.laaws.config.model.ConfigExchange;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.util.UriComponents;
+import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * Client for the deleteAusAuid() operation.
@@ -47,9 +51,17 @@ public class DeleteAusAuidClient extends BaseClient {
 	  + "to be deleted.");
     }
 
-    String url = baseUri + "/aus/" + args[0];
+    String template = baseUri + "/aus/{auid}";
 
-    ResponseEntity<ConfigExchange> response = getRestTemplate().exchange(url,
+    // Create the URI of the request to the REST service.
+    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
+	.build().expand(Collections.singletonMap("auid", args[0]));
+
+    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
+	.build().encode().toUri();
+    System.out.println("uri = " + uri);
+
+    ResponseEntity<ConfigExchange> response = getRestTemplate().exchange(uri,
 	HttpMethod.DELETE, new HttpEntity<String>(null, getHttpHeaders()),
 	ConfigExchange.class);
 
@@ -57,6 +69,5 @@ public class DeleteAusAuidClient extends BaseClient {
     System.out.println("status = " + status);
     ConfigExchange result = response.getBody();
     System.out.println("result = " + result);
-
   }
 }

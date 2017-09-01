@@ -67,5 +67,5 @@ This will use port 54420. To use another port, edit the value of the
 ### API is documented at:
 #### http://localhost:54420/swagger-ui.html
 
-### Stop:
+### Stop the web service:
 `./stopLaawsConfig`
