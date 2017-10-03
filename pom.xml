@@ -27,7 +27,7 @@ in this Software without prior written authorization from Stanford University.
 <project xmlns="http://maven.apache.org/POM/4.0.0"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-    http://maven.apache.org/xsd/maven-v4.0.0.xsd">
+    http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.lockss.laaws</groupId>
   <artifactId>laaws-configuration-service</artifactId>
@@ -269,7 +269,7 @@ in this Software without prior written authorization from Stanford University.
     <dependency>
       <groupId>commons-collections</groupId>
       <artifactId>commons-collections</artifactId>
-      <version>3.2.2</version>
+      <!-- version>3.2.2</version -->
     </dependency>
     <dependency>
       <groupId>com.sleepycat</groupId>
@@ -294,7 +294,7 @@ in this Software without prior written authorization from Stanford University.
     <dependency>
       <groupId>org.apache.derby</groupId>
       <artifactId>derby</artifactId>
-      <version>10.9.1.0</version>
+      <!-- version>10.9.1.0</version -->
     </dependency>
     <dependency>
       <groupId>org.apache.derby</groupId>
@@ -355,6 +355,13 @@ in this Software without prior written authorization from Stanford University.
       <groupId>fastutil</groupId>
       <artifactId>fastutil</artifactId>
       <version>5.0.7</version>
+    </dependency>
+    <dependency>
+      <groupId>org.lockss.laaws</groupId>
+      <artifactId>lockss-core</artifactId>
+      <type>test-jar</type>
+      <version>1.0.0-SNAPSHOT</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 

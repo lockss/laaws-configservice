@@ -27,18 +27,20 @@
  */
 package org.lockss.laaws.config.api;
 
-import static org.junit.Assert.*;
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.lockss.laaws.config.model.ConfigExchange;
 import org.lockss.plugin.PluginManager;
+import org.lockss.test.SpringLockssTestCase;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +65,7 @@ import org.springframework.web.util.UriComponentsBuilder;
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class AusApiControllerTest {
+public class AusApiControllerTest extends SpringLockssTestCase {
   private static final Logger logger =
       LoggerFactory.getLogger(AusApiControllerTest.class);
 
@@ -76,11 +78,39 @@ public class AusApiControllerTest {
   @Autowired
   ApplicationContext appCtx;
 
+  // The identifier of an AU that exists in the test system.
   String goodAuid = "org|lockss|plugin|pensoft|oai|PensoftOaiPlugin"
       + "&au_oai_date~2014&au_oai_set~biorisk"
       + "&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F";
 
+  // The name of an AU that exists in the test system.
   String goodAuName = "BioRisk Volume 2014";
+
+  /**
+   * Set up code to be run before each test.
+   * 
+   * @throws IOException if there are problems.
+   */
+  @Before
+  public void setUpBeforeEachTest() throws IOException {
+    if (logger.isDebugEnabled()) logger.debug("port = " + port);
+
+    // Set up the temporary directory where the test data will reside.
+    setUpTempDirectory(AusApiControllerTest.class.getCanonicalName());
+
+    // Copy the necessary files to the test temporary directory.
+    File srcTree = new File(new File("test"), "cache");
+    if (logger.isDebugEnabled())
+      logger.debug("srcTree = " + srcTree.getAbsolutePath());
+
+    copyToTempDir(srcTree);
+
+    srcTree = new File(new File("test"), "tdbxml");
+    if (logger.isDebugEnabled())
+      logger.debug("srcTree = " + srcTree.getAbsolutePath());
+
+    copyToTempDir(srcTree);
+  }
 
   /**
    * Runs the tests with authentication turned off.
@@ -90,12 +120,10 @@ public class AusApiControllerTest {
    */
   @Test
   public void runUnAuthenticatedTests() throws Exception {
-    if (logger.isDebugEnabled()) logger.debug("port = " + port);
-
     // Specify the command line parameters to be used for the tests.
     List<String> cmdLineArgs = getCommandLineArguments();
     cmdLineArgs.add("-p");
-    cmdLineArgs.add("config/ausApiControllerTestAuthOff.opt");
+    cmdLineArgs.add("test/config/ausApiControllerTestAuthOff.opt");
 
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
@@ -117,12 +145,10 @@ public class AusApiControllerTest {
    */
   @Test
   public void runAuthenticatedTests() throws Exception {
-    if (logger.isDebugEnabled()) logger.debug("port = " + port);
-
     // Specify the command line parameters to be used for the tests.
     List<String> cmdLineArgs = getCommandLineArguments();
     cmdLineArgs.add("-p");
-    cmdLineArgs.add("config/ausApiControllerTestAuthOn.opt");
+    cmdLineArgs.add("test/config/ausApiControllerTestAuthOn.opt");
 
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
@@ -144,24 +170,20 @@ public class AusApiControllerTest {
   private List<String> getCommandLineArguments() {
     List<String> cmdLineArgs = new ArrayList<String>();
     cmdLineArgs.add("-p");
+    cmdLineArgs.add(getPlatformDiskSpaceConfigPath());
+    cmdLineArgs.add("-p");
     cmdLineArgs.add("config/common.xml");
 
-    File folder = new File("tdbxml/prod");
-    File[] listOfFiles = folder.listFiles();
+    File folder =
+	new File(new File(new File(getTempDirPath()), "tdbxml"), "prod");
+    if (logger.isDebugEnabled()) logger.debug("folder = " + folder);
 
-    for (File file : listOfFiles) {
-      String fileName = file.toString();
-
-      if (fileName.endsWith(".xml")) {
-	cmdLineArgs.add("-p");
-	cmdLineArgs.add(fileName);
-      }
-    }
-
+    cmdLineArgs.add("-x");
+    cmdLineArgs.add(folder.getAbsolutePath());
     cmdLineArgs.add("-p");
-    cmdLineArgs.add("config/lockss.txt");
+    cmdLineArgs.add("test/config/lockss.txt");
     cmdLineArgs.add("-p");
-    cmdLineArgs.add("config/lockss.opt");
+    cmdLineArgs.add("test/config/lockss.opt");
 
     return cmdLineArgs;
   }
