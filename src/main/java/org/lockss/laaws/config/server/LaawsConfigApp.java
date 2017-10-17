@@ -78,12 +78,22 @@ public class LaawsConfigApp extends LockssDaemon {
       System.exit(Constants.EXIT_CODE_JAVA_VERSION);
     }
 
-    StartupOptions opts = getStartupOptions(args);
     setSystemProperties();
 
     try {
-      laawsConfigApp =
-	  new LaawsConfigApp(opts.getPropUrls(), opts.getGroupNames());
+      StartupOptions opts = getStartupOptions(args);
+      if (log.isDebugEnabled()) {
+	log.debug("opts.getBootstrapPropsUrl() = "
+      + opts.getBootstrapPropsUrl());
+	log.debug("opts.getRestConfigServiceUrl() = "
+	    + opts.getRestConfigServiceUrl());
+	log.debug("opts.getPropUrls() = " + opts.getPropUrls());
+	log.debug("opts.getGroupNames() = " + opts.getGroupNames());
+      }
+
+      laawsConfigApp = new LaawsConfigApp(opts.getBootstrapPropsUrl(),
+	  opts.getRestConfigServiceUrl(), opts.getPropUrls(),
+	  opts.getGroupNames());
 
       laawsConfigApp.startDaemon();
 
@@ -93,18 +103,16 @@ public class LaawsConfigApp extends LockssDaemon {
       // raise priority after starting other threads, so we won't get
       // locked out and fail to exit when told.
       Thread.currentThread().setPriority(Thread.NORM_PRIORITY + 2);
-
     } catch (ResourceUnavailableException e) {
       log.error("Exiting because required resource is unavailable", e);
       System.exit(Constants.EXIT_CODE_RESOURCE_UNAVAILABLE);
-      return;                           // compiler doesn't know that
-                                        // System.exit() doesn't return
+      return;   // compiler doesn't know that System.exit() doesn't return.
     } catch (Throwable e) {
       log.error("Exception thrown in main loop", e);
       System.exit(Constants.EXIT_CODE_EXCEPTION_IN_MAIN);
-      return;                           // compiler doesn't know that
-                                        // System.exit() doesn't return
+      return;   // compiler doesn't know that System.exit() doesn't return.
     }
+
     if (CurrentConfig.getBooleanParam(PARAM_APP_EXIT_IMM,
                                       DEFAULT_APP_EXIT_IMM)) {
       try {
@@ -112,14 +120,28 @@ public class LaawsConfigApp extends LockssDaemon {
       } catch (RuntimeException e) {
         // ignore errors stopping daemon
       }
+
       System.exit(Constants.EXIT_CODE_NORMAL);
     }
+
     if (log.isDebugEnabled()) log.debug("Done.");
   }
 
-  public LaawsConfigApp(List<String> propUrls, String groupNames)
-		  throws Exception {
-    super(propUrls, groupNames);
+  /**
+   * Constructor used to access configuration files.
+   * 
+   * @param bootstrapPropsUrl
+   *          A String with the bootstrap configuration properties URL.
+   * @param restConfigServiceUrl
+   *          A String with the REST configuration service URL.
+   * @param propUrls
+   *          A List<String> with the configuration properties URLs.
+   * @param groupNames
+   *          A String with the group names.
+   */
+  public LaawsConfigApp(String bootstrapPropsUrl, String restConfigServiceUrl,
+      List<String> propUrls, String groupNames) {
+    super(bootstrapPropsUrl, restConfigServiceUrl, propUrls, groupNames);
   }
 
   /**
