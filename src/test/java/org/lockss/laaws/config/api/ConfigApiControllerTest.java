@@ -30,7 +30,10 @@ package org.lockss.laaws.config.api;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -41,6 +44,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.lockss.laaws.config.model.ConfigExchange;
 import org.lockss.laaws.config.model.ConfigModSpec;
+import org.lockss.rs.multipart.TextMultipartResponse;
+import org.lockss.rs.multipart.TextMultipartResponse.Part;
 import org.lockss.test.SpringLockssTestCase;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.slf4j.Logger;
@@ -57,7 +62,11 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -548,8 +557,11 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 
   /**
    * Runs the getConfig()-related un-authenticated-specific tests.
+   * 
+   * @throws IOException
+   *           if there are problems.
    */
-  private void getConfigUnAuthenticatedTest() {
+  private void getConfigUnAuthenticatedTest() throws IOException {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     String template = getTestUrlTemplate("/config/{snid}");
@@ -563,17 +575,17 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 	.build().encode().toUri();
     if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
 
-    ResponseEntity<ConfigExchange> errorResponse = new TestRestTemplate()
-	.exchange(uri, HttpMethod.GET, null, ConfigExchange.class);
+    ResponseEntity<String> response = new TestRestTemplate()
+	.exchange(uri, HttpMethod.GET, null, String.class);
 
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
+    HttpStatus statusCode = response.getStatusCode();
+    assertEquals(HttpStatus.OK, statusCode);
 
-    errorResponse = new TestRestTemplate("fakeUser", "fakePassword")
-	.exchange(uri, HttpMethod.GET, null, ConfigExchange.class);
+    response = new TestRestTemplate("fakeUser", "fakePassword")
+	.exchange(uri, HttpMethod.GET, null, String.class);
 
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
+    statusCode = response.getStatusCode();
+    assertEquals(HttpStatus.OK, statusCode);
 
     getConfigCommonTest();
 
@@ -582,8 +594,11 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 
   /**
    * Runs the getConfig()-related authenticated-specific tests.
+   * 
+   * @throws IOException
+   *           if there are problems.
    */
-  private void getConfigAuthenticatedTest() {
+  private void getConfigAuthenticatedTest() throws IOException {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     String template = getTestUrlTemplate("/config/{snid}");
@@ -616,8 +631,11 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 
   /**
    * Runs the getConfig()-related authentication-independent tests.
+   * 
+   * @throws IOException
+   *           if there are problems.
    */
-  private void getConfigCommonTest() {
+  private void getConfigCommonTest() throws IOException {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     String template = getTestUrlTemplate("/config/{snid}");
@@ -631,27 +649,43 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 	.build().encode().toUri();
     if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
 
-    ResponseEntity<ConfigExchange> errorResponse =
+    ResponseEntity<String> response =
 	new TestRestTemplate("lockss-u", "lockss-p").exchange(uri,
-	    HttpMethod.GET, null, ConfigExchange.class);
+	    HttpMethod.GET, null, String.class);
 
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
+    HttpStatus statusCode = response.getStatusCode();
+    assertEquals(HttpStatus.OK, statusCode);
 
-    ConfigExchange configOutput = getConfig(HttpStatus.OK);
-    assertTrue(configOutput.getProps().isEmpty());
+    TextMultipartResponse configOutput = getConfig(HttpStatus.OK);
+    HttpHeaders responseHeaders = configOutput.getResponseHeaders();
+    logger.info("responseHeaders = " + responseHeaders);
+    assertTrue(responseHeaders.containsKey("Content-Type"));
+    assertTrue(responseHeaders.getFirst("Content-Type")
+	.startsWith("multipart/form-data; boundary="));
+    Map<String, Part> parts = configOutput.getParts();
+    logger.info("parts = " + parts);
+    assertEquals(1, parts.size());
+    assertTrue(parts.containsKey("config-data"));
+    Part part = parts.get("config-data");
+    HttpHeaders partHeaders = part.getHeaders();
+    assertTrue(partHeaders.containsKey("Content-Type"));
+    assertEquals(MediaType.TEXT_HTML_VALUE,
+	partHeaders.getFirst("Content-Type"));
+    assertTrue(partHeaders.containsKey("last-modified"));
+    assertEquals("0", partHeaders.getFirst("last-modified"));
+    assertTrue(partHeaders.containsKey("Content-Length"));
+    assertEquals("0", partHeaders.getFirst("Content-Length"));
 
     String url = getTestUrlTemplate("/config/fakesectionname");
 
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
 
-    errorResponse = new TestRestTemplate("lockss-u", "lockss-p").exchange(url,
-	HttpMethod.PUT, new HttpEntity<ConfigModSpec>(new ConfigModSpec(),
-	    headers), ConfigExchange.class);
+    response = new TestRestTemplate("lockss-u", "lockss-p").exchange(url,
+	HttpMethod.GET, null, String.class);
 
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.BAD_REQUEST, statusCode);
+    statusCode = response.getStatusCode();
+    assertEquals(HttpStatus.NOT_ACCEPTABLE, statusCode);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -662,8 +696,41 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @return a ConfigExchange with the Archival Unit configuration.
+   * @throws IOException
+   *           if there are problems.
    */
-  private ConfigExchange getConfig(HttpStatus expectedStatus) {
+  private TextMultipartResponse getConfig(HttpStatus expectedStatus)
+      throws IOException {
+    // Initialize the request to the REST service.
+    RestTemplate restTemplate = new RestTemplate();
+
+    // Add the multipart/form-data converter to the set of default converters.
+    List<HttpMessageConverter<?>> messageConverters =
+	restTemplate.getMessageConverters();
+    if (logger.isDebugEnabled())
+      logger.debug("messageConverters = " + messageConverters);
+
+    for (HttpMessageConverter<?> hmc : messageConverters) {
+      if (logger.isDebugEnabled()) logger.debug("hmc = " + hmc);
+      if (hmc instanceof MappingJackson2HttpMessageConverter) {
+	((MappingJackson2HttpMessageConverter)hmc).setSupportedMediaTypes(
+	    Arrays.asList(MediaType.MULTIPART_FORM_DATA));
+      }
+    }
+
+    // Initialize the request headers.
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+    headers.setAccept(Arrays.asList(MediaType.MULTIPART_FORM_DATA));
+
+    // Set the authentication credentials.
+    String credentials = "lockss-u" + ":" + "lockss-p";
+    String authHeaderValue = "Basic " + Base64.getEncoder()
+    .encodeToString(credentials.getBytes(Charset.forName("US-ASCII")));
+    headers.set("Authorization", authHeaderValue);
+
+    TestRestTemplate testRestTemplate =	new TestRestTemplate(restTemplate);
+
     String template = getTestUrlTemplate("/config/{snid}");
 
     // Create the URI of the request to the REST service.
@@ -675,17 +742,15 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 	.build().encode().toUri();
     if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
 
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-
-    ResponseEntity<ConfigExchange> response = new TestRestTemplate("lockss-u",
-	"lockss-p").exchange(uri, HttpMethod.GET, new HttpEntity<String>(null,
-	    headers), ConfigExchange.class);
+    ResponseEntity<String> response = testRestTemplate.exchange(uri,
+	HttpMethod.GET, new HttpEntity<String>(null, headers), String.class);
+    if (logger.isDebugEnabled())
+      logger.debug("response = " + response);
 
     HttpStatus statusCode = response.getStatusCode();
     assertEquals(expectedStatus, statusCode);
 
-    return response.getBody();
+    return new TextMultipartResponse(response);
   }
 
   /**
@@ -696,17 +761,22 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 
     String url = getTestUrlTemplate("/config/lastupdatetime");
 
-    ResponseEntity<String> errorResponse = new TestRestTemplate().exchange(url,
-	HttpMethod.GET, null, String.class);
+    try {
+      new TestRestTemplate().exchange(url, HttpMethod.GET, null, Date.class);
+      fail("Should have thrown HttpMessageNotReadableException");
+    } catch (HttpMessageNotReadableException hmnre) {
+      assertTrue(hmnre.getMessage().startsWith(
+	  "JSON parse error: Can not deserialize instance of java.util.Date"));
+    }
 
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
-
-    errorResponse = new TestRestTemplate("fakeUser", "fakePassword")
-	.exchange(url, HttpMethod.GET, null, String.class);
-
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
+    try {
+      new TestRestTemplate("fakeUser", "fakePassword")
+      .exchange(url, HttpMethod.GET, null, Date.class);
+      fail("Should have thrown HttpMessageNotReadableException");
+    } catch (HttpMessageNotReadableException hmnre) {
+      assertTrue(hmnre.getMessage().startsWith(
+	  "JSON parse error: Can not deserialize instance of java.util.Date"));
+    }
 
     getLastUpdateTimeCommonTest();
 
@@ -746,11 +816,14 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 
     String url = getTestUrlTemplate("/config/lastupdatetime");
 
-    ResponseEntity<String> errorResponse = new TestRestTemplate("lockss-u",
-	"lockss-p").exchange(url, HttpMethod.GET, null, String.class);
-
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
+    try {
+      new TestRestTemplate("lockss-u", "lockss-p")
+      .exchange(url, HttpMethod.GET, null, Date.class);
+      fail("Should have thrown HttpMessageNotReadableException");
+    } catch (HttpMessageNotReadableException hmnre) {
+      assertTrue(hmnre.getMessage().startsWith(
+	  "JSON parse error: Can not deserialize instance of java.util.Date"));
+    }
 
     Date lastUpdateTime = getLastUpdateTime(HttpStatus.OK);
     Date now = new Date();
@@ -791,17 +864,22 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 
     String url = getTestUrlTemplate("/config/loadedurls");
 
-    ResponseEntity<String> errorResponse = new TestRestTemplate().exchange(url,
-	HttpMethod.GET, null, String.class);
+    try {
+      new TestRestTemplate().exchange(url, HttpMethod.GET, null, List.class);
+      fail("Should have thrown HttpMessageNotReadableException");
+    } catch (HttpMessageNotReadableException hmnre) {
+      assertTrue(hmnre.getMessage().startsWith("JSON parse error: "
+	  + "Can not deserialize instance of java.util.ArrayList"));
+    }
 
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
-
-    errorResponse = new TestRestTemplate("fakeUser", "fakePassword")
-	.exchange(url, HttpMethod.GET, null, String.class);
-
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
+    try {
+      new TestRestTemplate("fakeUser", "fakePassword")
+      .exchange(url, HttpMethod.GET, null, List.class);
+      fail("Should have thrown HttpMessageNotReadableException");
+    } catch (HttpMessageNotReadableException hmnre) {
+      assertTrue(hmnre.getMessage().startsWith("JSON parse error: "
+	  + "Can not deserialize instance of java.util.ArrayList"));
+    }
 
     getLoadedUrlListCommonTest();
 
@@ -841,11 +919,14 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 
     String url = getTestUrlTemplate("/config/loadedurls");
 
-    ResponseEntity<String> errorResponse = new TestRestTemplate("lockss-u",
-	"lockss-p").exchange(url, HttpMethod.GET, null, String.class);
-
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
+    try {
+      new TestRestTemplate("lockss-u", "lockss-p")
+      .exchange(url, HttpMethod.GET, null, List.class);
+      fail("Should have thrown HttpMessageNotReadableException");
+    } catch (HttpMessageNotReadableException hmnre) {
+      assertTrue(hmnre.getMessage().startsWith("JSON parse error: "
+	  + "Can not deserialize instance of java.util.ArrayList"));
+    }
 
     List<String> result = getLoadedUrlList(HttpStatus.OK);
     assertTrue(result.contains("config/common.xml"));

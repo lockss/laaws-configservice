@@ -183,7 +183,17 @@ in this Software without prior written authorization from Stanford University.
     <dependency>
       <groupId>com.ibm.icu</groupId>
       <artifactId>icu4j</artifactId>
-      <version>54.1.1</version>
+      <version>59.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.ibm.icu</groupId>
+      <artifactId>icu4j-charset</artifactId>
+      <version>59_1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.ibm.icu</groupId>
+      <artifactId>icu4j-localespi</artifactId>
+      <version>59_1</version>
     </dependency>
     <dependency>
       <groupId>gnu.getopt</groupId>

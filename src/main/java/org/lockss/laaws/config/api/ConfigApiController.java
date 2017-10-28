@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import javax.servlet.http.HttpServletRequest;
 import org.apache.log4j.Logger;
 import org.lockss.alert.AlertManagerImpl;
 import org.lockss.config.ConfigManager;
@@ -47,11 +48,18 @@ import org.lockss.laaws.config.model.ConfigExchange;
 import org.lockss.laaws.config.model.ConfigModSpec;
 import org.lockss.laaws.config.security.SpringAuthenticationFilter;
 import org.lockss.rs.auth.Roles;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -82,6 +90,9 @@ public class ConfigApiController implements ConfigApi {
 	put(SECTION_NAME_CRONSTATE, Cron.CONFIG_FILE_CRON_STATE);
       }
   };
+
+  @Autowired
+  private HttpServletRequest request;
 
   /**
    * Deletes the configuration for a section given the section name.
@@ -137,33 +148,101 @@ public class ConfigApiController implements ConfigApi {
    */
   @Override
   @RequestMapping(value = "/config/{sectionName}",
-  produces = { "application/json" }, consumes = { "application/json" },
-  method = RequestMethod.GET)
-  public ResponseEntity<ConfigExchange> getConfig(@PathVariable("sectionName")
-  String sectionName) {
+  produces = { "multipart/form-data" }, method = RequestMethod.GET)
+  public ResponseEntity<MultiValueMap<String, Object>> getConfig(
+      @PathVariable("sectionName") String sectionName,
+      @RequestHeader(value="Accept", required=false) String accept) {
     if (log.isDebugEnabled()) log.debug("sectionName = " + sectionName);
 
-    String canonicalSectionName = validateSectionName(sectionName, true);
-    if (log.isDebugEnabled())
-      log.debug("canonicalSectionName = " + canonicalSectionName);
-
     try {
-      Configuration config = null;
+      ConfigManager configManager = ConfigManager.getConfigManager();
+      StringBuilder sb = new StringBuilder();
+      long lastModified = 0L;
+
+      HttpHeaders partHeaders = new HttpHeaders();
+
+      String canonicalSectionName = validateSectionName(sectionName, true);
+      if (log.isDebugEnabled())
+        log.debug("canonicalSectionName = " + canonicalSectionName);
 
       if (SECTION_NAME_CLUSTER.equals(canonicalSectionName)) {
-	config = ConfigManager.getCurrentConfig();
+	partHeaders.setContentType(MediaType.TEXT_XML);
+
+	sb.append("<lockss-config>").append(System.lineSeparator())
+	.append("<property name=\"org.lockss.auxPropUrls\">")
+	.append(System.lineSeparator())
+	.append("<list append=\"false\">").append(System.lineSeparator());
+
+	String requestUrl = request.getRequestURL().toString();
+	if (log.isDebugEnabled()) log.debug("requestUrl = " + requestUrl);
+
+	String urlStart = requestUrl.substring(0,
+	    requestUrl.indexOf("/config/")) + "/config/";
+	if (log.isDebugEnabled()) log.debug("urlStart = " + urlStart);
+
+	sb.append("<value>").append(urlStart)
+	.append(SECTION_NAME_PROXY_IP_ACCESS).append("</value>")
+	.append(System.lineSeparator());
+
+        lastModified = Math.max(lastModified, configManager
+            .getCacheConfigFile(configSectionMap
+        	.get(SECTION_NAME_PROXY_IP_ACCESS)).lastModified());
+        if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
+
+        sb.append("<value>").append(urlStart).append(SECTION_NAME_EXPERT)
+        .append("</value>").append(System.lineSeparator());
+
+        lastModified = Math.max(lastModified, configManager
+            .getCacheConfigFile(configSectionMap.get(SECTION_NAME_EXPERT))
+            .lastModified());
+        if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
+
+        sb.append("</list>");
+        sb.append("</property>");
+        sb.append("</lockss-config>");
       } else {
+	partHeaders.setContentType(MediaType.TEXT_HTML);
+	Configuration config = null;
+
 	try {
-	  config = ConfigManager.getConfigManager()
+	  config = configManager
 	      .readCacheConfigFile(configSectionMap.get(canonicalSectionName));
 	} catch (FileNotFoundException fnfe) {
 	  config = ConfigManager.newConfiguration();
 	}
+
+	if (log.isDebugEnabled()) log.debug("config = " + config);
+
+	for (String key : config.keySet()) {
+	  sb.append(key).append("=").append(config.get(key))
+	  .append(System.lineSeparator());
+	}
+
+        lastModified = Math.max(lastModified, configManager
+            .getCacheConfigFile(configSectionMap.get(canonicalSectionName))
+            .lastModified());
       }
 
-      ConfigExchange result = convertConfig(config);
-      if (log.isDebugEnabled()) log.debug("result = " + result);
-      return new ResponseEntity<ConfigExchange>(result, HttpStatus.OK);
+      if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
+      partHeaders.add("last-modified", Long.toString(lastModified));
+
+      if (log.isDebugEnabled()) log.debug("partHeaders = " + partHeaders);
+
+      String partContent = sb.toString();
+      if (log.isDebugEnabled())
+	log.debug("partContent = '" + partContent + "'");
+
+      MultiValueMap<String, Object> parts =
+  	new LinkedMultiValueMap<String, Object>();
+
+      parts.add("config-data",
+	  new HttpEntity<String>(partContent, partHeaders));
+
+      HttpHeaders responseHeaders = new HttpHeaders();
+      responseHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+      return new ResponseEntity<MultiValueMap<String, Object>>(parts,
+	  responseHeaders, HttpStatus.OK);
     } catch (Exception e) {
       String message =
 	  "Cannot getConfig() for sectionName = '" + sectionName + "'";

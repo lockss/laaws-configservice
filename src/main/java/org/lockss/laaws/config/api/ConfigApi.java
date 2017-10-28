@@ -39,8 +39,10 @@ import org.lockss.laaws.config.model.ConfigExchange;
 import org.lockss.laaws.config.model.ConfigModSpec;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
@@ -105,32 +107,35 @@ public interface ConfigApi {
    * 
    * @param sectionName
    *          A String with the section name.
-   * @return a ResponseEntity<ConfigExchange> with the section configuration.
+   * @return a ResponseEntity<Void> with the section configuration.
    */
   @ApiOperation(value = "Get the named configuration",
   notes = "Get the configuration items stored for a given name",
-  response = ConfigExchange.class,
+  response = Void.class,
   authorizations = {@Authorization(value = "basicAuth")}, tags={ "config", })
   @ApiResponses(value = { 
       @ApiResponse(code = 200, message = "The named configuration",
-	  response = ConfigExchange.class),
+	  response = Void.class),
       @ApiResponse(code = 400, message = "Bad request",
-      response = ConfigExchange.class),
+      response = Void.class),
       @ApiResponse(code = 401, message = "Unauthorized request",
-      response = ConfigExchange.class),
+      response = Void.class),
       @ApiResponse(code = 500, message = "Internal server error",
-      response = ConfigExchange.class),
+      response = Void.class),
       @ApiResponse(code = 503,
       message = "Some or all of the system is not available",
-      response = ConfigExchange.class) })
+      response = Void.class) })
   @RequestMapping(value = "/config/{sectionName}",
-  produces = { "application/json" }, consumes = { "application/json" },
-  method = RequestMethod.GET)
-  default ResponseEntity<ConfigExchange> getConfig(
+  produces = { "multipart/form-data" }, method = RequestMethod.GET)
+  default ResponseEntity<MultiValueMap<String, Object>> getConfig(
       @ApiParam(value =
       "The name of the section for which the configuration is requested",
-      required=true) @PathVariable("sectionName") String sectionName) {
-    return new ResponseEntity<ConfigExchange>(HttpStatus.NOT_IMPLEMENTED);
+      required=true) @PathVariable("sectionName") String sectionName,
+      @ApiParam(value = "Content type to return",
+      allowableValues="multipart/related", defaultValue="multipart/related")
+      @RequestHeader(value="Accept", required=false) String accept) {
+    return new ResponseEntity<MultiValueMap<String, Object>>(
+	HttpStatus.NOT_IMPLEMENTED);
   }
 
   /**
