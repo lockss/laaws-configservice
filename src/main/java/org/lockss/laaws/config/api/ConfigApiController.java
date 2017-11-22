@@ -29,26 +29,23 @@ package org.lockss.laaws.config.api;
 
 import static org.lockss.config.ConfigManager.*;
 import io.swagger.annotations.ApiParam;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.lang.reflect.MalformedParametersException;
 import java.security.AccessControlException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.log4j.Logger;
 import org.lockss.alert.AlertManagerImpl;
+import org.lockss.config.ConfigFile;
 import org.lockss.config.ConfigManager;
 import org.lockss.config.Configuration;
 import org.lockss.daemon.Cron;
-import org.lockss.laaws.config.model.ConfigExchange;
-import org.lockss.laaws.config.model.ConfigModSpec;
 import org.lockss.laaws.config.security.SpringAuthenticationFilter;
 import org.lockss.rs.auth.Roles;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.lockss.util.StringUtil;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -56,14 +53,13 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Controller for access to the system configuration.
@@ -91,117 +87,138 @@ public class ConfigApiController implements ConfigApi {
       }
   };
 
-  @Autowired
-  private HttpServletRequest request;
-
   /**
-   * Deletes the configuration for a section given the section name.
+   * Provides the configuration file for a section given the section name.
    * 
    * @param sectionName
    *          A String with the section name.
-   * @return ResponseEntity<ConfigExchange> with the deleted configuration.
+   * @param accept
+   *          A String with the value of the "Accept" request header.
+   * @param eTag
+   *          A String with a value equivalent to the "If-Modified-Since"
+   *          request header but with a granularity of 1 ms.
+   * @return a ResponseEntity<MultiValueMap<String, Object>> with the section
+   *         configuration file.
    */
   @Override
-  @RequestMapping(value = "/config/{sectionName}",
-  produces = { "application/json" }, consumes = { "application/json" },
-  method = RequestMethod.DELETE)
-  public ResponseEntity<ConfigExchange> deleteConfig(
-      @PathVariable("sectionName") String sectionName) {
-    if (log.isDebugEnabled()) log.debug("sectionName = " + sectionName);
-
-    SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_USER_ADMIN);
-
-    String cacheConfigFileName =
-	configSectionMap.get(validateSectionName(sectionName, false));
-    if (log.isDebugEnabled())
-      log.debug("cacheConfigFileName = " + cacheConfigFileName);
+  @RequestMapping(value = "/config/file/{sectionName}",
+  produces = { "multipart/form-data", "application/json" },
+  method = RequestMethod.GET)
+  public ResponseEntity<?> getConfig(
+      @PathVariable("sectionName") String sectionName,
+      @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
+      @RequestHeader(value=HttpHeaders.ETAG, required=false) String eTag) {
+    if (log.isDebugEnabled()) {
+      log.debug("sectionName = " + sectionName);
+      log.debug("accept = " + accept);
+      log.debug("eTag = " + eTag);
+    }
 
     try {
-      ConfigManager configManager = ConfigManager.getConfigManager();
-      Configuration config = null;
+      // Validate the name of the section to be obtained.
+      String canonicalSectionName = null;
 
       try {
-	config = configManager.readCacheConfigFile(cacheConfigFileName);
-      } catch (FileNotFoundException fnfe) {
-	config = ConfigManager.newConfiguration();
+	canonicalSectionName = validateSectionName(sectionName, true);
+	if (log.isDebugEnabled())
+	  log.debug("canonicalSectionName = " + canonicalSectionName);
+      } catch (MalformedParametersException mpe) {
+	return new ResponseEntity<String>(mpe.getMessage(),
+	    HttpStatus.BAD_REQUEST);
       }
 
-      configManager.deleteCacheConfigFile(cacheConfigFileName);
-
-      ConfigExchange result = convertConfig(config);
-      if (log.isDebugEnabled()) log.debug("result = " + result);
-      return new ResponseEntity<ConfigExchange>(result, HttpStatus.OK);
-    } catch (Exception e) {
-      String message =
-	  "Cannot deleteConfig() for sectionName = '" + sectionName + "'";
-      log.error(message, e);
-      throw new RuntimeException(message);
-    }
-  }
-
-  /**
-   * Provides the configuration for a section given the section name.
-   * 
-   * @param sectionName
-   *          A String with the section name.
-   * @return a ResponseEntity<ConfigExchange> with the section configuration.
-   */
-  @Override
-  @RequestMapping(value = "/config/{sectionName}",
-  produces = { "multipart/form-data" }, method = RequestMethod.GET)
-  public ResponseEntity<MultiValueMap<String, Object>> getConfig(
-      @PathVariable("sectionName") String sectionName,
-      @RequestHeader(value="Accept", required=false) String accept) {
-    if (log.isDebugEnabled()) log.debug("sectionName = " + sectionName);
-
-    try {
-      ConfigManager configManager = ConfigManager.getConfigManager();
+      ConfigManager configManager = getConfigManager();
       StringBuilder sb = new StringBuilder();
-      long lastModified = 0L;
-
+      String lastModified = null;
       HttpHeaders partHeaders = new HttpHeaders();
 
-      String canonicalSectionName = validateSectionName(sectionName, true);
-      if (log.isDebugEnabled())
-        log.debug("canonicalSectionName = " + canonicalSectionName);
-
+      // Check whether it's the virtual section "cluster".
       if (SECTION_NAME_CLUSTER.equals(canonicalSectionName)) {
-	partHeaders.setContentType(MediaType.TEXT_XML);
-
+	// Yes: Build it.
 	sb.append("<lockss-config>").append(System.lineSeparator())
 	.append("<property name=\"org.lockss.auxPropUrls\">")
 	.append(System.lineSeparator())
-	.append("<list append=\"false\">").append(System.lineSeparator());
-
-	String requestUrl = request.getRequestURL().toString();
-	if (log.isDebugEnabled()) log.debug("requestUrl = " + requestUrl);
-
-	String urlStart = requestUrl.substring(0,
-	    requestUrl.indexOf("/config/")) + "/config/";
-	if (log.isDebugEnabled()) log.debug("urlStart = " + urlStart);
-
-	sb.append("<value>").append(urlStart)
+	.append("<list append=\"false\">").append(System.lineSeparator())
+	.append("<value>").append("/config/file/")
 	.append(SECTION_NAME_PROXY_IP_ACCESS).append("</value>")
 	.append(System.lineSeparator());
 
-        lastModified = Math.max(lastModified, configManager
-            .getCacheConfigFile(configSectionMap
-        	.get(SECTION_NAME_PROXY_IP_ACCESS)).lastModified());
+	lastModified = "0";
+	String partialLastModified =
+	    getConfigFileLastModifiedAsEtag(SECTION_NAME_PROXY_IP_ACCESS);
+        if (log.isDebugEnabled())
+          log.debug("partialLastModified = " + partialLastModified);
+	partialLastModified =
+	    partialLastModified.substring(1, partialLastModified.length()-1);
+        if (log.isDebugEnabled())
+          log.debug("partialLastModified = " + partialLastModified);
+
+        if (Long.parseLong(partialLastModified) > Long.parseLong(lastModified))
+        {
+          lastModified = partialLastModified;
+        }
+
         if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
 
-        sb.append("<value>").append(urlStart).append(SECTION_NAME_EXPERT)
+        sb.append("<value>").append("/config/file/").append(SECTION_NAME_EXPERT)
         .append("</value>").append(System.lineSeparator());
 
-        lastModified = Math.max(lastModified, configManager
-            .getCacheConfigFile(configSectionMap.get(SECTION_NAME_EXPERT))
-            .lastModified());
+	partialLastModified =
+	    getConfigFileLastModifiedAsEtag(SECTION_NAME_EXPERT);
+        if (log.isDebugEnabled())
+          log.debug("partialLastModified = " + partialLastModified);
+	partialLastModified =
+	    partialLastModified.substring(1, partialLastModified.length()-1);
+        if (log.isDebugEnabled())
+          log.debug("partialLastModified = " + partialLastModified);
+
+        if (Long.parseLong(partialLastModified) > Long.parseLong(lastModified))
+        {
+          lastModified = partialLastModified;
+        }
+
+        if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
+        lastModified = "\"" + lastModified + "\"";
         if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
 
         sb.append("</list>");
         sb.append("</property>");
         sb.append("</lockss-config>");
+
+        // Check whether the modification timestamp matches the passed eTag.
+        if (eTag != null && eTag.equals(lastModified)) {
+	  // Yes: Return.
+	  return new ResponseEntity<MultiValueMap<String, Object>>(null, null,
+	      HttpStatus.NOT_MODIFIED);
+	}
+
+	// No: Set the returned content type.
+	partHeaders.setContentType(MediaType.TEXT_XML);
       } else {
-	partHeaders.setContentType(MediaType.TEXT_HTML);
+	// No: Get the name of the file to be returned.
+	String filename = configSectionMap.get(canonicalSectionName);
+	if (log.isDebugEnabled()) log.debug("filename = " + filename);
+
+	// Get the file last modification timestamp.
+        lastModified = getConfigFileLastModifiedAsEtag(filename);
+        if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
+
+        // Check whether the modification timestamp matches the passed eTag.
+	if (eTag != null && eTag.equals(lastModified)) {
+	  // Yes: Return.
+	  return new ResponseEntity<MultiValueMap<String, Object>>(null, null,
+	      HttpStatus.NOT_MODIFIED);
+	}
+
+	// No: Set the returned content type.
+	if (filename.toLowerCase().endsWith(".xml")) {
+	  partHeaders.setContentType(MediaType.TEXT_XML);
+	} else {
+	  partHeaders.setContentType(MediaType.TEXT_PLAIN);
+	}
+
+	// TODO: Stream the file from disk.
+	// Read the file.
 	Configuration config = null;
 
 	try {
@@ -217,37 +234,47 @@ public class ConfigApiController implements ConfigApi {
 	  sb.append(key).append("=").append(config.get(key))
 	  .append(System.lineSeparator());
 	}
-
-        lastModified = Math.max(lastModified, configManager
-            .getCacheConfigFile(configSectionMap.get(canonicalSectionName))
-            .lastModified());
       }
 
-      if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
-      partHeaders.add("last-modified", Long.toString(lastModified));
+      // Check whether the request specified the appropriate "Accept" header.
+      if (accept.indexOf(MediaType.MULTIPART_FORM_DATA_VALUE) >= 0) {
+	// Yes: Save the file last modification timestamp in the response.
+	partHeaders.setETag(lastModified);
+	if (log.isDebugEnabled()) log.debug("partHeaders = " + partHeaders);
 
-      if (log.isDebugEnabled()) log.debug("partHeaders = " + partHeaders);
+	// Specify the response content type.
+	HttpHeaders responseHeaders = new HttpHeaders();
+	responseHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+	if (log.isDebugEnabled())
+	  log.debug("responseHeaders = " + responseHeaders);
 
-      String partContent = sb.toString();
-      if (log.isDebugEnabled())
-	log.debug("partContent = '" + partContent + "'");
+	// Build the response entity.
+	String partContent = sb.toString();
+	if (log.isDebugEnabled())
+	  log.debug("partContent = '" + partContent + "'");
 
-      MultiValueMap<String, Object> parts =
-  	new LinkedMultiValueMap<String, Object>();
+	MultiValueMap<String, Object> parts =
+	    new LinkedMultiValueMap<String, Object>();
 
-      parts.add("config-data",
-	  new HttpEntity<String>(partContent, partHeaders));
+	parts.add("config-data",
+	    new HttpEntity<String>(partContent, partHeaders));
+	if (log.isDebugEnabled()) log.debug("parts = " + parts);
 
-      HttpHeaders responseHeaders = new HttpHeaders();
-      responseHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-      return new ResponseEntity<MultiValueMap<String, Object>>(parts,
-	  responseHeaders, HttpStatus.OK);
+	return new ResponseEntity<MultiValueMap<String, Object>>(parts,
+	    responseHeaders, HttpStatus.OK);
+      } else {
+	// No: Report the problem.
+	String message = "Accept header does not include '"
+	    + MediaType.MULTIPART_FORM_DATA_VALUE + "'";
+	log.warn(message);
+	return new ResponseEntity<String>(message, HttpStatus.NOT_ACCEPTABLE);
+      }
     } catch (Exception e) {
       String message =
 	  "Cannot getConfig() for sectionName = '" + sectionName + "'";
       log.error(message, e);
-      throw new RuntimeException(message);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -258,13 +285,12 @@ public class ConfigApiController implements ConfigApi {
    */
   @Override
   @RequestMapping(value = "/config/lastupdatetime",
-  produces = { "application/json" }, consumes = { "application/json" },
-  method = RequestMethod.GET)
-  public ResponseEntity<Date> getLastUpdateTime() {
+  produces = { "application/json" }, method = RequestMethod.GET)
+  public ResponseEntity<?> getLastUpdateTime() {
     if (log.isDebugEnabled()) log.debug("Invoked");
 
     try {
-      long millis = ConfigManager.getConfigManager().getLastUpdateTime();
+      long millis = getConfigManager().getLastUpdateTime();
       if (log.isDebugEnabled()) log.debug("millis = " + millis);
 
       Date result = new Date(millis);
@@ -273,181 +299,150 @@ public class ConfigApiController implements ConfigApi {
     } catch (Exception e) {
       String message = "Cannot getLastUpdateTime()";
       log.error(message, e);
-      throw new RuntimeException(message);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   /**
    * Provides the URLs from which the configuration was loaded.
    * 
-   * @return a ResponseEntity<String> with the URLs.
+   * @return a ResponseEntity<List<String>> with the URLs.
    */
   @Override
   @RequestMapping(value = "/config/loadedurls",
-  produces = { "application/json" }, consumes = { "application/json" },
-  method = RequestMethod.GET)
-  public ResponseEntity<List<String>> getLoadedUrlList() {
+  produces = { "application/json" }, method = RequestMethod.GET)
+  public ResponseEntity<?> getLoadedUrlList() {
     if (log.isDebugEnabled()) log.debug("Invoked");
 
     try {
       @SuppressWarnings("unchecked")
-      List<String> result =
-	  (List<String>)ConfigManager.getConfigManager().getLoadedUrlList();
+      List<String> result = (List<String>)getConfigManager().getLoadedUrlList();
       if (log.isDebugEnabled()) log.debug("result = " + result);
       return new ResponseEntity<List<String>>(result, HttpStatus.OK);
     } catch (Exception e) {
       String message = "Cannot getLoadedUrlList()";
       log.error(message, e);
-      throw new RuntimeException(message);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   /**
-   * Modifies the configuration for a section given the section name.
+   * Stores the configuration file for a section given the section name.
    * 
    * @param sectionName
    *          A String with the section name.
-   * @param configModSpec
-   *          A ConfigModSpec with the configuration modifications.
-   * @return a ResponseEntity<ConfigExchange> with the section configuration.
+   * @param configFile
+   *          A MultipartFile with the configuration file to be stored.
+   * @param eTag
+   *          A String with a value equivalent to the "If-Unmodified-Since"
+   *          request header but with a granularity of 1 ms.
+   * @return a ResponseEntity<Void>.
    */
   @Override
-  @RequestMapping(value = "/config/{sectionName}",
-  produces = { "application/json" }, consumes = { "application/json" },
+  @RequestMapping(value = "/config/file/{sectionName}",
+  consumes = { "multipart/form-data" }, produces = { "application/json" },
   method = RequestMethod.PUT)
-  public ResponseEntity<ConfigExchange> putConfig(
+  public ResponseEntity<?> putConfig(
       @PathVariable("sectionName") String sectionName,
-      @ApiParam(required=true) @RequestBody ConfigModSpec configModSpec) {
-    if (log.isDebugEnabled()) log.debug("sectionName = " + sectionName
-	+ ", configModSpec = " + configModSpec);
+      @ApiParam(required=true) @RequestParam("config-data") MultipartFile
+      configFile,
+      @RequestHeader(value=HttpHeaders.ETAG, required=true) String eTag) {
+    if (log.isDebugEnabled()) {
+      log.debug("sectionName = " + sectionName);
+      log.debug("configFile = " + configFile);
+      log.debug("eTag = " + eTag);
+    }
 
-    SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_USER_ADMIN);
+    // Check authorization.
+    try {
+      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_USER_ADMIN);
+    } catch (AccessControlException ace) {
+      log.warn(ace.getMessage());
+      return new ResponseEntity<String>(ace.getMessage(), HttpStatus.FORBIDDEN);
+    }
 
-    String canonicalSectionName = validateSectionName(sectionName, true);
-    if (log.isDebugEnabled())
-      log.debug("canonicalSectionName = " + canonicalSectionName);
+    if (configFile == null) {
+      String message = "Invalid metadata modification specification: null";
+      log.warn(message);
+      return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
+    }
+
+    // Validate the name of the section to be obtained.
+    String canonicalSectionName = null;
 
     try {
-      if (configModSpec == null) {
-	String message = "Invalid metadata modification specification: null";
-	log.error(message);
-        throw new MalformedParametersException(message);
-      }
-
-      Configuration updateConfig = ConfigManager.newConfiguration();
-      Map<String, String> updateMap = configModSpec.getUpdates();
-
-      if (updateMap != null && !updateMap.isEmpty()) {
-	for (String key : updateMap.keySet()) {
-	  updateConfig.put(key, updateMap.get(key));
-	}
-      }
-
-      if (log.isDebugEnabled()) log.debug("updateConfig = " + updateConfig);
-
-      List<String> deleteList = configModSpec.getDeletes();
-
-      if (deleteList == null) {
-	deleteList = new ArrayList<String>();
-      } else if (!deleteList.isEmpty()) {
-	for (String key : deleteList) {
-	  if (updateConfig.containsKey(key)) {
-	    String message = "The key '" + key
-		+ "' appears in both the update set and in the delete set";
-	    log.error(message);
-            throw new MalformedParametersException(message);
-	  }
-	}
-      }
-
-      if (log.isDebugEnabled()) log.debug("deleteList = " + deleteList);
-
-      ConfigManager configManager = ConfigManager.getConfigManager();
-      Configuration resultConfig = null;
-
-      if (SECTION_NAME_CLUSTER.equals(canonicalSectionName)) {
-	resultConfig = ConfigManager.newConfiguration();
-	resultConfig.copyFrom(ConfigManager.getCurrentConfig());
-
-	resultConfig.copyFrom(updateConfig);
-
-	for (String key : deleteList) {
-	  resultConfig.remove(key);
-	}
-
-	ConfigManager.getConfigManager().setCurrentConfig(resultConfig);
-
-	resultConfig = ConfigManager.getCurrentConfig();
-      } else {
-	String cacheConfigFileName = configSectionMap.get(canonicalSectionName);
+	canonicalSectionName = validateSectionName(sectionName, false);
 	if (log.isDebugEnabled())
-	  log.debug("cacheConfigFileName = " + cacheConfigFileName);
+	  log.debug("canonicalSectionName = " + canonicalSectionName);
+    } catch (MalformedParametersException mpe) {
+	return new ResponseEntity<String>(mpe.getMessage(),
+	    HttpStatus.BAD_REQUEST);
+    }
 
-	configManager.modifyCacheConfigFile(updateConfig,
-	    new HashSet<String>(deleteList), cacheConfigFileName,
-	    configModSpec.getHeader());
+    try {
+      ConfigManager configManager = getConfigManager();
 
-	resultConfig = configManager.readCacheConfigFile(cacheConfigFileName);
+      // Get the name of the file to be stored.
+      String cacheConfigFileName = configSectionMap.get(canonicalSectionName);
+      if (log.isDebugEnabled())
+	log.debug("cacheConfigFileName = " + cacheConfigFileName);
+
+      // Check whether the file has been modified since the passed cutoff
+      // timestamp.
+      if (!eTag.equals(getConfigFileLastModifiedAsEtag(cacheConfigFileName))) {
+	// Yes: Return.
+	return new ResponseEntity<Void>(HttpStatus.PRECONDITION_FAILED);
       }
 
-      ConfigExchange result = convertConfig(resultConfig);
-      if (log.isDebugEnabled()) log.debug("result = " + result);
-      return new ResponseEntity<ConfigExchange>(result, HttpStatus.OK);
+      // Write the file.
+      String textToWrite =
+	  StringUtil.fromInputStream(configFile.getInputStream());
+      if (log.isDebugEnabled())
+	log.debug("textToWrite = '" + textToWrite + "'");
+
+      configManager.writeCacheConfigFile(textToWrite, cacheConfigFileName,
+	  false);
+
+      return new ResponseEntity<Void>(HttpStatus.OK);
     } catch (Exception e) {
       String message = "Cannot putConfig() for sectionName = '" + sectionName
-	  + "', configModSpec = '" + configModSpec + "'";
+	  + "', configFile = '" + configFile + "'";
       log.error(message, e);
-      throw new RuntimeException(message);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   /**
    * Requests a reload of the configuration.
    * 
-   * @return a ResponseEntity<void> with the status.
+   * @return a ResponseEntity<Void> with the status.
    */
   @Override
-  @RequestMapping(value = "/config/reload",
-  produces = { "application/json" }, consumes = { "application/json" },
+  @RequestMapping(value = "/config/reload", produces = { "application/json" },
   method = RequestMethod.PUT)
-  public ResponseEntity<Void> putConfigReload() {
+  public ResponseEntity<?> putConfigReload() {
     if (log.isDebugEnabled()) log.debug("Invoked");
 
-    SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_USER_ADMIN);
+    // Check authorization.
+    try {
+      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_USER_ADMIN);
+    } catch (AccessControlException ace) {
+      log.warn(ace.getMessage());
+      return new ResponseEntity<String>(ace.getMessage(), HttpStatus.FORBIDDEN);
+    }
 
     try {
-      ConfigManager.getConfigManager().requestReload();
+      getConfigManager().requestReload();
       return new ResponseEntity<Void>(HttpStatus.OK);
     } catch (Exception e) {
       String message = "Cannot requestReload()";
       log.error(message, e);
-      throw new RuntimeException(message);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
     }
-  }
-
-  @ExceptionHandler(AccessControlException.class)
-  @ResponseStatus(HttpStatus.FORBIDDEN)
-  public ErrorResponse authorizationExceptionHandler(AccessControlException e) {
-    return new ErrorResponse(e.getMessage()); 	
-  }
-
-  @ExceptionHandler(MalformedParametersException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ErrorResponse authorizationExceptionHandler(
-      MalformedParametersException e) {
-    return new ErrorResponse(e.getMessage()); 	
-  }
-
-  @ExceptionHandler(IllegalArgumentException.class)
-  @ResponseStatus(HttpStatus.NOT_FOUND)
-  public ErrorResponse notFoundExceptionHandler(IllegalArgumentException e) {
-    return new ErrorResponse(e.getMessage()); 	
-  }
-
-  @ExceptionHandler(RuntimeException.class)
-  @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-  public ErrorResponse internalExceptionHandler(RuntimeException e) {
-    return new ErrorResponse(e.getMessage()); 	
   }
 
   /**
@@ -456,17 +451,22 @@ public class ConfigApiController implements ConfigApi {
    * @param sectionName
    *          A String with the section name.
    * @param clusterAllowed
-   *          A boolean indication whether the cluster "section" is valid or
+   *          A boolean indicating whether the cluster "section" is valid or
    *          not.
    * @return a String with the validated canonical version of the section name.
-   * @throws RuntimeException
+   * @throws MalformedParametersException
    *           if validation fails.
    */
   private String validateSectionName(String sectionName,
       boolean clusterAllowed) throws MalformedParametersException {
+    if (log.isDebugEnabled()) {
+      log.debug("sectionName = " + sectionName);
+      log.debug("clusterAllowed = " + clusterAllowed);
+    }
+
     if (sectionName == null || sectionName.isEmpty()) {
       String message = "Invalid sectionName = '" + sectionName + "'";
-      log.error(message);
+      log.warn(message);
       throw new MalformedParametersException(message);
     }
 
@@ -475,35 +475,57 @@ public class ConfigApiController implements ConfigApi {
     if ((!clusterAllowed || !SECTION_NAME_CLUSTER.equals(canonicalVersion))
 	&& configSectionMap.get(canonicalVersion) == null) {
       String message = "Invalid section name '" + sectionName + "'";
-      log.error(message);
+      log.warn(message);
       throw new MalformedParametersException(message);
     }
 
+    if (log.isDebugEnabled())
+      log.debug("canonicalVersion = " + canonicalVersion);
     return canonicalVersion;
   }
 
   /**
-   * Converts a LOCKSS configuration object into an object ready to be
-   * transmitted.
-   * 
-   * @param config
-   *          A Configuration object to be transmitted.
-   * @return a ConfigExchange object with the converted Configuration.
+   * Provides the configuration manager.
+   *
+   * @return a ConfigManager with the configuration manager.
    */
-  private ConfigExchange convertConfig(Configuration config) {
-    if (log.isDebugEnabled()) log.debug("config = " + config);
+  private ConfigManager getConfigManager() {
+    return ConfigManager.getConfigManager();
+  }
 
-    ConfigExchange result = new ConfigExchange();
-    Map<String, String> props = new HashMap<String, String>();
+  /**
+   * Provides the last modification time of a configuration file.
+   * 
+   * @param cacheConfigFileName
+   *          A String with the name of the configuration file.
+   * @return a long with the last modification time of a configuration file.
+   */
+  private String getConfigFileLastModifiedAsEtag(String cacheConfigFileName) {
+    if (log.isDebugEnabled())
+      log.debug("cacheConfigFileName = " + cacheConfigFileName);
+    ConfigManager configManager = getConfigManager();
 
-    for (String key : config.keySet()) {
-      String value = config.get(key);
-      props.put(key,  value);
+    // Get the file path name.
+    String fileName = new File(configManager.getCacheConfigDir(),
+	cacheConfigFileName).toString();
+    if (log.isDebugEnabled()) log.debug("fileName = " + fileName);
+
+    // Get the cached configuration file.
+    ConfigFile cacheConfigFile = configManager.getConfigCache().find(fileName);
+    if (log.isDebugEnabled()) log.debug("cacheConfigFile = " + cacheConfigFile);
+
+    // Get the cached configuration file last modification time.
+    String lastModified = cacheConfigFile.getLastModified();
+    if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
+
+    // Format it as an ETag.
+    if (lastModified == null) {
+      lastModified = "\"0\"";
+    } else {
+      lastModified = "\"" + lastModified + "\"";
     }
 
-    result.setProps(props);
-
-    if (log.isDebugEnabled()) log.debug("result = " + result);
-    return result;
+    if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
+    return lastModified;
   }
 }
