@@ -53,6 +53,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Api(value = "config")
 public interface ConfigApi {
   public static final String SECTION_NAME_CLUSTER = "cluster";
+  public static final String SECTION_NAME_PROPSLOCKSS = "props_lockss";
   public static final String SECTION_NAME_UI_IP_ACCESS = "ui_ip_access";
   public static final String SECTION_NAME_PROXY_IP_ACCESS = "proxy_ip_access";
   public static final String SECTION_NAME_PLUGIN = "plugin";

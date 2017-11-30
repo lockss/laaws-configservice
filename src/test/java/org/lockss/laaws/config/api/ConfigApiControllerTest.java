@@ -31,6 +31,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.MalformedParametersException;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -119,7 +120,64 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
   }
 
   /**
-   * Runs the tests with authentication turned off.
+   * Runs the tests for the validateSectionName() method.
+   * 
+   * @throws Exception
+   *           if there are problems.
+   */
+  @Test
+  public void validateSectionNameTest() throws Exception {
+    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+
+    ConfigApiController controller = new ConfigApiController();
+
+    try {
+      controller.validateSectionName(null, false);
+      fail("Should have thrown MalformedParametersException");
+    } catch (MalformedParametersException mpe) {
+      assertTrue(mpe.getMessage().startsWith("Invalid sectionName 'null'"));
+    }
+
+    try {
+      controller.validateSectionName("fake", false);
+      fail("Should have thrown MalformedParametersException");
+    } catch (MalformedParametersException mpe) {
+      assertTrue(mpe.getMessage().startsWith("Invalid sectionName 'fake'"));
+    }
+
+    assertEquals(ConfigApi.SECTION_NAME_UI_IP_ACCESS, controller
+	.validateSectionName(ConfigApi.SECTION_NAME_UI_IP_ACCESS, false));
+    assertEquals(ConfigApi.SECTION_NAME_UI_IP_ACCESS,
+	controller.validateSectionName("UI_IP_ACCESS", false));
+    assertEquals(ConfigApi.SECTION_NAME_UI_IP_ACCESS, controller
+	.validateSectionName(ConfigApi.SECTION_NAME_UI_IP_ACCESS, true));
+    assertEquals(ConfigApi.SECTION_NAME_UI_IP_ACCESS,
+	controller.validateSectionName("UI_IP_ACCESS", true));
+
+    try {
+      controller.validateSectionName(ConfigApi.SECTION_NAME_CLUSTER, false);
+      fail("Should have thrown MalformedParametersException");
+    } catch (MalformedParametersException mpe) {
+      assertTrue(mpe.getMessage().startsWith("Invalid sectionName 'cluster'"));
+    }
+
+    try {
+      controller.validateSectionName("CLUSTER", false);
+      fail("Should have thrown MalformedParametersException");
+    } catch (MalformedParametersException mpe) {
+      assertTrue(mpe.getMessage().startsWith("Invalid sectionName 'CLUSTER'"));
+    }
+
+    assertEquals(ConfigApi.SECTION_NAME_CLUSTER, controller
+	.validateSectionName(ConfigApi.SECTION_NAME_CLUSTER, true));
+    assertEquals(ConfigApi.SECTION_NAME_CLUSTER,
+	controller.validateSectionName("CLUSTER", true));
+
+    if (logger.isDebugEnabled()) logger.debug("Done.");
+  }
+
+  /**
+   * Runs the full controller tests with authentication turned off.
    * 
    * @throws Exception
    *           if there are problems.
@@ -145,7 +203,7 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
   }
 
   /**
-   * Runs the tests with authentication turned on.
+   * Runs the full controller tests with authentication turned on.
    * 
    * @throws Exception
    *           if there are problems.
@@ -247,13 +305,13 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 	new ArrayList<String>());
     assertEquals("0", lastModified);
 
-    // Not modified since last read.
+    // Bad Accept header content type.
     getConfig(ConfigApi.SECTION_NAME_ALERT, null, lastModified, null, null,
-	HttpStatus.NOT_MODIFIED);
+	HttpStatus.NOT_ACCEPTABLE);
 
-    // Not modified since last read.
+    // Bad Accept header content type.
     getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON,
-	lastModified, null, null, HttpStatus.NOT_MODIFIED);
+	lastModified, null, null, HttpStatus.NOT_ACCEPTABLE);
 
     // Not modified since last read.
     getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.MULTIPART_FORM_DATA,
@@ -276,13 +334,13 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 	new ArrayList<String>());
     assertEquals("0", lastModified);
 
-    // Not modified since last read.
+    // Bad Accept header content type.
     getConfig(ConfigApi.SECTION_NAME_ALERT, null, lastModified, "fakeUser",
-	"fakePassword", HttpStatus.NOT_MODIFIED);
+	"fakePassword", HttpStatus.NOT_ACCEPTABLE);
 
-    // Not modified since last read.
+    // Bad Accept header content type.
     getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON,
-	lastModified, "fakeUser", "fakePassword", HttpStatus.NOT_MODIFIED);
+	lastModified, "fakeUser", "fakePassword", HttpStatus.NOT_ACCEPTABLE);
 
     // Not modified since last read.
     getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.MULTIPART_FORM_DATA,
@@ -372,13 +430,13 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
     getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON, null,
 	"lockss-u", "lockss-p", HttpStatus.NOT_ACCEPTABLE);
 
-    // Not modified since creation.
+    // Bad Accept header content type.
     getConfig(ConfigApi.SECTION_NAME_ALERT, null, "0", "lockss-u", "lockss-p",
-	HttpStatus.NOT_MODIFIED);
+	HttpStatus.NOT_ACCEPTABLE);
 
-    // Not modified since creation.
+    // Bad Accept header content type.
     getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON, "0",
-	"lockss-u", "lockss-p", HttpStatus.NOT_MODIFIED);
+	"lockss-u", "lockss-p", HttpStatus.NOT_ACCEPTABLE);
 
     // Not modified since creation.
     getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.MULTIPART_FORM_DATA, "0",
@@ -425,7 +483,11 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 
     lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
-    assertEquals("0", lastModified);
+    assertTrue(Long.parseLong(lastModified) <= TimeBase.nowMs());
+
+    // Not modified since last read.
+    getConfig(ConfigApi.SECTION_NAME_CLUSTER, MediaType.MULTIPART_FORM_DATA,
+	lastModified, "lockss-u", "lockss-p", HttpStatus.NOT_MODIFIED);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -439,7 +501,7 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
    *          A MediaType with the content type to be added to the request
    *          "Accept" header.
    * @param ifModifiedSince
-   *          A Long with the timestamp to be specified in the request eTag.
+   *          A String with the timestamp to be specified in the request eTag.
    * @param user
    *          A String with the request username.
    * @param password
@@ -1204,7 +1266,7 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
    * @param contentType
    *          A MediaType with the content type of the request.
    * @param ifUnmodifiedSince
-   *          A Long with the timestamp to be specified in the request eTag.
+   *          A String with the timestamp to be specified in the request eTag.
    * @param user
    *          A String with the request username.
    * @param password
