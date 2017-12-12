@@ -35,6 +35,7 @@ import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Authorization;
 import java.util.Date;
 import java.util.List;
+import org.lockss.rs.status.SpringLockssBaseApi;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,7 +52,7 @@ import org.springframework.web.multipart.MultipartFile;
  * Provider of access to the system configuration.
  */
 @Api(value = "config")
-public interface ConfigApi {
+public interface ConfigApi extends SpringLockssBaseApi {
   public static final String SECTION_NAME_CLUSTER = "cluster";
   public static final String SECTION_NAME_PROPSLOCKSS = "props_lockss";
   public static final String SECTION_NAME_UI_IP_ACCESS = "ui_ip_access";

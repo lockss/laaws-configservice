@@ -1,4 +1,4 @@
-<!--
+/*
 
 Copyright (c) 2000-2017 Board of Trustees of Leland Stanford Jr. University,
 all rights reserved.
@@ -28,51 +28,25 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
---> 
-# laaws-configservice [![Build Status](https://travis-ci.org/lockss/laaws-configservice.svg?branch=master)](https://travis-ci.org/lockss/laaws-configservice)
-The LAAWS Configuration REST Web Service.
+ */
+package org.lockss.laaws.config.security;
 
-### Clone the repo
-`git clone --recursive ssh://git@gitlab.lockss.org/laaws/laaws-configservice.git`
+import org.lockss.rs.auth.SpringSecurityConfigurer;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 
-### Create the Eclipse project (if so desired)
-`File` -> `Import...` -> `Maven` -> `Existing Maven Projects`
-
-### Set up the TDB tree:
-The TDB tree needs to be located at `./tdbxml/prod`, matching the definition
-in `./runLaawsConfig`.
-
-### Build the web service:
-`./buildLaawsConfig`
-
-This will run the tests as a pre-requisite for the build.
-
-The result of the build is a so-called "uber JAR" file which includes the
-project code plus all its dependencies and which is located at
-
-`./target/laaws-configuration-service-0.0.1-SNAPSHOT.jar`
-
-### Run the web service:
-`./runLaawsConfig`
-
-This will use port 54420. To use another port, edit the value of the
-`server.port` property in file
-`src/main/resources/application.properties`.
-
-The log is at `./logs/config.log`
-
-### Build and run the web service:
-`./buildAndRunLaawsConfig`
-
-This will use port 54420. To use another port, edit the value of the
-`server.port` property in file
-`src/main/resources/application.properties`.
-
-### API is documented at:
-#### http://localhost:54420/swagger-ui.html
-
-### The status of the web service may be obtained at:
-#### http://localhost:54420/status
-
-### Stop the web service:
-`./stopLaawsConfig`
+/**
+ * Custom Spring security configurator.
+ * <br />
+ * This class is needed because the Spring discovery process is not able to
+ * find the parent class (because it is in a jar?).
+ */
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+public class SecurityConfigurer extends SpringSecurityConfigurer {
+  // To use an authentication filter different than the default
+  // org.lockss.rs.auth.SpringAuthenticationFilter, override the
+  // configure(HttpSecurity http) method of this class.
+}

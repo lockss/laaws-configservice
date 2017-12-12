@@ -45,8 +45,11 @@ import org.lockss.config.ConfigFile;
 import org.lockss.config.ConfigManager;
 import org.lockss.config.CurrentConfig;
 import org.lockss.daemon.Cron;
-import org.lockss.laaws.config.security.SpringAuthenticationFilter;
+import org.lockss.laaws.config.server.LaawsConfigApp;
 import org.lockss.rs.auth.Roles;
+import org.lockss.rs.auth.SpringAuthenticationFilter;
+import org.lockss.rs.status.ApiStatus;
+import org.lockss.rs.status.SpringLockssBaseApiController;
 import org.lockss.util.IOUtil;
 import org.lockss.util.StringUtil;
 import org.springframework.http.HttpEntity;
@@ -68,7 +71,8 @@ import org.springframework.web.multipart.MultipartFile;
  * Controller for access to the system configuration.
  */
 @RestController
-public class ConfigApiController implements ConfigApi {
+public class ConfigApiController extends SpringLockssBaseApiController
+implements ConfigApi {
   private static Logger log = Logger.getLogger(ConfigApiController.class);
 
   // The map of writable configuration file sections.
@@ -395,6 +399,16 @@ public class ConfigApiController implements ConfigApi {
       return new ResponseEntity<String>(message,
 	  HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  /**
+   * Provides the status object.
+   * 
+   * @return an ApiStatus with the status.
+   */
+  @Override
+  public ApiStatus getApiStatus() {
+    return LaawsConfigApp.getApiStatus();
   }
 
   /**

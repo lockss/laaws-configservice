@@ -193,6 +193,7 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
     getSwaggerDocsTest();
+    getStatusTest();
     getConfigUnAuthenticatedTest();
     getLastUpdateTimeUnAuthenticatedTest();
     getLoadedUrlListUnAuthenticatedTest();
@@ -219,6 +220,7 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
     getSwaggerDocsTest();
+    getStatusTest();
     getConfigAuthenticatedTest();
     getLastUpdateTimeAuthenticatedTest();
     getLoadedUrlListAuthenticatedTest();
@@ -271,6 +273,27 @@ public class ConfigApiControllerTest extends SpringLockssTestCase {
 
     String expectedBody = "{'swagger':'2.0',"
 	+ "'info':{'description':'API of Configuration Service for LAAWS'}}";
+
+    JSONAssert.assertEquals(expectedBody, successResponse.getBody(), false);
+    if (logger.isDebugEnabled()) logger.debug("Done.");
+  }
+
+  /**
+   * Runs the status-related tests.
+   * 
+   * @throws Exception
+   *           if there are problems.
+   */
+  private void getStatusTest() throws Exception {
+    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+
+    ResponseEntity<String> successResponse = new TestRestTemplate().exchange(
+	getTestUrlTemplate("/status"), HttpMethod.GET, null, String.class);
+
+    HttpStatus statusCode = successResponse.getStatusCode();
+    assertEquals(HttpStatus.OK, statusCode);
+
+    String expectedBody = "{\"version\":\"1.0.0\",\"ready\":true}}";
 
     JSONAssert.assertEquals(expectedBody, successResponse.getBody(), false);
     if (logger.isDebugEnabled()) logger.debug("Done.");

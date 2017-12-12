@@ -33,6 +33,7 @@ import org.apache.commons.lang3.SystemUtils;
 import org.lockss.app.LockssDaemon;
 import org.lockss.config.CurrentConfig;
 import org.lockss.daemon.ResourceUnavailableException;
+import org.lockss.rs.status.ApiStatus;
 import org.lockss.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,11 @@ public class LaawsConfigApp extends LockssDaemon {
       new ManagerDesc(SERVLET_MANAGER, "org.lockss.servlet.AdminServletManager")
   };
 
+  private static final String API_VERSION = "1.0.0";
+
+  // Representation of the status of the REST web service.
+  private static ApiStatus apiStatus = new ApiStatus();
+
   public static void main( String[] args ) {
     if (log.isDebugEnabled()) log.debug("args = " + Arrays.toString(args));
 
@@ -77,6 +83,9 @@ public class LaawsConfigApp extends LockssDaemon {
                          ", exiting.");
       System.exit(Constants.EXIT_CODE_JAVA_VERSION);
     }
+
+    // Populate the API version for this REST web service.
+    apiStatus.setVersion(API_VERSION);
 
     setSystemProperties();
 
@@ -124,6 +133,9 @@ public class LaawsConfigApp extends LockssDaemon {
       System.exit(Constants.EXIT_CODE_NORMAL);
     }
 
+    // The REST web service is ready at this point.
+    apiStatus.setReady(Boolean.TRUE);
+
     if (log.isDebugEnabled()) log.debug("Done.");
   }
 
@@ -151,5 +163,14 @@ public class LaawsConfigApp extends LockssDaemon {
    */
   protected ManagerDesc[] getManagerDescs() {
     return managerDescs;
+  }
+
+  /**
+   * Provides the status of the REST web service.
+   * 
+   * @return an ApiStatus with the status of the REST web service.
+   */
+  public static ApiStatus getApiStatus() {
+    return apiStatus;
   }
 }
