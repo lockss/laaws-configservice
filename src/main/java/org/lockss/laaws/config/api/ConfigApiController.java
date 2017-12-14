@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.log4j.Logger;
 import org.lockss.alert.AlertManagerImpl;
+import org.lockss.app.LockssApp;
 import org.lockss.config.ConfigFile;
 import org.lockss.config.ConfigManager;
 import org.lockss.config.CurrentConfig;
@@ -401,6 +402,8 @@ implements ConfigApi {
     }
   }
 
+  private static final String API_VERSION = "1.0.0";
+
   /**
    * Provides the status object.
    * 
@@ -408,7 +411,9 @@ implements ConfigApi {
    */
   @Override
   public ApiStatus getApiStatus() {
-    return LaawsConfigApp.getApiStatus();
+    return new ApiStatus()
+      .setVersion(API_VERSION)
+      .setReady(LockssApp.getLockssApp().isAppRunning());
   }
 
   /**
