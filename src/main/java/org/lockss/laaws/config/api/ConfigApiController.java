@@ -46,7 +46,6 @@ import org.lockss.config.ConfigFile;
 import org.lockss.config.ConfigManager;
 import org.lockss.config.CurrentConfig;
 import org.lockss.daemon.Cron;
-import org.lockss.laaws.config.server.LaawsConfigApp;
 import org.lockss.rs.auth.Roles;
 import org.lockss.rs.auth.SpringAuthenticationFilter;
 import org.lockss.rs.status.ApiStatus;

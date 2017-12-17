@@ -27,7 +27,11 @@
  */
 package org.lockss.laaws.config;
 
-import org.lockss.laaws.config.server.LaawsConfigApp;
+import org.lockss.app.LockssApp;
+import org.lockss.app.LockssApp.AppSpec;
+import org.lockss.app.LockssApp.ManagerDesc;
+import org.lockss.app.LockssDaemon;
+import static org.lockss.app.ManagerDescs.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -45,6 +49,15 @@ public class ConfigApplication extends WebMvcConfigurerAdapter
     implements CommandLineRunner {
   private static final Logger logger =
       LoggerFactory.getLogger(ConfigApplication.class);
+
+  // Manager descriptors.  The order of this table determines the order in
+  // which managers are initialized and started.
+  private static final ManagerDesc[] myManagerDescs = {
+    ACCOUNT_MANAGER_DESC,
+    PLUGIN_MANAGER_DESC,
+    COUNTER_REPORTS_MANAGER_DESC,
+    SERVLET_MANAGER_DESC,
+  };
 
   /**
    * The entry point of the application.
@@ -68,7 +81,11 @@ public class ConfigApplication extends WebMvcConfigurerAdapter
     if (args != null && args.length > 0) {
       // Yes: Start the LOCKSS daemon.
       logger.info("Starting the LOCKSS daemon");
-      LaawsConfigApp.main(args);
+      AppSpec spec = new AppSpec()
+	.setName("Config Service")
+	.setArgs(args)
+	.setAppManagers(myManagerDescs);
+      LockssApp.startStatic(LockssDaemon.class, spec);
     } else {
       // No: Do nothing. This happens when a test is started and before the
       // test setup has got a chance to inject the appropriate command line
