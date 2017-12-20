@@ -35,21 +35,26 @@ import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Authorization;
 import java.util.Date;
 import java.util.List;
-import org.lockss.laaws.config.model.ConfigExchange;
-import org.lockss.laaws.config.model.ConfigModSpec;
+import org.lockss.rs.status.SpringLockssBaseApi;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Provider of access to the system configuration.
  */
 @Api(value = "config")
-public interface ConfigApi {
+public interface ConfigApi extends SpringLockssBaseApi {
   public static final String SECTION_NAME_CLUSTER = "cluster";
+  public static final String SECTION_NAME_PROPSLOCKSS = "props_lockss";
   public static final String SECTION_NAME_UI_IP_ACCESS = "ui_ip_access";
   public static final String SECTION_NAME_PROXY_IP_ACCESS = "proxy_ip_access";
   public static final String SECTION_NAME_PLUGIN = "plugin";
@@ -65,72 +70,48 @@ public interface ConfigApi {
   public static final String SECTION_NAME_CRONSTATE = "cronstate";
 
   /**
-   * Deletes the configuration for a section given the section name.
+   * Provides the configuration file for a section given the section name.
    * 
    * @param sectionName
    *          A String with the section name.
-   * @return ResponseEntity<ConfigExchange> with the deleted configuration.
+   * @param accept
+   *          A String with the value of the "Accept" request header.
+   * @param ifModifiedSince
+   *          A Date with the value of the "If-Modified-Since" request header.
+   * @return a ResponseEntity<MultiValueMap<String, Object>> with the section
+   *         configuration file.
    */
-  @ApiOperation(value = "Delete the named configuration",
-  notes = "Delete the configuration for a given name",
-  response = ConfigExchange.class,
-  authorizations = {@Authorization(value = "basicAuth")}, tags={ "config", })
-  @ApiResponses(value = { 
-      @ApiResponse(code = 200,
-	  message = "The named configuration that has been deleted",
-	  response = ConfigExchange.class),
-      @ApiResponse(code = 400, message = "Bad request",
-      response = ConfigExchange.class),
-      @ApiResponse(code = 401, message = "Unauthorized request",
-      response = ConfigExchange.class),
-      @ApiResponse(code = 403, message = "Forbidden request",
-      response = ConfigExchange.class),
-      @ApiResponse(code = 500, message = "Internal server error",
-      response = ConfigExchange.class),
-      @ApiResponse(code = 503,
-      message = "Some or all of the system is not available",
-      response = ConfigExchange.class) })
-  @RequestMapping(value = "/config/{sectionName}",
-  produces = { "application/json" }, consumes = { "application/json" },
-  method = RequestMethod.DELETE)
-  default ResponseEntity<ConfigExchange> deleteConfig(
-      @ApiParam(value =
-      "The name of the section for which the configuration is to be deleted",
-      required=true) @PathVariable("sectionName") String sectionName) {
-    return new ResponseEntity<ConfigExchange>(HttpStatus.NOT_IMPLEMENTED);
-  }
-
-  /**
-   * Provides the configuration for a section given the section name.
-   * 
-   * @param sectionName
-   *          A String with the section name.
-   * @return a ResponseEntity<ConfigExchange> with the section configuration.
-   */
-  @ApiOperation(value = "Get the named configuration",
-  notes = "Get the configuration items stored for a given name",
-  response = ConfigExchange.class,
+  @ApiOperation(value = "Get the named configuration file",
+  notes = "Get the configuration file stored for a given name",
+  response = MultiValueMap.class,
   authorizations = {@Authorization(value = "basicAuth")}, tags={ "config", })
   @ApiResponses(value = { 
       @ApiResponse(code = 200, message = "The named configuration",
-	  response = ConfigExchange.class),
+	  response = MultiValueMap.class),
+      @ApiResponse(code = 304, message = "Not Modified",
+      response = MultiValueMap.class),
       @ApiResponse(code = 400, message = "Bad request",
-      response = ConfigExchange.class),
-      @ApiResponse(code = 401, message = "Unauthorized request",
-      response = ConfigExchange.class),
+      response = MultiValueMap.class),
+      @ApiResponse(code = 401, message = "Unauthorized",
+      response = MultiValueMap.class),
+      @ApiResponse(code = 406, message = "Not Acceptable",
+      response = MultiValueMap.class),
       @ApiResponse(code = 500, message = "Internal server error",
-      response = ConfigExchange.class),
+      response = MultiValueMap.class),
       @ApiResponse(code = 503,
       message = "Some or all of the system is not available",
-      response = ConfigExchange.class) })
+      response = MultiValueMap.class) })
   @RequestMapping(value = "/config/{sectionName}",
-  produces = { "application/json" }, consumes = { "application/json" },
+  produces = { "multipart/form-data", "application/json" },
   method = RequestMethod.GET)
-  default ResponseEntity<ConfigExchange> getConfig(
+  default ResponseEntity<?> getConfig(
       @ApiParam(value =
       "The name of the section for which the configuration is requested",
-      required=true) @PathVariable("sectionName") String sectionName) {
-    return new ResponseEntity<ConfigExchange>(HttpStatus.NOT_IMPLEMENTED);
+      required=true) @PathVariable("sectionName") String sectionName,
+      @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
+      @RequestHeader(value=HttpHeaders.ETAG, required=false) String eTag) {
+    return new ResponseEntity<MultiValueMap<String, Object>>(
+	HttpStatus.NOT_IMPLEMENTED);
   }
 
   /**
@@ -147,7 +128,7 @@ public interface ConfigApi {
       @ApiResponse(code = 200,
 	  message = "The timestamp when the configuration was last updated",
 	  response = Date.class),
-      @ApiResponse(code = 401, message = "Unauthorized request",
+      @ApiResponse(code = 401, message = "Unauthorized",
       response = Date.class),
       @ApiResponse(code = 500, message = "Internal server error",
       response = Date.class),
@@ -155,16 +136,15 @@ public interface ConfigApi {
       message = "Some or all of the system is not available",
       response = Date.class) })
   @RequestMapping(value = "/config/lastupdatetime",
-  produces = { "application/json" }, consumes = { "application/json" },
-  method = RequestMethod.GET)
-  default ResponseEntity<Date> getLastUpdateTime() {
+  produces = { "application/json" }, method = RequestMethod.GET)
+  default ResponseEntity<?> getLastUpdateTime() {
     return new ResponseEntity<Date>(HttpStatus.NOT_IMPLEMENTED);
   }
 
   /**
    * Provides the URLs from which the configuration was loaded.
    * 
-   * @return a ResponseEntity<String> with the URLs.
+   * @return a ResponseEntity<List<String>> with the URLs.
    */
   @ApiOperation(value = "Get the URLs from which the configuration was loaded",
   notes =
@@ -175,7 +155,7 @@ public interface ConfigApi {
       @ApiResponse(code = 200,
 	  message = "The URLs from which the configuration was loaded",
 	  response = String.class, responseContainer = "List"),
-      @ApiResponse(code = 401, message = "Unauthorized request",
+      @ApiResponse(code = 401, message = "Unauthorized",
       response = String.class, responseContainer = "List"),
       @ApiResponse(code = 500, message = "Internal server error",
       response = String.class, responseContainer = "List"),
@@ -183,76 +163,80 @@ public interface ConfigApi {
       message = "Some or all of the system is not available",
       response = String.class, responseContainer = "List") })
   @RequestMapping(value = "/config/loadedurls",
-  produces = { "application/json" }, consumes = { "application/json" },
-  method = RequestMethod.GET)
-  default ResponseEntity<List<String>> getLoadedUrlList() {
+  produces = { "application/json" }, method = RequestMethod.GET)
+  default ResponseEntity<?> getLoadedUrlList() {
     return new ResponseEntity<List<String>>(HttpStatus.NOT_IMPLEMENTED);
   }
 
   /**
-   * Modifies the configuration for a section given the section name.
+   * Stores the configuration file for a section given the section name.
    * 
    * @param sectionName
    *          A String with the section name.
-   * @param configModSpec
-   *          A ConfigModSpec with the configuration modifications.
-   * @return a ResponseEntity<ConfigExchange> with the section configuration.
+   * @param configFile
+   *          A MultipartFile with the configuration file to be stored.
+   * @param ifUnmodifiedSince
+   *          A Date with the value of the "If-Unmodified-Since" request
+   *          header.
+   * @return a ResponseEntity<Void>.
    */
-  @ApiOperation(value = "Modify the named configuration",
-  notes = "Modify the configuration properties for a given name",
-  response = ConfigExchange.class,
+  @ApiOperation(value = "Store the named configuration file",
+  notes = "Store the configuration file for a given name",
+  response = Void.class,
   authorizations = {@Authorization(value = "basicAuth")}, tags={ "config", })
   @ApiResponses(value = { 
-      @ApiResponse(code = 200,
-	  message = "The named configuration after it's modified",
-	  response = ConfigExchange.class),
+      @ApiResponse(code = 200, message = "OK",
+	  response = Void.class),
       @ApiResponse(code = 400, message = "Bad request",
-      response = ConfigExchange.class),
+      response = Void.class),
       @ApiResponse(code = 401, message = "Unauthorized request",
-      response = ConfigExchange.class),
+      response = Void.class),
       @ApiResponse(code = 403, message = "Forbidden request",
-      response = ConfigExchange.class),
+      response = Void.class),
+      @ApiResponse(code = 412, message = "Precondition failed",
+      response = Void.class),
       @ApiResponse(code = 500, message = "Internal server error",
-      response = ConfigExchange.class),
+      response = Void.class),
       @ApiResponse(code = 503,
       message = "Some or all of the system is not available",
-      response = ConfigExchange.class) })
-  @RequestMapping(value = "/config/{sectionName}",
-  produces = { "application/json" }, consumes = { "application/json" },
+      response = Void.class) })
+  @RequestMapping(value = "/config/file/{sectionName}",
+  consumes = { "multipart/form-data" }, produces = { "application/json" },
   method = RequestMethod.PUT)
-  default ResponseEntity<ConfigExchange> putConfig(
+  @ResponseBody
+  default ResponseEntity<?> putConfig(
       @ApiParam(value =
-      "The name of the section for which the configuration is to be modified",
+      "The name of the section for which the configuration file is to be stored",
       required=true) @PathVariable("sectionName") String sectionName,
-      @ApiParam(value = "The configuration properties to be modified",
-      required=true) @RequestBody ConfigModSpec configModSpec) {
-    return new ResponseEntity<ConfigExchange>(HttpStatus.NOT_IMPLEMENTED);
+      @ApiParam(value = "The configuration file to be stored",
+      required=true) @RequestParam("file") MultipartFile configFile,
+      @RequestHeader(value=HttpHeaders.ETAG, required=true) String eTag) {
+    return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
   }
 
   /**
    * Requests a reload of the configuration.
    * 
-   * @return a ResponseEntity<void> with the status.
+   * @return a ResponseEntity<Void> with the status.
    */
   @ApiOperation(value = "Request a configuration reload",
   notes = "Request that the stored configuration is reloaded",
-  response = void.class,
+  response = Void.class,
   authorizations = {@Authorization(value = "basicAuth")}, tags={ "config", })
   @ApiResponses(value = { 
       @ApiResponse(code = 200, message = "OK", response = void.class),
       @ApiResponse(code = 401, message = "Unauthorized request",
-      response = void.class),
+      response = Void.class),
       @ApiResponse(code = 403, message = "Forbidden request",
-      response = void.class),
+      response = Void.class),
       @ApiResponse(code = 500, message = "Internal server error",
-      response = void.class),
+      response = Void.class),
       @ApiResponse(code = 503,
       message = "Some or all of the system is not available",
-      response = void.class) })
-  @RequestMapping(value = "/config/reload",
-  produces = { "application/json" }, consumes = { "application/json" },
+      response = Void.class) })
+  @RequestMapping(value = "/config/reload", produces = { "application/json" },
   method = RequestMethod.PUT)
-  default ResponseEntity<Void> putConfigReload() {
+  default ResponseEntity<?> putConfigReload() {
     return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
   }
 }

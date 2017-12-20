@@ -57,12 +57,12 @@ securityDefinitions:
 security:
   - basicAuth: []
 paths:
-  '/config/{sectionName}':
+  '/config/file/{sectionName}':
     put:
       tags:
         - config
-      summary: Modify the named configuration
-      description: Modify the configuration properties for a given name
+      summary: Store the named configuration file
+      description: Store the configuration file for a given name
       operationId: putConfig
       consumes:
         - application/json
@@ -71,21 +71,17 @@ paths:
       parameters:
         - name: 'sectionName'
           in: path
-          description: The name of the section for which the configuration is\
-            \ to be modified
+          description: The name of the section for which the configuration file\
+            \ is to be stored
           required: true
           type: string
-        - name: 'configModSpec'
+        - name: 'configFile'
           in: body
-          description: The configuration properties to be modified
+          description: The configuration file to be stored
           required: true
-          schema:
-            $ref: '#/definitions/configModSpec'
       responses:
         '200':
-          description: The named configuration after it's modified
-          schema:
-            $ref: '#/definitions/configExchange'
+          description: OK
         '400':
           description: Bad request
         '401':
@@ -99,61 +95,25 @@ paths:
     get:
       tags:
         - config
-      summary: Get the named configuration
-      description: Get the configuration items stored for a given name
+      summary: Get the named configuration file
+      description: Get the configuration file stored for a given name
       operationId: getConfig
-      consumes:
-        - application/json
       produces:
-        - application/json
+        - multipart/form-data
       parameters:
         - name: 'sectionName'
           in: path
-          description: The name of the section for which the configuration is\
-            \ requested
+          description: The name of the section for which the configuration file\
+            \ is requested
           required: true
           type: string
       responses:
         '200':
-          description: The named configuration
-          schema:
-            $ref: '#/definitions/configExchange'
+          description: The named configuration file
         '400':
           description: Bad request
         '401':
           description: Unauthorized request
-        '500':
-          description: Internal server error
-        '503':
-          description: Some or all of the system is not available
-    delete:
-      tags:
-        - config
-      summary: Delete the named configuration
-      description: Delete the configuration for a given name
-      operationId: deleteConfig
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      parameters:
-        - name: 'sectionName'
-          in: path
-          description: The name of the section for which the configuration is\
-            \ to be deleted
-          required: true
-          type: string
-      responses:
-        '200':
-          description: The named configuration that has been deleted
-          schema:
-            $ref: '#/definitions/configExchange'
-        '400':
-          description: Bad request
-        '401':
-          description: Unauthorized request
-        '403':
-          description: Forbidden request
         '500':
           description: Internal server error
         '503':

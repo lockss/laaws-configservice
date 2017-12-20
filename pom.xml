@@ -52,6 +52,10 @@ in this Software without prior written authorization from Stanford University.
     <springfox-version>2.6.1</springfox-version>
     <!-- The main class to start by executing java -jar -->
     <start-class>org.lockss.laaws.config.ConfigApplication</start-class>
+
+    <loglevel>info</loglevel>
+    <outputtofile>true</outputtofile>
+    <trimstack>false</trimstack>
   </properties>
 
   <dependencies>
@@ -112,7 +116,7 @@ in this Software without prior written authorization from Stanford University.
     <!-- LOCKSS daemon -->
     <dependency>
       <groupId>org.lockss.laaws</groupId>
-      <artifactId>laaws-daemon</artifactId>
+      <artifactId>lockss-core</artifactId>
       <version>1.0.0-SNAPSHOT</version>
     </dependency>
     <dependency>
@@ -183,7 +187,17 @@ in this Software without prior written authorization from Stanford University.
     <dependency>
       <groupId>com.ibm.icu</groupId>
       <artifactId>icu4j</artifactId>
-      <version>54.1.1</version>
+      <version>59.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.ibm.icu</groupId>
+      <artifactId>icu4j-charset</artifactId>
+      <version>59_1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.ibm.icu</groupId>
+      <artifactId>icu4j-localespi</artifactId>
+      <version>59_1</version>
     </dependency>
     <dependency>
       <groupId>gnu.getopt</groupId>
@@ -233,13 +247,33 @@ in this Software without prior written authorization from Stanford University.
     </dependency>
     <dependency>
       <groupId>de.schlichtherle.truezip</groupId>
+      <artifactId>truezip-driver-file</artifactId>
+      <version>7.7.10</version>
+    </dependency>
+    <dependency>
+      <groupId>de.schlichtherle.truezip</groupId>
+      <artifactId>truezip-driver-tar</artifactId>
+      <version>7.7.10</version>
+    </dependency>
+    <dependency>
+      <groupId>de.schlichtherle.truezip</groupId>
       <artifactId>truezip-driver-zip</artifactId>
-      <version>7.5.5</version>
+      <version>7.7.10</version>
     </dependency>
     <dependency>
       <groupId>de.schlichtherle.truezip</groupId>
       <artifactId>truezip-file</artifactId>
-      <version>7.5.5</version>
+      <version>7.7.10</version>
+    </dependency>
+    <dependency>
+      <groupId>de.schlichtherle.truezip</groupId>
+      <artifactId>truezip-kernel</artifactId>
+      <version>7.7.10</version>
+    </dependency>
+    <dependency>
+      <groupId>de.schlichtherle.truezip</groupId>
+      <artifactId>truezip-swing</artifactId>
+      <version>7.7.10</version>
     </dependency>
     <dependency>
       <groupId>xerces</groupId>
@@ -359,14 +393,34 @@ in this Software without prior written authorization from Stanford University.
     <dependency>
       <groupId>org.lockss.laaws</groupId>
       <artifactId>lockss-core</artifactId>
-      <type>test-jar</type>
       <version>1.0.0-SNAPSHOT</version>
-      <scope>test</scope>
+      <classifier>tests</classifier>
     </dependency>
   </dependencies>
 
   <build>
     <plugins>
+      <plugin>
+	<groupId>org.apache.maven.plugins</groupId>
+	<artifactId>maven-surefire-plugin</artifactId>
+	<configuration>
+	  <includes>
+	    <include>**/*Tests.java</include>
+	    <include>**/*Test.java</include>
+	  </includes>
+	  <excludes>
+	    <exclude>**/Abstract*.java</exclude>
+	  </excludes>
+          <redirectTestOutputToFile>${outputtofile}</redirectTestOutputToFile>
+          <reuseForks>false</reuseForks>
+	  <trimStackTrace>${trimstack}</trimStackTrace>
+          <systemPropertyVariables>
+            <org.lockss.unitTesting>true</org.lockss.unitTesting>
+            <org.lockss.defaultLogLevel>${loglevel}</org.lockss.defaultLogLevel>
+            <org.lockss.defaultLogTarget>org.lockss.util.StdErrTarget</org.lockss.defaultLogTarget>
+          </systemPropertyVariables>
+	</configuration>
+      </plugin>
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
