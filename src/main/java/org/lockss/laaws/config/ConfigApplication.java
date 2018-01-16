@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,26 +27,24 @@
  */
 package org.lockss.laaws.config;
 
+import static org.lockss.app.ManagerDescs.*;
 import org.lockss.app.LockssApp;
 import org.lockss.app.LockssApp.AppSpec;
 import org.lockss.app.LockssApp.ManagerDesc;
 import org.lockss.app.LockssDaemon;
-import static org.lockss.app.ManagerDescs.*;
+import org.lockss.rs.base.BaseSpringBootApplication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
-import org.springframework.web.util.UrlPathHelper;
 
 /**
  * The Spring-Boot application.
  */
 @SpringBootApplication
-public class ConfigApplication extends WebMvcConfigurerAdapter
-    implements CommandLineRunner {
+public class ConfigApplication extends BaseSpringBootApplication
+	implements CommandLineRunner {
   private static final Logger logger =
       LoggerFactory.getLogger(ConfigApplication.class);
 
@@ -62,19 +60,22 @@ public class ConfigApplication extends WebMvcConfigurerAdapter
   /**
    * The entry point of the application.
    *
-   * @param args A String[] with the command line arguments.
+   * @param args
+   *          A String[] with the command line arguments.
    */
   public static void main(String[] args) {
     logger.info("Starting the application");
-    System.setProperty(
-	"org.apache.tomcat.util.buf.UDecoder.ALLOW_ENCODED_SLASH", "true");
+    configure();
 
     // Start the REST service.
     SpringApplication.run(ConfigApplication.class, args);
   }
 
   /**
-   * Starts the LOCKSS daemon.
+   * Callback used to run the application starting the LOCKSS daemon.
+   *
+   * @param args
+   *          A String[] with the command line arguments.
    */
   public void run(String... args) {
     // Check whether there are command line arguments available.
@@ -91,12 +92,5 @@ public class ConfigApplication extends WebMvcConfigurerAdapter
       // test setup has got a chance to inject the appropriate command line
       // parameters.
     }
-  }
-
-  @Override
-  public void configurePathMatch(PathMatchConfigurer configurer) {
-      UrlPathHelper urlPathHelper = new UrlPathHelper();
-      urlPathHelper.setUrlDecode(false);
-      configurer.setUrlPathHelper(urlPathHelper);
   }
 }
