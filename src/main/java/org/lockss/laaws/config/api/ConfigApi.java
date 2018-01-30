@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2108 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -76,10 +76,11 @@ public interface ConfigApi extends SpringLockssBaseApi {
    *          A String with the section name.
    * @param accept
    *          A String with the value of the "Accept" request header.
-   * @param ifModifiedSince
-   *          A Date with the value of the "If-Modified-Since" request header.
+   * @param eTag
+   *          A String with a value equivalent to the "If-Modified-Since"
+   *          request header but with a granularity of 1 ms.
    * @return a ResponseEntity<MultiValueMap<String, Object>> with the section
-   *         configuration file.
+   *         configuration file contents.
    */
   @ApiOperation(value = "Get the named configuration file",
   notes = "Get the configuration file stored for a given name",
@@ -101,13 +102,59 @@ public interface ConfigApi extends SpringLockssBaseApi {
       @ApiResponse(code = 503,
       message = "Some or all of the system is not available",
       response = MultiValueMap.class) })
-  @RequestMapping(value = "/config/{sectionName}",
+  @RequestMapping(value = "/config/file/{sectionName}",
   produces = { "multipart/form-data", "application/json" },
   method = RequestMethod.GET)
-  default ResponseEntity<?> getConfig(
+  default ResponseEntity<?> getSectionConfig(
       @ApiParam(value =
       "The name of the section for which the configuration is requested",
       required=true) @PathVariable("sectionName") String sectionName,
+      @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
+      @RequestHeader(value=HttpHeaders.ETAG, required=false) String eTag) {
+    return new ResponseEntity<MultiValueMap<String, Object>>(
+	HttpStatus.NOT_IMPLEMENTED);
+  }
+
+  /**
+   * Provides the configuration file for a given URL.
+   * 
+   * @param url
+   *          A String with the url.
+   * @param accept
+   *          A String with the value of the "Accept" request header.
+   * @param eTag
+   *          A String with a value equivalent to the "If-Modified-Since"
+   *          request header but with a granularity of 1 ms.
+   * @return a ResponseEntity<MultiValueMap<String, Object>> with the section
+   *         configuration file.
+   */
+  @ApiOperation(value = "Get the configuration file for a URL",
+  notes = "Get the configuration file stored for a given URL",
+  response = MultiValueMap.class,
+  authorizations = {@Authorization(value = "basicAuth")}, tags={ "config", })
+  @ApiResponses(value = { 
+      @ApiResponse(code = 200, message = "The configuration file for the URL",
+	  response = MultiValueMap.class),
+      @ApiResponse(code = 304, message = "Not Modified",
+      response = MultiValueMap.class),
+      @ApiResponse(code = 400, message = "Bad request",
+      response = MultiValueMap.class),
+      @ApiResponse(code = 401, message = "Unauthorized",
+      response = MultiValueMap.class),
+      @ApiResponse(code = 406, message = "Not Acceptable",
+      response = MultiValueMap.class),
+      @ApiResponse(code = 500, message = "Internal server error",
+      response = MultiValueMap.class),
+      @ApiResponse(code = 503,
+      message = "Some or all of the system is not available",
+      response = MultiValueMap.class) })
+  @RequestMapping(value = "/config/url/{url}",
+  produces = { "multipart/form-data", "application/json" },
+  method = RequestMethod.GET)
+  default ResponseEntity<?> getUrlConfig(
+      @ApiParam(value =
+      "The URL for which the configuration is requested",
+      required=true) @PathVariable("url") String url,
       @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
       @RequestHeader(value=HttpHeaders.ETAG, required=false) String eTag) {
     return new ResponseEntity<MultiValueMap<String, Object>>(

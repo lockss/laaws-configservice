@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -33,6 +33,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.MalformedParametersException;
 import java.security.AccessControlException;
 import java.util.Date;
@@ -66,6 +67,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.UriUtils;
 
 /**
  * Controller for access to the system configuration.
@@ -115,7 +117,7 @@ implements ConfigApi {
   @RequestMapping(value = "/config/file/{sectionName}",
   produces = { "multipart/form-data", "application/json" },
   method = RequestMethod.GET)
-  public ResponseEntity<?> getConfig(
+  public ResponseEntity<?> getSectionConfig(
       @PathVariable("sectionName") String sectionName,
       @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
       @RequestHeader(value=HttpHeaders.ETAG, required=false) String eTag) {
@@ -226,7 +228,124 @@ implements ConfigApi {
 	  responseHeaders, HttpStatus.OK);
     } catch (Exception e) {
       String message =
-	  "Cannot getConfig() for sectionName = '" + sectionName + "'";
+	  "Cannot getSectionConfig() for sectionName = '" + sectionName + "'";
+      log.error(message, e);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Provides the configuration file for a given URL.
+   * 
+   * @param url
+   *          A String with the url.
+   * @param accept
+   *          A String with the value of the "Accept" request header.
+   * @param eTag
+   *          A String with a value equivalent to the "If-Modified-Since"
+   *          request header but with a granularity of 1 ms.
+   * @return a ResponseEntity<MultiValueMap<String, Object>> with the section
+   *         configuration file.
+   */
+  @Override
+  @RequestMapping(value = "/config/url/{url}",
+  produces = { "multipart/form-data", "application/json" },
+  method = RequestMethod.GET)
+  public ResponseEntity<?> getUrlConfig(
+      @PathVariable("url") String url,
+      @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
+      @RequestHeader(value=HttpHeaders.ETAG, required=false) String eTag) {
+    if (log.isDebugEnabled()) {
+      log.debug("url = " + url);
+      log.debug("accept = " + accept);
+      log.debug("eTag = " + eTag);
+    }
+
+    String decodedUrl = null;
+
+    try {
+      // Check whether the request did not specify the appropriate "Accept"
+      // header.
+      if (accept.indexOf(MediaType.MULTIPART_FORM_DATA_VALUE) < 0) {
+	// Yes: Report the problem.
+	String message = "Accept header does not include '"
+	    + MediaType.MULTIPART_FORM_DATA_VALUE + "'";
+	log.warn(message);
+	return new ResponseEntity<String>(message, HttpStatus.NOT_ACCEPTABLE);
+      }
+
+      decodedUrl = UriUtils.decode(url, "UTF-8");
+      if (log.isDebugEnabled()) log.debug("decodedUrl = " + decodedUrl);
+
+      ConfigManager configManager = getConfigManager();
+      String lastModified = null;
+      HttpHeaders partHeaders = new HttpHeaders();
+
+      // Read the file.
+      InputStream is = null;
+      String partContent = null;
+
+      try {
+	is = configManager.getCacheConfigFileInputStream(decodedUrl);
+	partContent = StringUtil.fromInputStream(is);
+	if (log.isDebugEnabled())
+	  log.debug("partContent = '" + partContent + "'");
+      } catch (FileNotFoundException fnfe) {
+	partContent = "";
+      } catch (IOException ioe) {
+	String message = "Can't get the content for URL '" + decodedUrl + "'";
+	log.error(message, ioe);
+	return new ResponseEntity<String>(message,
+	    HttpStatus.INTERNAL_SERVER_ERROR);
+      } finally {
+	IOUtil.safeClose(is);
+      }
+
+      // Get the file last modification timestamp.
+      lastModified = getConfigFileLastModifiedAsEtag(decodedUrl);
+      if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
+
+      // Check whether the modification timestamp matches the passed eTag.
+      if (eTag != null && eTag.equals(lastModified)) {
+	// Yes: Return.
+	return new ResponseEntity<MultiValueMap<String, Object>>(null, null,
+	    HttpStatus.NOT_MODIFIED);
+      }
+
+      // Save the file last modification timestamp in the response.
+      partHeaders.setETag(lastModified);
+      if (log.isDebugEnabled()) log.debug("partHeaders = " + partHeaders);
+
+      // Set the returned content type.
+      if (decodedUrl.toLowerCase().endsWith(".xml")) {
+	partHeaders.setContentType(MediaType.TEXT_XML);
+      } else {
+	partHeaders.setContentType(MediaType.TEXT_PLAIN);
+      }
+
+      // Build the response entity.
+      MultiValueMap<String, Object> parts =
+	  new LinkedMultiValueMap<String, Object>();
+
+      parts.add("config-data",
+	  new HttpEntity<String>(partContent, partHeaders));
+      if (log.isDebugEnabled()) log.debug("parts = " + parts);
+
+      // Specify the response content type.
+      HttpHeaders responseHeaders = new HttpHeaders();
+      responseHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+      if (log.isDebugEnabled())
+	log.debug("responseHeaders = " + responseHeaders);
+
+      return new ResponseEntity<MultiValueMap<String, Object>>(parts,
+	  responseHeaders, HttpStatus.OK);
+    } catch (UnsupportedEncodingException uee) {
+      String message = "Cannot decode url = '" + url + "'";
+      log.error(message, uee);
+      throw new MalformedParametersException(message);
+    } catch (Exception e) {
+      String message = "Cannot getUrlConfig() for url = '" + url + "'";
       log.error(message, e);
       return new ResponseEntity<String>(message,
 	  HttpStatus.INTERNAL_SERVER_ERROR);
