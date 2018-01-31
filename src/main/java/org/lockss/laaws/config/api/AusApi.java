@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -52,7 +52,8 @@ public interface AusApi  {
    * 
    * @param auid
    *          A String with the AU identifier.
-   * @return ResponseEntity<ConfigExchange> with the deleted configuration.
+   * @return {@code ResponseEntity<ConfigExchange>} with the deleted
+   *         configuration.
    */
   @ApiOperation(value = "Delete the configuration of an AU",
   notes = "Delete the configuration of an AU given the AU identifier",
@@ -86,7 +87,8 @@ public interface AusApi  {
   /**
    * Provides the configuration for all AUs.
    * 
-   * @return a ResponseEntity<ConfigExchange> with the configuration for all AUs.
+   * @return a {@code ResponseEntity<ConfigExchange>} with the configuration for
+   *         all AUs.
    */
   @ApiOperation(value = "Get the configuration of all AUs",
   notes = "Get the configuration of all AUs",
@@ -115,7 +117,7 @@ public interface AusApi  {
    * 
    * @param auid
    *          A String with the AU identifier.
-   * @return a ResponseEntity<ConfigExchange> with the AU configuration.
+   * @return a {@code ResponseEntity<ConfigExchange>} with the AU configuration.
    */
   @ApiOperation(value = "Get the configuration of an AU",
   notes = "Get the configuration of an AU given the AU identifier",
@@ -151,7 +153,7 @@ public interface AusApi  {
    *          A String with the AU identifier.
    * @param configExchange
    *          A ConfigExchange with the AU configuration.
-   * @return a ResponseEntity<ConfigExchange> with the AU configuration.
+   * @return a {@code ResponseEntity<ConfigExchange>} with the AU configuration.
    */
   @ApiOperation(value = "Store the configuration of an AU",
   notes = "Store the configuration of an AU given the AU identifier",

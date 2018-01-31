@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -63,7 +63,8 @@ public class AusApiController implements AusApi {
    * 
    * @param auid
    *          A String with the AU identifier.
-   * @return ResponseEntity<ConfigExchange> with the deleted configuration.
+   * @return {@code ResponseEntity<ConfigExchange>} with the deleted
+   *         configuration.
    */
   @Override
   @RequestMapping(value = "/aus/{auid}",
@@ -108,7 +109,8 @@ public class AusApiController implements AusApi {
   /**
    * Provides the configuration for all AUs.
    * 
-   * @return a ResponseEntity<ConfigExchange> with the configuration for all AUs.
+   * @return a {@code ResponseEntity<ConfigExchange>} with the configuration for
+   *         all AUs.
    */
   @Override
   @RequestMapping(value = "/aus",
@@ -134,7 +136,7 @@ public class AusApiController implements AusApi {
    * 
    * @param auid
    *          A String with the AU identifier.
-   * @return a ResponseEntity<ConfigExchange> with the AU configuration.
+   * @return a {@code ResponseEntity<ConfigExchange>} with the AU configuration.
    */
   @Override
   @RequestMapping(value = "/aus/{auid}",
@@ -175,7 +177,7 @@ public class AusApiController implements AusApi {
    *          A String with the AU identifier.
    * @param configExchange
    *          A ConfigExchange with the AU configuration.
-   * @return a ResponseEntity<ConfigExchange> with the AU configuration.
+   * @return a {@code ResponseEntity<ConfigExchange>} with the AU configuration.
    */
   @Override
   @RequestMapping(value = "/aus/{auid}",
