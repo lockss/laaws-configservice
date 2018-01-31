@@ -110,8 +110,8 @@ implements ConfigApi {
    * @param eTag
    *          A String with a value equivalent to the "If-Modified-Since"
    *          request header but with a granularity of 1 ms.
-   * @return a ResponseEntity<MultiValueMap<String, Object>> with the section
-   *         configuration file contents.
+   * @return a {@code ResponseEntity<MultiValueMap<String, Object>>} with the
+   *         section configuration file contents.
    */
   @Override
   @RequestMapping(value = "/config/file/{sectionName}",
@@ -245,8 +245,8 @@ implements ConfigApi {
    * @param eTag
    *          A String with a value equivalent to the "If-Modified-Since"
    *          request header but with a granularity of 1 ms.
-   * @return a ResponseEntity<MultiValueMap<String, Object>> with the section
-   *         configuration file.
+   * @return a {@code ResponseEntity<MultiValueMap<String, Object>>} with the
+   *         section configuration file.
    */
   @Override
   @RequestMapping(value = "/config/url/{url}",
@@ -355,7 +355,7 @@ implements ConfigApi {
   /**
    * Provides the timestamp of the last time the configuration was updated.
    * 
-   * @return a ResponseEntity<Date> with the timestamp.
+   * @return a {@code ResponseEntity<Date>} with the timestamp.
    */
   @Override
   @RequestMapping(value = "/config/lastupdatetime",
@@ -381,7 +381,7 @@ implements ConfigApi {
   /**
    * Provides the URLs from which the configuration was loaded.
    * 
-   * @return a ResponseEntity<List<String>> with the URLs.
+   * @return a {@code ResponseEntity<List<String>>} with the URLs.
    */
   @Override
   @RequestMapping(value = "/config/loadedurls",
@@ -412,7 +412,7 @@ implements ConfigApi {
    * @param eTag
    *          A String with a value equivalent to the "If-Unmodified-Since"
    *          request header but with a granularity of 1 ms.
-   * @return a ResponseEntity<Void>.
+   * @return a {@code ResponseEntity<Void>}.
    */
   @Override
   @RequestMapping(value = "/config/file/{sectionName}",
@@ -493,7 +493,7 @@ implements ConfigApi {
   /**
    * Requests a reload of the configuration.
    * 
-   * @return a ResponseEntity<Void> with the status.
+   * @return a {@code ResponseEntity<Void>} with the status.
    */
   @Override
   @RequestMapping(value = "/config/reload", produces = { "application/json" },
@@ -577,8 +577,8 @@ implements ConfigApi {
    * Provides a lazy-loaded copy of the map of read-only configuration file
    * sections.
    * 
-   * @return a Map<String, String> with the map of read-only configuration file
-   *         sections.
+   * @return a {@code Map<String, String>} with the map of read-only
+   *         configuration file sections.
    */
   private Map<String, String> getConfigReadOnlySectionMap() {
     if (configReadOnlySectionMap == null) {
