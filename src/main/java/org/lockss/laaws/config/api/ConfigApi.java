@@ -79,8 +79,8 @@ public interface ConfigApi extends SpringLockssBaseApi {
    * @param eTag
    *          A String with a value equivalent to the "If-Modified-Since"
    *          request header but with a granularity of 1 ms.
-   * @return a ResponseEntity<MultiValueMap<String, Object>> with the section
-   *         configuration file contents.
+   * @return a {@code ResponseEntity<MultiValueMap<String, Object>>} with the
+   *         section configuration file contents.
    */
   @ApiOperation(value = "Get the named configuration file",
   notes = "Get the configuration file stored for a given name",
@@ -125,8 +125,8 @@ public interface ConfigApi extends SpringLockssBaseApi {
    * @param eTag
    *          A String with a value equivalent to the "If-Modified-Since"
    *          request header but with a granularity of 1 ms.
-   * @return a ResponseEntity<MultiValueMap<String, Object>> with the section
-   *         configuration file.
+   * @return a {@code ResponseEntity<MultiValueMap<String, Object>>} with the
+   *         section configuration file.
    */
   @ApiOperation(value = "Get the configuration file for a URL",
   notes = "Get the configuration file stored for a given URL",
@@ -164,7 +164,7 @@ public interface ConfigApi extends SpringLockssBaseApi {
   /**
    * Provides the timestamp of the last time the configuration was updated.
    * 
-   * @return a ResponseEntity<Date> with the timestamp.
+   * @return a {@code ResponseEntity<Date>} with the timestamp.
    */
   @ApiOperation(
   value = "Get the timestamp when the configuration was last updated",
@@ -191,7 +191,7 @@ public interface ConfigApi extends SpringLockssBaseApi {
   /**
    * Provides the URLs from which the configuration was loaded.
    * 
-   * @return a ResponseEntity<List<String>> with the URLs.
+   * @return a {@code ResponseEntity<List<String>>} with the URLs.
    */
   @ApiOperation(value = "Get the URLs from which the configuration was loaded",
   notes =
@@ -222,10 +222,10 @@ public interface ConfigApi extends SpringLockssBaseApi {
    *          A String with the section name.
    * @param configFile
    *          A MultipartFile with the configuration file to be stored.
-   * @param ifUnmodifiedSince
-   *          A Date with the value of the "If-Unmodified-Since" request
-   *          header.
-   * @return a ResponseEntity<Void>.
+   * @param eTag
+   *          A String with a value equivalent to the "If-Unmodified-Since"
+   *          request header but with a granularity of 1 ms.
+   * @return a {@code ResponseEntity<Void>}.
    */
   @ApiOperation(value = "Store the named configuration file",
   notes = "Store the configuration file for a given name",
@@ -264,7 +264,7 @@ public interface ConfigApi extends SpringLockssBaseApi {
   /**
    * Requests a reload of the configuration.
    * 
-   * @return a ResponseEntity<Void> with the status.
+   * @return a {@code ResponseEntity<Void>} with the status.
    */
   @ApiOperation(value = "Request a configuration reload",
   notes = "Request that the stored configuration is reloaded",
