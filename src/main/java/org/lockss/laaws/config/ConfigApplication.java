@@ -81,7 +81,8 @@ public class ConfigApplication extends BaseSpringBootApplication
     // Check whether there are command line arguments available.
     if (args != null && args.length > 0) {
       // Yes: Start the LOCKSS daemon.
-      logger.info("Starting the LOCKSS daemon");
+      logger.info("Starting the LOCKSS Configuration Service");
+
       AppSpec spec = new AppSpec()
 	.setName("Config Service")
 	.setArgs(args)

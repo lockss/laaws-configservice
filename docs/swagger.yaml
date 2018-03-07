@@ -97,7 +97,7 @@ paths:
         - config
       summary: Get the named configuration file
       description: Get the configuration file stored for a given name
-      operationId: getConfig
+      operationId: getSectionConfig
       produces:
         - multipart/form-data
       parameters:
@@ -110,6 +110,32 @@ paths:
       responses:
         '200':
           description: The named configuration file
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized request
+        '500':
+          description: Internal server error
+        '503':
+          description: Some or all of the system is not available
+  '/config/url/{url}':
+    get:
+      tags:
+        - config
+      summary: Get the configuration file for a URL
+      description: Get the configuration file stored for a given URL
+      operationId: getUrlConfig
+      produces:
+        - multipart/form-data
+      parameters:
+        - name: 'url'
+          in: path
+          description: The URL for which the configuration is requested
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The configuration file for the URL
         '400':
           description: Bad request
         '401':
@@ -203,9 +229,7 @@ paths:
         '200':
           description: The configuration of all AUs
           schema:
-            type: array
-            items:
-              $ref: '#/definitions/configExchange'
+            $ref: '#/definitions/configExchange'
         '401':
           description: Unauthorized request
         '500':
