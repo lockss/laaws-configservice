@@ -1,6 +1,6 @@
 <!--
 
-Copyright (c) 2000-2017 Board of Trustees of Leland Stanford Jr. University,
+Copyright (c) 2000-2018 Board of Trustees of Leland Stanford Jr. University,
 all rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 The LAAWS Configuration REST Web Service.
 
 ### Clone the repo
-`git clone --recursive ssh://git@gitlab.lockss.org/laaws/laaws-configservice.git`
+`git clone ssh://git@gitlab.lockss.org/laaws/laaws-configservice.git`
 
 ### Create the Eclipse project (if so desired)
 `File` -> `Import...` -> `Maven` -> `Existing Maven Projects`
@@ -50,7 +50,7 @@ This will run the tests as a pre-requisite for the build.
 The result of the build is a so-called "uber JAR" file which includes the
 project code plus all its dependencies and which is located at
 
-`./target/laaws-configuration-service-0.0.1-SNAPSHOT.jar`
+`./target/laaws-configuration-service-*.jar`
 
 ### Run the web service:
 `./runLaawsConfig`
