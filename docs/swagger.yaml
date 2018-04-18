@@ -110,15 +110,21 @@ paths:
       responses:
         '200':
           description: The named configuration file
+        '304':
+          description: Not Modified
         '400':
           description: Bad request
         '401':
           description: Unauthorized request
+        '404':
+          description: Not Found
+        '406':
+          description: Not Acceptable
         '500':
           description: Internal server error
         '503':
           description: Some or all of the system is not available
-  '/config/url/{url}':
+  '/config/url':
     get:
       tags:
         - config
@@ -129,17 +135,23 @@ paths:
         - multipart/form-data
       parameters:
         - name: 'url'
-          in: path
+          in: 'query'
           description: The URL for which the configuration is requested
           required: true
           type: string
       responses:
         '200':
           description: The configuration file for the URL
+        '304':
+          description: Not Modified
         '400':
           description: Bad request
         '401':
           description: Unauthorized request
+        '404':
+          description: Not Found
+        '406':
+          description: Not Acceptable
         '500':
           description: Internal server error
         '503':

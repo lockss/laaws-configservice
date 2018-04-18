@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -194,7 +194,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     getSwaggerDocsTest();
     getStatusTest();
-    getConfigUnAuthenticatedTest();
+    getConfigSectionUnAuthenticatedTest();
+    getConfigUrlUnAuthenticatedTest();
     getLastUpdateTimeUnAuthenticatedTest();
     getLoadedUrlListUnAuthenticatedTest();
     putConfigUnAuthenticatedTest();
@@ -221,7 +222,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     getSwaggerDocsTest();
     getStatusTest();
-    getConfigAuthenticatedTest();
+    getConfigSectionAuthenticatedTest();
+    getConfigUrlAuthenticatedTest();
     getLastUpdateTimeAuthenticatedTest();
     getLoadedUrlListAuthenticatedTest();
     putConfigAuthenticatedTest();
@@ -300,201 +302,42 @@ public class TestConfigApiController extends SpringLockssTestCase {
   }
 
   /**
-   * Runs the getConfig()-related un-authenticated-specific tests.
+   * Runs the getConfigSection()-related un-authenticated-specific tests.
    * 
    * @throws Exception
    *           if there are problems.
    */
-  private void getConfigUnAuthenticatedTest() throws Exception {
+  private void getConfigSectionUnAuthenticatedTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     // Use defaults for all headers.
-    TextMultipartResponse configOutput = getConfig(ConfigApi.SECTION_NAME_ALERT,
-	null, null, null, null, HttpStatus.OK);
-
-    String lastModified = verifyMultipartResponse(configOutput,
-	MediaType.TEXT_XML, new ArrayList<String>());
-    assertEquals("0", lastModified);
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, null, null,
+	HttpStatus.NOT_FOUND);
 
     // Bad Accept header content type.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON, null,
-	null, null, HttpStatus.NOT_ACCEPTABLE);
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON,
+	null, null, null, HttpStatus.NOT_ACCEPTABLE);
 
     // Good Accept header content type.
-    configOutput = getConfig(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, null, null, HttpStatus.OK);
-
-    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
-	new ArrayList<String>());
-    assertEquals("0", lastModified);
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, null, null, null, HttpStatus.NOT_FOUND);
 
     // Bad Accept header content type.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, null, lastModified, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
-
-    // Bad Accept header content type.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON,
-	lastModified, null, null, HttpStatus.NOT_ACCEPTABLE);
-
-    // Not modified since last read.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.MULTIPART_FORM_DATA,
-	lastModified, null, null, HttpStatus.NOT_MODIFIED);
-
-    // Bad Accept header content type.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, null, null, "fakeUser",
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, "fakeUser",
 	"fakePassword", HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON, null,
-	"fakeUser", "fakePassword", HttpStatus.NOT_ACCEPTABLE);
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON,
+	null, "fakeUser", "fakePassword", HttpStatus.NOT_ACCEPTABLE);
 
     // Good Accept header content type.
-    configOutput = getConfig(ConfigApi.SECTION_NAME_ALERT,
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
 	MediaType.MULTIPART_FORM_DATA, null, "fakeUser", "fakePassword",
-	HttpStatus.OK);
+	HttpStatus.NOT_FOUND);
 
-    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
-	new ArrayList<String>());
-    assertEquals("0", lastModified);
-
-    // Bad Accept header content type.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, null, lastModified, "fakeUser",
-	"fakePassword", HttpStatus.NOT_ACCEPTABLE);
-
-    // Bad Accept header content type.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON,
-	lastModified, "fakeUser", "fakePassword", HttpStatus.NOT_ACCEPTABLE);
-
-    // Not modified since last read.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.MULTIPART_FORM_DATA,
-	lastModified, "fakeUser", "fakePassword", HttpStatus.NOT_MODIFIED);
-
-    getConfigCommonTest();
-
-    if (logger.isDebugEnabled()) logger.debug("Done.");
-  }
-
-  /**
-   * Runs the getConfig()-related authenticated-specific tests.
-   * 
-   * @throws Exception
-   *           if there are problems.
-   */
-  private void getConfigAuthenticatedTest() throws Exception {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
-
-    // Missing Accept header for UNAUTHORIZED response.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, null, null, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
-
-    // Missing credentials.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON, null,
-	null, null, HttpStatus.UNAUTHORIZED);
-
-    // Missing credentials.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.MULTIPART_FORM_DATA, null,
-	null, null, HttpStatus.UNAUTHORIZED);
-
-    // Missing credentials.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, null, "0", null, null,
-	HttpStatus.UNAUTHORIZED);
-
-    // Missing credentials.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON, "0",
-	null, null, HttpStatus.UNAUTHORIZED);
-
-    // Missing credentials.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.MULTIPART_FORM_DATA, "0",
-	null, null, HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, null, "0", "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON, "0",
-	"fakeUser", "fakePassword", HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.MULTIPART_FORM_DATA, "0",
-	"fakeUser", "fakePassword", HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, null, null, "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON, null,
-	"fakeUser", "fakePassword", HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.MULTIPART_FORM_DATA, null,
-	"fakeUser", "fakePassword", HttpStatus.UNAUTHORIZED);
-
-    getConfigCommonTest();
-
-    if (logger.isDebugEnabled()) logger.debug("Done.");
-  }
-
-  /**
-   * Runs the getConfig()-related authentication-independent tests.
-   * 
-   * @throws Exception
-   *           if there are problems.
-   */
-  private void getConfigCommonTest() throws Exception {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
-
-    // Bad Accept header content type.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, null, null, "lockss-u", "lockss-p",
-	HttpStatus.NOT_ACCEPTABLE);
-
-    // Bad Accept header content type.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON, null,
-	"lockss-u", "lockss-p", HttpStatus.NOT_ACCEPTABLE);
-
-    // Bad Accept header content type.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, null, "0", "lockss-u", "lockss-p",
-	HttpStatus.NOT_ACCEPTABLE);
-
-    // Bad Accept header content type.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON, "0",
-	"lockss-u", "lockss-p", HttpStatus.NOT_ACCEPTABLE);
-
-    // Not modified since creation.
-    getConfig(ConfigApi.SECTION_NAME_ALERT, MediaType.MULTIPART_FORM_DATA, "0",
-	"lockss-u", "lockss-p", HttpStatus.NOT_MODIFIED);
-
-    // No eTag.
-    TextMultipartResponse configOutput = getConfig(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, "lockss-u", "lockss-p",
-	HttpStatus.OK);
-
-    String lastModified = verifyMultipartResponse(configOutput,
-	MediaType.TEXT_XML, new ArrayList<String>());
-    assertEquals("0", lastModified);
-
-    // Not modified since last read.
-    getConfig(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, lastModified, "lockss-u", "lockss-p",
-	HttpStatus.NOT_MODIFIED);
-
-    // Bad section name.
-    getConfig("fakesectionname", null, null, "lockss-u", "lockss-p",
-	HttpStatus.BAD_REQUEST);
-
-    // Bad section name.
-    getConfig("fakesectionname", MediaType.MULTIPART_FORM_DATA, null,
-	"lockss-u", "lockss-p", HttpStatus.BAD_REQUEST);
-
-    // Bad section name.
-    getConfig("fakesectionname", MediaType.MULTIPART_FORM_DATA, "0",
-	"lockss-u", "lockss-p", HttpStatus.BAD_REQUEST);
-
-    // Cluster.
-    configOutput = getConfig(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, "lockss-u", "lockss-p",
-	HttpStatus.OK);
+    // Use defaults for all headers.
+    TextMultipartResponse configOutput = getConfigSection(
+	ConfigApi.SECTION_NAME_CLUSTER, null, null, null, null, HttpStatus.OK);
 
     List<String> expectedPayloads = new ArrayList<String>(1);
     expectedPayloads.add("<lockss-config>");
@@ -504,13 +347,223 @@ public class TestConfigApiController extends SpringLockssTestCase {
     expectedPayloads.add("</property>");
     expectedPayloads.add("</lockss-config>");
 
+    String lastModified = verifyMultipartResponse(configOutput,
+	MediaType.TEXT_XML, expectedPayloads);
+    assertEquals("0", lastModified);
+
+    // Bad Accept header content type.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, MediaType.APPLICATION_JSON,
+	null, null, null, HttpStatus.NOT_ACCEPTABLE);
+
+    // Good Accept header content type.
+    configOutput = getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, null, null, null, HttpStatus.OK);
+
     lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
+    assertEquals("0", lastModified);
+
+    // Bad Accept header content type.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, lastModified, null,
+	null, HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, MediaType.APPLICATION_JSON,
+	lastModified, null, null, HttpStatus.NOT_ACCEPTABLE);
+
+    // Not modified since last read.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, lastModified, null, null,
+	HttpStatus.NOT_MODIFIED);
+
+    // Bad Accept header content type.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, null, "fakeUser",
+	"fakePassword", HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, MediaType.APPLICATION_JSON,
+	null, "fakeUser", "fakePassword", HttpStatus.NOT_ACCEPTABLE);
+
+    // Good Accept header content type.
+    configOutput = getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, null, "fakeUser", "fakePassword",
+	HttpStatus.OK);
+
+    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
+	expectedPayloads);
+    assertEquals("0", lastModified);
+
+    // Bad Accept header content type.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, lastModified,
+	"fakeUser", "fakePassword", HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, MediaType.APPLICATION_JSON,
+	lastModified, "fakeUser", "fakePassword", HttpStatus.NOT_ACCEPTABLE);
+
+    // Not modified since last read.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, lastModified, "fakeUser", "fakePassword",
+	HttpStatus.NOT_MODIFIED);
+
+    getConfigSectionCommonTest();
+
+    if (logger.isDebugEnabled()) logger.debug("Done.");
+  }
+
+  /**
+   * Runs the getConfigSection()-related authenticated-specific tests.
+   * 
+   * @throws Exception
+   *           if there are problems.
+   */
+  private void getConfigSectionAuthenticatedTest() throws Exception {
+    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+
+    // Missing Accept header for UNAUTHORIZED response.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Missing credentials.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON,
+	null, null, null, HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, null, null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, null, "0", null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON,
+	"0", null, null, HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, "0", null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, null, "0", "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON,
+	"0", "fakeUser", "fakePassword", HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, "0", "fakeUser", "fakePassword",
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON,
+	null, "fakeUser", "fakePassword", HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, null, "fakeUser", "fakePassword",
+	HttpStatus.UNAUTHORIZED);
+
+    getConfigSectionCommonTest();
+
+    if (logger.isDebugEnabled()) logger.debug("Done.");
+  }
+
+  /**
+   * Runs the getConfigSection()-related authentication-independent tests.
+   * 
+   * @throws Exception
+   *           if there are problems.
+   */
+  private void getConfigSectionCommonTest() throws Exception {
+    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+
+    // Bad Accept header content type.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, "lockss-u",
+	"lockss-p", HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON,
+	null, "lockss-u", "lockss-p", HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, MediaType.APPLICATION_JSON,
+	"0", "lockss-u", "lockss-p", HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT, null, "0", "lockss-u",
+	"lockss-p", HttpStatus.NOT_ACCEPTABLE);
+
+    // Not found.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, null, "lockss-u", "lockss-p",
+	HttpStatus.NOT_FOUND);
+
+    // Not found.
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, "0", "lockss-u", "lockss-p",
+	HttpStatus.NOT_FOUND);
+
+    // Bad section name.
+    getConfigSection("fakesectionname", null, null, "lockss-u", "lockss-p",
+	HttpStatus.BAD_REQUEST);
+
+    // Bad section name.
+    getConfigSection("fakesectionname", MediaType.MULTIPART_FORM_DATA, null,
+	"lockss-u", "lockss-p", HttpStatus.BAD_REQUEST);
+
+    // Bad section name.
+    getConfigSection("fakesectionname", MediaType.MULTIPART_FORM_DATA, "0",
+	"lockss-u", "lockss-p", HttpStatus.BAD_REQUEST);
+
+    // Cluster.
+    TextMultipartResponse configOutput = getConfigSection(
+	ConfigApi.SECTION_NAME_CLUSTER, MediaType.MULTIPART_FORM_DATA, null,
+	"lockss-u", "lockss-p", HttpStatus.OK);
+
+    List<String> expectedPayloads = new ArrayList<String>(1);
+    expectedPayloads.add("<lockss-config>");
+    expectedPayloads.add("<property name=\"org.lockss.auxPropUrls\">");
+    expectedPayloads.add("<list append=\"false\">");
+    expectedPayloads.add("</list>");
+    expectedPayloads.add("</property>");
+    expectedPayloads.add("</lockss-config>");
+
+    String lastModified = verifyMultipartResponse(configOutput,
+	MediaType.TEXT_XML, expectedPayloads);
     assertTrue(Long.parseLong(lastModified) <= TimeBase.nowMs());
 
     // Not modified since last read.
-    getConfig(ConfigApi.SECTION_NAME_CLUSTER, MediaType.MULTIPART_FORM_DATA,
-	lastModified, "lockss-u", "lockss-p", HttpStatus.NOT_MODIFIED);
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, lastModified, "lockss-u", "lockss-p",
+	HttpStatus.NOT_MODIFIED);
+
+    // Not modified since creation.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, "0", "lockss-u", "lockss-p",
+	HttpStatus.NOT_MODIFIED);
+
+    // No eTag.
+    configOutput = getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, null, "lockss-u", "lockss-p",
+	HttpStatus.OK);
+
+    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
+	expectedPayloads);
+    assertEquals("0", lastModified);
+
+    // Not modified since last read.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, lastModified, "lockss-u", "lockss-p",
+	HttpStatus.NOT_MODIFIED);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -535,7 +588,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * @throws Exception
    *           if there are problems.
    */
-  private TextMultipartResponse getConfig(String snId,
+  private TextMultipartResponse getConfigSection(String snId,
       MediaType acceptContentType, String ifModifiedSince, String user,
       String password, HttpStatus expectedStatus) throws Exception {
     if (logger.isDebugEnabled()) {
@@ -689,6 +742,557 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     if (logger.isDebugEnabled()) logger.debug("lastModified = " + lastModified);
     return lastModified;
+  }
+
+  /**
+   * Runs the getConfigUrl()-related un-authenticated-specific tests.
+   * 
+   * @throws Exception
+   *           if there are problems.
+   */
+  private void getConfigUrlUnAuthenticatedTest() throws Exception {
+    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+
+    String url = "http://something";
+
+    // Use defaults for all headers.
+    getConfigUrl(url, null, null, null, null, HttpStatus.NOT_FOUND);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, "0", null, null, HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, "0", null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Good Accept header content type.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
+	HttpStatus.NOT_FOUND);
+
+    // Good Accept header content type.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "0", null,
+	HttpStatus.NOT_FOUND);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, null, "fakeUser", "fakePassword",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, "0", "fakeUser", "fakePassword",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, "fakeUser",
+	"fakePassword", HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, "0", "fakeUser",
+	"fakePassword", HttpStatus.NOT_ACCEPTABLE);
+
+    // Good Accept header content type.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "fakeUser",
+	"fakePassword", HttpStatus.NOT_FOUND);
+
+    // Good Accept header content type.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "fakeUser",
+	"fakePassword", HttpStatus.NOT_FOUND);
+
+    url = "http://localhost:12345";
+
+    // Use defaults for all headers.
+    getConfigUrl(url, null, null, null, null, HttpStatus.NOT_FOUND);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, "0", null, null, HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, "0", null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Good Accept header content type.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
+	HttpStatus.NOT_FOUND);
+
+    // Good Accept header content type.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "0", null,
+	HttpStatus.NOT_FOUND);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, null, "fakeUser", "fakePassword",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, "0", "fakeUser", "fakePassword",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, "fakeUser",
+	"fakePassword", HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, "0", "fakeUser",
+	"fakePassword", HttpStatus.NOT_ACCEPTABLE);
+
+    // Good Accept header content type.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "fakeUser",
+	"fakePassword", HttpStatus.NOT_FOUND);
+
+    // Good Accept header content type.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "fakeUser",
+	"fakePassword", HttpStatus.NOT_FOUND);
+
+    url = "http://example.com";
+
+    // Use defaults for all headers.
+    getConfigUrl(url, null, null, null, null, HttpStatus.OK);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, "0", null, null, HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, "0", null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Good Accept header content type.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
+	HttpStatus.OK);
+
+    // Good Accept header content type.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "0", null,
+	HttpStatus.OK);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, null, "fakeUser", "fakePassword",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, "0", "fakeUser", "fakePassword",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, "fakeUser",
+	"fakePassword", HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, "0", "fakeUser",
+	"fakePassword", HttpStatus.NOT_ACCEPTABLE);
+
+    // Good Accept header content type.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "fakeUser",
+	"fakePassword", HttpStatus.OK);
+
+    // Good Accept header content type.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "fakeUser",
+	"fakePassword", HttpStatus.NOT_MODIFIED);
+
+    getConfigUrlCommonTest();
+
+    if (logger.isDebugEnabled()) logger.debug("Done.");
+  }
+
+  /**
+   * Runs the getConfigUrl()-related authenticated-specific tests.
+   * 
+   * @throws Exception
+   *           if there are problems.
+   */
+  private void getConfigUrlAuthenticatedTest() throws Exception {
+    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+
+    String url = "http://something";
+
+    // Missing Accept header for UNAUTHORIZED response.
+    getConfigUrl(url, null, null, null, null, HttpStatus.NOT_ACCEPTABLE);
+
+    // Missing credentials.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigUrl(url, null, "0", null, null, HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, "0", null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, null, null, "fakeUser", "fakePassword",
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, null, "0", "fakeUser", "fakePassword",
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, "0", "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    url = "http://localhost:12345";
+
+    // Missing Accept header for UNAUTHORIZED response.
+    getConfigUrl(url, null, null, null, null, HttpStatus.NOT_ACCEPTABLE);
+
+    // Missing credentials.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigUrl(url, null, "0", null, null, HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, "0", null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, null, null, "fakeUser", "fakePassword",
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, null, "0", "fakeUser", "fakePassword",
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, "0", "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    url = "http://example.com";
+
+    // Missing Accept header for UNAUTHORIZED response.
+    getConfigUrl(url, null, null, null, null, HttpStatus.NOT_ACCEPTABLE);
+
+    // Missing credentials.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigUrl(url, null, "0", null, null, HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, "0", null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, null, null, "fakeUser", "fakePassword",
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, null, "0", "fakeUser", "fakePassword",
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, "0", "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "fakeUser",
+	"fakePassword", HttpStatus.UNAUTHORIZED);
+
+    getConfigUrlCommonTest();
+
+    if (logger.isDebugEnabled()) logger.debug("Done.");
+  }
+
+  /**
+   * Runs the getConfigUrl()-related authentication-independent tests.
+   * 
+   * @throws Exception
+   *           if there are problems.
+   */
+  private void getConfigUrlCommonTest() throws Exception {
+    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+
+    String url = "http://something";
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, null, "lockss-u", "lockss-p",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, "lockss-u", "lockss-p",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, "0", "lockss-u", "lockss-p",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, "0", "lockss-u", "lockss-p",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Not found.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "lockss-u",
+	"lockss-p", HttpStatus.NOT_FOUND);
+
+    // Not found.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "lockss-u",
+	"lockss-p", HttpStatus.NOT_FOUND);
+
+    url = "http://localhost:12345";
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, null, "lockss-u", "lockss-p",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, "lockss-u", "lockss-p",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, "0", "lockss-u", "lockss-p",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, "0", "lockss-u", "lockss-p",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Not found.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "lockss-u",
+	"lockss-p", HttpStatus.NOT_FOUND);
+
+    // Not found.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "lockss-u",
+	"lockss-p", HttpStatus.NOT_FOUND);
+
+    url = "http://example.com";
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, null, "lockss-u", "lockss-p",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, null, "lockss-u", "lockss-p",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, MediaType.APPLICATION_JSON, "0", "lockss-u", "lockss-p",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    getConfigUrl(url, null, "0", "lockss-u", "lockss-p",
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Not modified.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "lockss-u",
+	"lockss-p", HttpStatus.NOT_MODIFIED);
+
+    // Success.
+    TextMultipartResponse configOutput = getConfigUrl(url,
+	MediaType.MULTIPART_FORM_DATA, null, "lockss-u", "lockss-p",
+	HttpStatus.OK);
+
+    List<String> expectedPayloads = new ArrayList<String>(1);
+    expectedPayloads.add("<html>");
+    expectedPayloads.add("<head>");
+    expectedPayloads.add("<title>Example Domain</title>");
+    expectedPayloads.add("</head>");
+    expectedPayloads.add("<body>");
+    expectedPayloads.add("</body>");
+    expectedPayloads.add("</html>");
+
+    String lastModified = verifyMultipartResponse(configOutput,
+	MediaType.TEXT_PLAIN, expectedPayloads);
+    assertTrue(Long.parseLong(lastModified) <= TimeBase.nowMs());
+
+    // Not modified since last read.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, lastModified, "lockss-u",
+	"lockss-p", HttpStatus.NOT_MODIFIED);
+
+    // Not modified since creation.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "lockss-u",
+	"lockss-p", HttpStatus.NOT_MODIFIED);
+
+    // No eTag.
+    configOutput = getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
+	"lockss-u", "lockss-p", HttpStatus.OK);
+
+    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
+	expectedPayloads);
+    assertEquals("0", lastModified);
+
+    // Not modified since last read.
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, lastModified, "lockss-u",
+	"lockss-p", HttpStatus.NOT_MODIFIED);
+
+    if (logger.isDebugEnabled()) logger.debug("Done.");
+  }
+
+  /**
+   * Performs a GET operation for a configuration URL.
+   * 
+   * @param url
+   *          A String with the configuration URL.
+   * @param acceptContentType
+   *          A MediaType with the content type to be added to the request
+   *          "Accept" header.
+   * @param ifModifiedSince
+   *          A String with the timestamp to be specified in the request eTag.
+   * @param user
+   *          A String with the request username.
+   * @param password
+   *          A String with the request password.
+   * @param expectedStatus
+   *          An HttpStatus with the HTTP status of the result.
+   * @return a TextMultipartResponse with the multipart response.
+   * @throws Exception
+   *           if there are problems.
+   */
+  private TextMultipartResponse getConfigUrl(String url,
+      MediaType acceptContentType, String ifModifiedSince, String user,
+      String password, HttpStatus expectedStatus) throws Exception {
+    if (logger.isDebugEnabled()) {
+      logger.debug("url = " + url);
+      logger.debug("acceptContentType = " + acceptContentType);
+      logger.debug("ifModifiedSince = " + ifModifiedSince);
+      logger.debug("user = " + user);
+      logger.debug("password = " + password);
+      logger.debug("expectedStatus = " + expectedStatus);
+    }
+
+    // Get the test URL template.
+    String template = getTestUrlTemplate("/config/url");
+
+    // Create the URI of the request to the REST service.
+    URI uri = UriComponentsBuilder.fromUriString(template)
+	.queryParam("url", url).build().encode().toUri();
+
+    // Initialize the request to the REST service.
+    RestTemplate restTemplate = new RestTemplate();
+
+    // Set the multipart/form-data converter as the only one.
+    List<HttpMessageConverter<?>> messageConverters =
+	new ArrayList<HttpMessageConverter<?>>();
+    messageConverters.add(new MimeMultipartHttpMessageConverter());
+    restTemplate.setMessageConverters(messageConverters);
+
+    HttpEntity<String> requestEntity = null;
+
+    // Check whether there are any custom headers to be specified in the
+    // request.
+    if (acceptContentType != null || ifModifiedSince != null
+	|| user != null || password != null) {
+      // Yes: Initialize the request headers.
+      HttpHeaders headers = new HttpHeaders();
+
+      // Check whether there is a custom "Accept" header.
+      if (acceptContentType != null) {
+	// Yes: Set it.
+	headers.setAccept(Arrays.asList(acceptContentType,
+	    MediaType.APPLICATION_JSON));
+      } else {
+	// No: Set it to accept errors at least.
+	headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+      }
+
+      // Check whether there is a custom eTag.
+      if (ifModifiedSince != null) {
+	// Yes: Set it.
+	headers.setETag("\"" + ifModifiedSince + "\"");
+      }
+
+      // Check whether there are credentials to be sent with the request.
+      if (user != null && password != null) {
+	// Yes: Set the authentication credentials.
+	String credentials = user + ":" + password;
+	String authHeaderValue = "Basic " + Base64.getEncoder()
+	.encodeToString(credentials.getBytes(Charset.forName("US-ASCII")));
+	headers.set("Authorization", authHeaderValue);
+      }
+
+      if (logger.isDebugEnabled())
+	logger.debug("requestHeaders = " + headers.toSingleValueMap());
+
+      // Create the request entity.
+      requestEntity = new HttpEntity<String>(null, headers);
+    }
+
+    // Make the request and get the response. 
+    ResponseEntity<MimeMultipart> response = new TestRestTemplate(restTemplate)
+	.exchange(uri, HttpMethod.GET, requestEntity, MimeMultipart.class);
+
+    // Get the response status.
+    HttpStatus statusCode = response.getStatusCode();
+    assertEquals(expectedStatus, statusCode);
+
+    TextMultipartResponse parsedResponse = null;
+
+    // Check whether it is a success response.
+    if (response.getStatusCodeValue() < HttpStatus.MULTIPLE_CHOICES.value()) {
+      // Yes: Parse it.
+      parsedResponse = new TextMultipartResponse(response);
+    }
+
+    // Return the parsed response.
+    if (logger.isDebugEnabled())
+      logger.debug("parsedResponse = " + parsedResponse);
+    return parsedResponse;
   }
 
   /**
@@ -1033,9 +1637,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
     putConfig("a1=b1", ConfigApi.SECTION_NAME_PLUGIN, null, "0", null, null,
 	HttpStatus.OK);
 
-    TextMultipartResponse configOutput =
-	getConfig(ConfigApi.SECTION_NAME_PLUGIN, MediaType.MULTIPART_FORM_DATA,
-	    "0", "lockss-u", "lockss-p", HttpStatus.OK);
+    TextMultipartResponse configOutput = getConfigSection(
+	ConfigApi.SECTION_NAME_PLUGIN, MediaType.MULTIPART_FORM_DATA, "0",
+	"lockss-u", "lockss-p", HttpStatus.OK);
 
     // Time after write.
     long afterWrite = TimeBase.nowMs();
@@ -1060,7 +1664,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     putConfig("a2=b2", ConfigApi.SECTION_NAME_PLUGIN, null, lastModified,
 	"fakeUser", "fakePassword", HttpStatus.OK);
 
-    configOutput = getConfig(ConfigApi.SECTION_NAME_PLUGIN,
+    configOutput = getConfigSection(ConfigApi.SECTION_NAME_PLUGIN,
 	MediaType.MULTIPART_FORM_DATA, lastModified, "lockss-u", "lockss-p",
 	HttpStatus.OK);
 
@@ -1216,12 +1820,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	HttpStatus.OK);
 
     // Bad Accept header content type.
-    getConfig(ConfigApi.SECTION_NAME_EXPERT, null, "0", "lockss-u", "lockss-p",
-	HttpStatus.NOT_ACCEPTABLE);
+    getConfigSection(ConfigApi.SECTION_NAME_EXPERT, null, "0", "lockss-u",
+	"lockss-p", HttpStatus.NOT_ACCEPTABLE);
 
-    TextMultipartResponse configOutput =
-	getConfig(ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA,
-	    "0", "lockss-u", "lockss-p", HttpStatus.OK);
+    TextMultipartResponse configOutput = getConfigSection(
+	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, "0",
+	"lockss-u", "lockss-p", HttpStatus.OK);
 
     // Time after write.
     long afterWrite = TimeBase.nowMs();
@@ -1248,7 +1852,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA,
 	lastModified, "lockss-u", "lockss-p", HttpStatus.OK);
 
-    configOutput = getConfig(ConfigApi.SECTION_NAME_EXPERT,
+    configOutput = getConfigSection(ConfigApi.SECTION_NAME_EXPERT,
 	MediaType.MULTIPART_FORM_DATA, lastModified, "lockss-u", "lockss-p",
 	HttpStatus.OK);
 

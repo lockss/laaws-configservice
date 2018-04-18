@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017-2108 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -95,6 +95,8 @@ public interface ConfigApi extends SpringLockssBaseApi {
       response = MultiValueMap.class),
       @ApiResponse(code = 401, message = "Unauthorized",
       response = MultiValueMap.class),
+      @ApiResponse(code = 404, message = "Not Found",
+      response = MultiValueMap.class),
       @ApiResponse(code = 406, message = "Not Acceptable",
       response = MultiValueMap.class),
       @ApiResponse(code = 500, message = "Internal server error",
@@ -141,6 +143,8 @@ public interface ConfigApi extends SpringLockssBaseApi {
       response = MultiValueMap.class),
       @ApiResponse(code = 401, message = "Unauthorized",
       response = MultiValueMap.class),
+      @ApiResponse(code = 404, message = "Not Found",
+      response = MultiValueMap.class),
       @ApiResponse(code = 406, message = "Not Acceptable",
       response = MultiValueMap.class),
       @ApiResponse(code = 500, message = "Internal server error",
@@ -148,13 +152,13 @@ public interface ConfigApi extends SpringLockssBaseApi {
       @ApiResponse(code = 503,
       message = "Some or all of the system is not available",
       response = MultiValueMap.class) })
-  @RequestMapping(value = "/config/url/{url}",
+  @RequestMapping(value = "/config/url",
   produces = { "multipart/form-data", "application/json" },
   method = RequestMethod.GET)
   default ResponseEntity<?> getUrlConfig(
       @ApiParam(value =
       "The URL for which the configuration is requested",
-      required=true) @PathVariable("url") String url,
+      required=true) @RequestParam("url") String url,
       @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
       @RequestHeader(value=HttpHeaders.ETAG, required=false) String eTag) {
     return new ResponseEntity<MultiValueMap<String, Object>>(

@@ -33,8 +33,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.lang.reflect.MalformedParametersException;
+import java.net.ConnectException;
+import java.net.UnknownHostException;
 import java.security.AccessControlException;
 import java.util.Date;
 import java.util.HashMap;
@@ -67,7 +68,6 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.util.UriUtils;
 
 /**
  * Controller for access to the system configuration.
@@ -178,7 +178,10 @@ implements ConfigApi {
 	if (log.isDebugEnabled())
 	  log.debug("partContent = '" + partContent + "'");
       } catch (FileNotFoundException fnfe) {
-	partContent = "";
+	String message =
+	    "Can't get the content for sectionName '" + sectionName + "'";
+	log.error(message, fnfe);
+	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
       } catch (IOException ioe) {
 	String message = "Can't get the content for URL '" + sectionUrl + "'";
 	log.error(message, ioe);
@@ -249,11 +252,11 @@ implements ConfigApi {
    *         section configuration file.
    */
   @Override
-  @RequestMapping(value = "/config/url/{url}",
+  @RequestMapping(value = "/config/url",
   produces = { "multipart/form-data", "application/json" },
   method = RequestMethod.GET)
   public ResponseEntity<?> getUrlConfig(
-      @PathVariable("url") String url,
+      @RequestParam("url") String url,
       @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
       @RequestHeader(value=HttpHeaders.ETAG, required=false) String eTag) {
     if (log.isDebugEnabled()) {
@@ -261,8 +264,6 @@ implements ConfigApi {
       log.debug("accept = " + accept);
       log.debug("eTag = " + eTag);
     }
-
-    String decodedUrl = null;
 
     try {
       // Check whether the request did not specify the appropriate "Accept"
@@ -275,9 +276,6 @@ implements ConfigApi {
 	return new ResponseEntity<String>(message, HttpStatus.NOT_ACCEPTABLE);
       }
 
-      decodedUrl = UriUtils.decode(url, "UTF-8");
-      if (log.isDebugEnabled()) log.debug("decodedUrl = " + decodedUrl);
-
       ConfigManager configManager = getConfigManager();
       String lastModified = null;
       HttpHeaders partHeaders = new HttpHeaders();
@@ -287,14 +285,24 @@ implements ConfigApi {
       String partContent = null;
 
       try {
-	is = configManager.getCacheConfigFileInputStream(decodedUrl);
+	is = configManager.getCacheConfigFileInputStream(url);
 	partContent = StringUtil.fromInputStream(is);
 	if (log.isDebugEnabled())
 	  log.debug("partContent = '" + partContent + "'");
       } catch (FileNotFoundException fnfe) {
-	partContent = "";
+	String message = "Can't get the content for url '" + url + "'";
+	log.error(message, fnfe);
+	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
+      } catch (UnknownHostException uhe) {
+	String message = "Can't get the content for url '" + url + "'";
+	log.error(message, uhe);
+	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
+      } catch (ConnectException ce) {
+	String message = "Can't get the content for url '" + url + "'";
+	log.error(message, ce);
+	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
       } catch (IOException ioe) {
-	String message = "Can't get the content for URL '" + decodedUrl + "'";
+	String message = "Can't get the content for URL '" + url + "'";
 	log.error(message, ioe);
 	return new ResponseEntity<String>(message,
 	    HttpStatus.INTERNAL_SERVER_ERROR);
@@ -303,7 +311,7 @@ implements ConfigApi {
       }
 
       // Get the file last modification timestamp.
-      lastModified = getConfigFileLastModifiedAsEtag(decodedUrl);
+      lastModified = getConfigFileLastModifiedAsEtag(url);
       if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
 
       // Check whether the modification timestamp matches the passed eTag.
@@ -318,7 +326,7 @@ implements ConfigApi {
       if (log.isDebugEnabled()) log.debug("partHeaders = " + partHeaders);
 
       // Set the returned content type.
-      if (decodedUrl.toLowerCase().endsWith(".xml")) {
+      if (url.toLowerCase().endsWith(".xml")) {
 	partHeaders.setContentType(MediaType.TEXT_XML);
       } else {
 	partHeaders.setContentType(MediaType.TEXT_PLAIN);
@@ -340,10 +348,6 @@ implements ConfigApi {
 
       return new ResponseEntity<MultiValueMap<String, Object>>(parts,
 	  responseHeaders, HttpStatus.OK);
-    } catch (UnsupportedEncodingException uee) {
-      String message = "Cannot decode url = '" + url + "'";
-      log.error(message, uee);
-      throw new MalformedParametersException(message);
     } catch (Exception e) {
       String message = "Cannot getUrlConfig() for url = '" + url + "'";
       log.error(message, e);

@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,10 +28,12 @@
 package org.lockss.laaws.config.client;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Collections;
-import org.lockss.laaws.config.model.ConfigExchange;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -50,7 +52,7 @@ public class GetConfigSnidClient extends BaseClient {
 	  + "of the section for which its configuration is to be retrieved.");
     }
 
-    String template = baseUri + "/config/{snid}";
+    String template = baseUri + "/config/file/{snid}";
 
     // Create the URI of the request to the REST service.
     UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
@@ -61,13 +63,17 @@ public class GetConfigSnidClient extends BaseClient {
 	.build().encode().toUri();
     System.out.println("uri = " + uri);
 
-    ResponseEntity<ConfigExchange> response = getRestTemplate().exchange(uri,
-	HttpMethod.GET, new HttpEntity<String>(null, getHttpHeaders()),
-	ConfigExchange.class);
+    HttpHeaders headers = getHttpHeaders();
+    headers.setAccept(Arrays.asList(MediaType.MULTIPART_FORM_DATA,
+	    MediaType.APPLICATION_JSON));
+
+    ResponseEntity<String> response = getRestTemplate().exchange(uri,
+	HttpMethod.GET, new HttpEntity<String>(null, headers),
+	String.class);
 
     int status = response.getStatusCodeValue();
     System.out.println("status = " + status);
-    ConfigExchange result = response.getBody();
+    String result = response.getBody();
     System.out.println("result = " + result);
   }
 }
