@@ -50,7 +50,7 @@ import org.lockss.config.CurrentConfig;
 import org.lockss.daemon.Cron;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
-import org.lockss.spring.status.ApiStatus;
+import org.lockss.laaws.status.model.ApiStatus;
 import org.lockss.spring.status.SpringLockssBaseApiController;
 import org.lockss.util.IOUtil;
 import org.lockss.util.StringUtil;
