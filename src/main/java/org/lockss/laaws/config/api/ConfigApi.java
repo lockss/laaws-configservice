@@ -35,7 +35,7 @@ import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Authorization;
 import java.util.Date;
 import java.util.List;
-import org.lockss.rs.status.SpringLockssBaseApi;
+import org.lockss.spring.status.SpringLockssBaseApi;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
