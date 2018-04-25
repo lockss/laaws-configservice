@@ -22,4 +22,4 @@
 # be used in advertising or otherwise to promote the sale, use or other dealings
 # in this Software without prior written authorization from Stanford University.
 #
-mvn spring-boot:run -Drun.arguments="-p,config/common.xml,-x,tdbxml/prod,-p,config/lockss.txt,-p,config/lockss.opt"
+mvn spring-boot:run -Drun.arguments="-l,config/common.xml,-x,tdbxml/prod,-p,config/lockss.txt,-p,config/lockss.opt"

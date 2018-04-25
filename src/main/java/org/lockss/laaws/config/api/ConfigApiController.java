@@ -588,9 +588,7 @@ implements ConfigApi {
     if (configReadOnlySectionMap == null) {
       configReadOnlySectionMap = new HashMap<String, String>();
 
-      configReadOnlySectionMap.put(SECTION_NAME_CLUSTER, "cluster.xml");
-      configReadOnlySectionMap.put(SECTION_NAME_PROPSLOCKSS,
-	  CurrentConfig.getCurrentConfig().get(PARAM_PROPS_LOCKSS_XML_URL));
+      configReadOnlySectionMap.put(SECTION_NAME_CLUSTER, "dyn:cluster.xml");
 
       if (log.isDebugEnabled())
 	log.debug("configReadOnlySectionMap = " + configReadOnlySectionMap);
