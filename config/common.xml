@@ -69,6 +69,11 @@ in this Software without prior written authorization from Stanford University.
   <!-- enclosing "org.lockss" so we don't have to repeat it -->
   <property name="org.lockss">
 
+    <!-- Setup config-changed notifications -->
+    <property name="jms.broker.uri" value="tcp://localhost:61616"/>
+    <property name="jms.connect.failover" value="true"/>
+    <property name="config.enableJmsNotifications" value="true"/>
+
     <!-- Try to get a thread dump if a thread hangs -->
     <property name="thread.hungThreadDump" value="true"/>
 

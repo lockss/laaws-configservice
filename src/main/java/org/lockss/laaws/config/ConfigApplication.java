@@ -86,6 +86,7 @@ public class ConfigApplication extends BaseSpringBootApplication
       AppSpec spec = new AppSpec()
 	.setName("Config Service")
 	.setArgs(args)
+        .addAppConfig(org.lockss.jms.JMSManager.PARAM_START_BROKER, "true")
 	.setAppManagers(myManagerDescs);
       LockssApp.startStatic(LockssDaemon.class, spec);
     } else {
