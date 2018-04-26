@@ -40,20 +40,21 @@ The LAAWS Configuration REST Web Service.
 
 ### Set up the TDB tree:
 The TDB tree needs to be located at `./tdbxml/prod`, matching the definition
-in `./runLaawsConfig`.
+in `./scripts/runService`.
 
 ### Build the web service:
-`./buildLaawsConfig`
+`./scripts/buildService`
 
 This will run the tests as a pre-requisite for the build.
 
 The result of the build is a so-called "uber JAR" file which includes the
-project code plus all its dependencies and which is located at
+project code plus all its dependencies and which can be located via the symbolic
+link at
 
-`./target/laaws-configuration-service-*.jar`
+`./target/current.jar`
 
 ### Run the web service:
-`./runLaawsConfig`
+`./scripts/runService`
 
 This will use port 54420. To use another port, edit the value of the
 `server.port` property in file
@@ -62,7 +63,7 @@ This will use port 54420. To use another port, edit the value of the
 The log is at `./logs/config.log`
 
 ### Build and run the web service:
-`./buildAndRunLaawsConfig`
+`./scripts/buildAndRunService`
 
 This will use port 54420. To use another port, edit the value of the
 `server.port` property in file
@@ -73,6 +74,3 @@ This will use port 54420. To use another port, edit the value of the
 
 ### The status of the web service may be obtained at:
 #### http://localhost:54420/status
-
-### Stop the web service:
-`./stopLaawsConfig`
