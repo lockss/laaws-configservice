@@ -46,7 +46,6 @@ import org.lockss.alert.AlertManagerImpl;
 import org.lockss.app.LockssApp;
 import org.lockss.config.ConfigFile;
 import org.lockss.config.ConfigManager;
-import org.lockss.config.CurrentConfig;
 import org.lockss.daemon.Cron;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
