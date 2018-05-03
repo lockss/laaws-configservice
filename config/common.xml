@@ -72,13 +72,26 @@ in this Software without prior written authorization from Stanford University.
     <!-- Setup config-changed notifications -->
     <property name="jms.broker.uri" value="tcp://localhost:61616"/>
     <property name="jms.connect.failover" value="true"/>
-    <property name="config.enableJmsNotifications" value="true"/>
+    <property name="config.jms.enable" value="true"/>
+    <property name="plugin.jms.enable" value="true"/>
+
+    <property name="repository.v2Repository"
+	      value="rest:demo:http://localhost:32640"/>
+<!--     <property name="repository.v2Repository" -->
+<!-- 	      value="local:demo:/var/tmp/drepo"/> -->
+
 
     <!-- Try to get a thread dump if a thread hangs -->
     <property name="thread.hungThreadDump" value="true"/>
 
     <!-- Allow backup files up to 1MB to be uploaded -->
     <property name="ui.maxUploadFileSize" value="1048576" />
+
+    <property name="plugin.registries">
+      <list>
+	<value>http://props.lockss.org:8001/content-testing/plugins/</value>
+      </list>
+    </property>
 
     <!-- Automatically load (list in the UI) plugins named .*Plugin in these
 	 jars -->
