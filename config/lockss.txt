@@ -71,7 +71,7 @@ org.lockss.baseau.minFetchDelay=3000
 org.lockss.plugin.restartAusWithNewPlugin=true
 
 # Disable crawler, poller and voter
-org.lockss.crawler.enabled=false
+org.lockss.crawler.enabled=true
 org.lockss.poll.v3.enableV3Poller=false
 org.lockss.poll.v3.enableV3Voter=false
 
