@@ -28,6 +28,7 @@
 package org.lockss.laaws.config.api;
 
 import static org.lockss.config.ConfigManager.*;
+import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
 import io.swagger.annotations.ApiParam;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -106,9 +107,10 @@ implements ConfigApi {
    *          A String with the section name.
    * @param accept
    *          A String with the value of the "Accept" request header.
-   * @param eTag
+   * @param ifNoneMatch
    *          A String with a value equivalent to the "If-Modified-Since"
-   *          request header but with a granularity of 1 ms.
+   *          request header but with a granularity of 1 ms to be received in
+   *          the If-None-Match header.
    * @return a {@code ResponseEntity<MultiValueMap<String, Object>>} with the
    *         section configuration file contents.
    */
@@ -119,11 +121,12 @@ implements ConfigApi {
   public ResponseEntity<?> getSectionConfig(
       @PathVariable("sectionName") String sectionName,
       @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
-      @RequestHeader(value=HttpHeaders.ETAG, required=false) String eTag) {
+      @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
+      String ifNoneMatch) {
     if (log.isDebugEnabled()) {
       log.debug("sectionName = " + sectionName);
       log.debug("accept = " + accept);
-      log.debug("eTag = " + eTag);
+      log.debug("ifNoneMatch = " + ifNoneMatch);
     }
 
     try {
@@ -150,8 +153,6 @@ implements ConfigApi {
       }
 
       ConfigManager configManager = getConfigManager();
-      String lastModified = null;
-      HttpHeaders partHeaders = new HttpHeaders();
 
       // Try to get the name of the read-only configuration file to be returned.
       String sectionUrl =
@@ -190,44 +191,8 @@ implements ConfigApi {
 	IOUtil.safeClose(is);
       }
 
-      // Get the file last modification timestamp.
-      lastModified = getConfigFileLastModifiedAsEtag(sectionUrl);
-      if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
-
-      // Check whether the modification timestamp matches the passed eTag.
-      if (eTag != null && eTag.equals(lastModified)) {
-	// Yes: Return.
-	return new ResponseEntity<MultiValueMap<String, Object>>(null, null,
-	    HttpStatus.NOT_MODIFIED);
-      }
-
-      // Save the file last modification timestamp in the response.
-      partHeaders.setETag(lastModified);
-      if (log.isDebugEnabled()) log.debug("partHeaders = " + partHeaders);
-
-      // Set the returned content type.
-      if (sectionUrl.toLowerCase().endsWith(".xml")) {
-	partHeaders.setContentType(MediaType.TEXT_XML);
-      } else {
-	partHeaders.setContentType(MediaType.TEXT_PLAIN);
-      }
-
-      // Build the response entity.
-      MultiValueMap<String, Object> parts =
-	  new LinkedMultiValueMap<String, Object>();
-
-      parts.add("config-data",
-	  new HttpEntity<String>(partContent, partHeaders));
-      if (log.isDebugEnabled()) log.debug("parts = " + parts);
-
-      // Specify the response content type.
-      HttpHeaders responseHeaders = new HttpHeaders();
-      responseHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
-      if (log.isDebugEnabled())
-	log.debug("responseHeaders = " + responseHeaders);
-
-      return new ResponseEntity<MultiValueMap<String, Object>>(parts,
-	  responseHeaders, HttpStatus.OK);
+      // Build and return the response.
+      return buildGetUrlResponse(sectionUrl, ifNoneMatch, partContent);
     } catch (Exception e) {
       String message =
 	  "Cannot getSectionConfig() for sectionName = '" + sectionName + "'";
@@ -244,9 +209,10 @@ implements ConfigApi {
    *          A String with the url.
    * @param accept
    *          A String with the value of the "Accept" request header.
-   * @param eTag
+   * @param ifNoneMatch
    *          A String with a value equivalent to the "If-Modified-Since"
-   *          request header but with a granularity of 1 ms.
+   *          request header but with a granularity of 1 ms to be received in
+   *          the If-None-Match header.
    * @return a {@code ResponseEntity<MultiValueMap<String, Object>>} with the
    *         section configuration file.
    */
@@ -257,11 +223,12 @@ implements ConfigApi {
   public ResponseEntity<?> getUrlConfig(
       @RequestParam("url") String url,
       @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
-      @RequestHeader(value=HttpHeaders.ETAG, required=false) String eTag) {
+      @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
+      String ifNoneMatch) {
     if (log.isDebugEnabled()) {
       log.debug("url = " + url);
       log.debug("accept = " + accept);
-      log.debug("eTag = " + eTag);
+      log.debug("ifNoneMatch = " + ifNoneMatch);
     }
 
     try {
@@ -275,16 +242,12 @@ implements ConfigApi {
 	return new ResponseEntity<String>(message, HttpStatus.NOT_ACCEPTABLE);
       }
 
-      ConfigManager configManager = getConfigManager();
-      String lastModified = null;
-      HttpHeaders partHeaders = new HttpHeaders();
-
       // Read the file.
       InputStream is = null;
       String partContent = null;
 
       try {
-	is = configManager.getCacheConfigFileInputStream(url);
+	is = getConfigManager().getCacheConfigFileInputStream(url);
 	partContent = StringUtil.fromInputStream(is);
 	if (log.isDebugEnabled())
 	  log.debug("partContent = '" + partContent + "'");
@@ -309,44 +272,8 @@ implements ConfigApi {
 	IOUtil.safeClose(is);
       }
 
-      // Get the file last modification timestamp.
-      lastModified = getConfigFileLastModifiedAsEtag(url);
-      if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
-
-      // Check whether the modification timestamp matches the passed eTag.
-      if (eTag != null && eTag.equals(lastModified)) {
-	// Yes: Return.
-	return new ResponseEntity<MultiValueMap<String, Object>>(null, null,
-	    HttpStatus.NOT_MODIFIED);
-      }
-
-      // Save the file last modification timestamp in the response.
-      partHeaders.setETag(lastModified);
-      if (log.isDebugEnabled()) log.debug("partHeaders = " + partHeaders);
-
-      // Set the returned content type.
-      if (url.toLowerCase().endsWith(".xml")) {
-	partHeaders.setContentType(MediaType.TEXT_XML);
-      } else {
-	partHeaders.setContentType(MediaType.TEXT_PLAIN);
-      }
-
-      // Build the response entity.
-      MultiValueMap<String, Object> parts =
-	  new LinkedMultiValueMap<String, Object>();
-
-      parts.add("config-data",
-	  new HttpEntity<String>(partContent, partHeaders));
-      if (log.isDebugEnabled()) log.debug("parts = " + parts);
-
-      // Specify the response content type.
-      HttpHeaders responseHeaders = new HttpHeaders();
-      responseHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
-      if (log.isDebugEnabled())
-	log.debug("responseHeaders = " + responseHeaders);
-
-      return new ResponseEntity<MultiValueMap<String, Object>>(parts,
-	  responseHeaders, HttpStatus.OK);
+      // Build and return the response.
+      return buildGetUrlResponse(url, ifNoneMatch, partContent);
     } catch (Exception e) {
       String message = "Cannot getUrlConfig() for url = '" + url + "'";
       log.error(message, e);
@@ -412,9 +339,10 @@ implements ConfigApi {
    *          A String with the section name.
    * @param configFile
    *          A MultipartFile with the configuration file to be stored.
-   * @param eTag
+   * @param ifMatch
    *          A String with a value equivalent to the "If-Unmodified-Since"
-   *          request header but with a granularity of 1 ms.
+   *          request header but with a granularity of 1 ms to be received in
+   *          the If-Match header.
    * @return a {@code ResponseEntity<Void>}.
    */
   @Override
@@ -425,11 +353,12 @@ implements ConfigApi {
       @PathVariable("sectionName") String sectionName,
       @ApiParam(required=true) @RequestParam("config-data") MultipartFile
       configFile,
-      @RequestHeader(value=HttpHeaders.ETAG, required=true) String eTag) {
+      @RequestHeader(value=HttpHeaders.IF_MATCH, required=true) String ifMatch)
+  {
     if (log.isDebugEnabled()) {
       log.debug("sectionName = " + sectionName);
       log.debug("configFile = " + configFile);
-      log.debug("eTag = " + eTag);
+      log.debug("ifMatch = " + ifMatch);
     }
 
     // Check authorization.
@@ -465,25 +394,33 @@ implements ConfigApi {
       String sectionUrl = configWritableSectionMap.get(canonicalSectionName);
       if (log.isDebugEnabled()) log.debug("sectionUrl = " + sectionUrl);
 
+      String filename =
+	  new File(configManager.getCacheConfigDir(), sectionUrl).toString();
+      if (log.isDebugEnabled()) log.debug("filename = " + filename);
+
       // Check whether the file has been modified since the passed cutoff
       // timestamp.
-      if (!eTag.equals(getConfigFileLastModifiedAsEtag(
-	  new File(configManager.getCacheConfigDir(), sectionUrl).toString())))
-      {
-	// Yes: Return.
+      if (!"*".equals(ifMatch)
+	  && !ifMatch.equals(getConfigFileLastModifiedAsEtag(filename))) {
+	// Yes: Return the error.
 	return new ResponseEntity<Void>(HttpStatus.PRECONDITION_FAILED);
       }
 
-      // Write the file.
+      // No: Write the file.
       String textToWrite =
 	  StringUtil.fromInputStream(configFile.getInputStream());
       if (log.isDebugEnabled())
 	log.debug("textToWrite = '" + textToWrite + "'");
 
-      configManager.writeCacheConfigFile(textToWrite, sectionUrl,
-	  false);
+      configManager.writeCacheConfigFile(textToWrite, sectionUrl, false);
 
-      return new ResponseEntity<Void>(HttpStatus.OK);
+      // Return the new file last modification timestamp in the response.
+      HttpHeaders responseHeaders = new HttpHeaders();
+      responseHeaders.setETag(getConfigFileLastModifiedAsEtag(filename));
+      if (log.isDebugEnabled())
+	log.debug("responseHeaders = " + responseHeaders);
+
+      return new ResponseEntity<Void>(null, responseHeaders, HttpStatus.OK);
     } catch (Exception e) {
       String message = "Cannot putConfig() for sectionName = '" + sectionName
 	  + "', configFile = '" + configFile + "'";
@@ -603,6 +540,65 @@ implements ConfigApi {
    */
   private ConfigManager getConfigManager() {
     return ConfigManager.getConfigManager();
+  }
+
+  /**
+   * Provides the response for a request to get the content at a URL.
+   * 
+   * @param url
+   *          A String with the URL where to get the content.
+   * @param ifNoneMatch
+   *          A String with a value equivalent to the "If-Modified-Since"
+   *          request header but with a granularity of 1 ms to be received in
+   *          the If-None-Match header.
+   * @param partContent
+   *          A String with the content of the part to be included in the
+   *          response.
+   * @return a ResponseEntity<MultiValueMap<String, Object>> with the response
+   *         for the request to get the content at a URL.
+   */
+  private ResponseEntity<MultiValueMap<String, Object>> buildGetUrlResponse(
+      String url, String ifNoneMatch, String partContent) {
+    // Get the file last modification timestamp.
+    String lastModified = getConfigFileLastModifiedAsEtag(url);
+    if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
+
+    // Check whether the modification timestamp matches the passed If-None-Match
+    // header.
+    if (ifNoneMatch != null && !ifNoneMatch.equals("*")
+	&& ifNoneMatch.equals(lastModified)) {
+	// Yes: Return no content, just a status.
+	return new ResponseEntity<MultiValueMap<String, Object>>(null, null,
+	    HttpStatus.NOT_MODIFIED);
+    }
+
+    // Save the content last modification timestamp in the response.
+    HttpHeaders partHeaders = new HttpHeaders();
+    partHeaders.setETag(lastModified);
+    if (log.isDebugEnabled()) log.debug("partHeaders = " + partHeaders);
+
+    // Set the returned content type.
+    if (url.toLowerCase().endsWith(".xml")) {
+	partHeaders.setContentType(MediaType.TEXT_XML);
+    } else {
+	partHeaders.setContentType(MediaType.TEXT_PLAIN);
+    }
+
+    // Build the response entity.
+    MultiValueMap<String, Object> parts =
+	new LinkedMultiValueMap<String, Object>();
+
+    parts.add(CONFIG_PART_NAME,
+	new HttpEntity<String>(partContent, partHeaders));
+    if (log.isDebugEnabled()) log.debug("parts = " + parts);
+
+    // Specify the response content type.
+    HttpHeaders responseHeaders = new HttpHeaders();
+    responseHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+    if (log.isDebugEnabled()) log.debug("responseHeaders = " + responseHeaders);
+
+    return new ResponseEntity<MultiValueMap<String, Object>>(parts,
+	  responseHeaders, HttpStatus.OK);
   }
 
   /**

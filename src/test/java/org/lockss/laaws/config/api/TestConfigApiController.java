@@ -27,6 +27,7 @@
  */
 package org.lockss.laaws.config.api;
 
+import static org.lockss.config.RestConfigClient.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
@@ -350,9 +351,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
     expectedPayloads.add("</property>");
     expectedPayloads.add("</lockss-config>");
 
-    String lastModified = verifyMultipartResponse(configOutput,
-	MediaType.TEXT_XML, expectedPayloads);
-    assertEquals("0", lastModified);
+    String etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
+	expectedPayloads);
+    assertEquals("0", etag);
 
     // Bad Accept header content type.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, MediaType.APPLICATION_JSON,
@@ -362,21 +363,21 @@ public class TestConfigApiController extends SpringLockssTestCase {
     configOutput = getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
 	MediaType.MULTIPART_FORM_DATA, null, null, null, HttpStatus.OK);
 
-    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
+    etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
-    assertEquals("0", lastModified);
+    assertEquals("0", etag);
 
     // Bad Accept header content type.
-    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, lastModified, null,
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, etag, null,
 	null, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, MediaType.APPLICATION_JSON,
-	lastModified, null, null, HttpStatus.NOT_ACCEPTABLE);
+	etag, null, null, HttpStatus.NOT_ACCEPTABLE);
 
     // Not modified since last read.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, lastModified, null, null,
+	MediaType.MULTIPART_FORM_DATA, etag, null, null,
 	HttpStatus.NOT_MODIFIED);
 
     // Bad Accept header content type.
@@ -392,45 +393,46 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	MediaType.MULTIPART_FORM_DATA, null, "fakeUser", "fakePassword",
 	HttpStatus.OK);
 
-    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
+    etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
-    assertEquals("0", lastModified);
+    assertEquals("0", etag);
 
     // Bad Accept header content type.
-    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, lastModified,
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, etag,
 	"fakeUser", "fakePassword", HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, MediaType.APPLICATION_JSON,
-	lastModified, "fakeUser", "fakePassword", HttpStatus.NOT_ACCEPTABLE);
+	etag, "fakeUser", "fakePassword", HttpStatus.NOT_ACCEPTABLE);
 
     // Not modified since last read.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, lastModified, "fakeUser", "fakePassword",
+	MediaType.MULTIPART_FORM_DATA, etag, "fakeUser", "fakePassword",
 	HttpStatus.NOT_MODIFIED);
 
-    configOutput = getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null,
-	HttpStatus.OK, null);
-
-    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
-	expectedPayloads);
-    assertTrue(Long.parseLong(lastModified) <= TimeBase.nowMs());
-
-    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, lastModified,
-	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
-
-    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "0",
+    // Not modified since last read.
+    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
     configOutput = getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null,
 	HttpStatus.OK, null);
 
-    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
+    etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
-    assertEquals("0", lastModified);
+    assertTrue(Long.parseLong(etag) <= TimeBase.nowMs());
 
-    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, lastModified,
+    // Not modified since last read.
+    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
+
+    // Not modified since last read.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, etag, null, null,
+	HttpStatus.NOT_MODIFIED);
+
+    // Ignore modification time.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, "*", null, null, HttpStatus.OK);
 
     getConfigSectionCommonTest();
 
@@ -513,8 +515,15 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     // Bad section name.
-    getConfigSectionClient(null, null, null, "Invalid section name 'null'");
-    getConfigSectionClient("", null, null, "Invalid section name ''");
+    try {
+      getConfigSectionClient(null, null, null, "Invalid section name 'null'");
+      fail("Should have thrown IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {}
+
+    try {
+      getConfigSectionClient("", null, null, "Invalid section name ''");
+      fail("Should have thrown IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {}
 
     // Bad Accept header content type.
     getConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, "lockss-u",
@@ -579,23 +588,23 @@ public class TestConfigApiController extends SpringLockssTestCase {
     expectedPayloads.add("</property>");
     expectedPayloads.add("</lockss-config>");
 
-    String lastModified = verifyMultipartResponse(configOutput,
-	MediaType.TEXT_XML, expectedPayloads);
-    assertTrue(Long.parseLong(lastModified) <= TimeBase.nowMs());
+    String etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
+	expectedPayloads);
+    assertTrue(Long.parseLong(etag) <= TimeBase.nowMs());
 
     configOutput = getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null,
 	HttpStatus.OK, null);
 
-    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
+    etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
-    assertTrue(Long.parseLong(lastModified) <= TimeBase.nowMs());
+    assertTrue(Long.parseLong(etag) <= TimeBase.nowMs());
 
     // Not modified since last read.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, lastModified, "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, etag, "lockss-u", "lockss-p",
 	HttpStatus.NOT_MODIFIED);
 
-    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, lastModified,
+    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
     // Not modified since creation.
@@ -606,29 +615,37 @@ public class TestConfigApiController extends SpringLockssTestCase {
     getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "0",
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
-    // No eTag.
+    // No If-None-Match header.
     configOutput = getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
 	MediaType.MULTIPART_FORM_DATA, null, "lockss-u", "lockss-p",
 	HttpStatus.OK);
 
-    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
+    etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
-    assertEquals("0", lastModified);
+    assertEquals("0", etag);
 
     configOutput = getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null,
 	HttpStatus.OK, null);
 
-    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
+    etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
-    assertEquals("0", lastModified);
+    assertEquals("0", etag);
 
     // Not modified since last read.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, lastModified, "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, etag, "lockss-u", "lockss-p",
 	HttpStatus.NOT_MODIFIED);
 
-    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, lastModified,
+    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
+
+    // Ignore modification time.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, "*", "lockss-u", "lockss-p",
+	HttpStatus.OK);
+
+    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "*", HttpStatus.OK,
+	null);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -641,8 +658,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * @param acceptContentType
    *          A MediaType with the content type to be added to the request
    *          "Accept" header.
-   * @param ifModifiedSince
-   *          A String with the timestamp to be specified in the request eTag.
+   * @param ifNoneMatch
+   *          A String with the timestamp to be specified in the request
+   *          If-None-Match header.
    * @param user
    *          A String with the request username.
    * @param password
@@ -654,12 +672,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *           if there are problems.
    */
   private TextMultipartResponse getConfigSection(String snId,
-      MediaType acceptContentType, String ifModifiedSince, String user,
+      MediaType acceptContentType, String ifNoneMatch, String user,
       String password, HttpStatus expectedStatus) throws Exception {
     if (logger.isDebugEnabled()) {
       logger.debug("snId = " + snId);
       logger.debug("acceptContentType = " + acceptContentType);
-      logger.debug("ifModifiedSince = " + ifModifiedSince);
+      logger.debug("ifNoneMatch = " + ifNoneMatch);
       logger.debug("user = " + user);
       logger.debug("password = " + password);
       logger.debug("expectedStatus = " + expectedStatus);
@@ -688,8 +706,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Check whether there are any custom headers to be specified in the
     // request.
-    if (acceptContentType != null || ifModifiedSince != null
-	|| user != null || password != null) {
+    if (acceptContentType != null || ifNoneMatch != null || user != null
+	|| password != null) {
       // Yes: Initialize the request headers.
       HttpHeaders headers = new HttpHeaders();
 
@@ -703,10 +721,14 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
       }
 
-      // Check whether there is a custom eTag.
-      if (ifModifiedSince != null) {
-	// Yes: Set it.
-	headers.setETag("\"" + ifModifiedSince + "\"");
+      // Check whether there is a custom If-None-Match header.
+      if (ifNoneMatch != null) {
+	// Yes: Set the If-None-Match header.
+	if ("*".equals(ifNoneMatch)) {
+	  headers.setIfNoneMatch(ifNoneMatch);
+	} else {
+	  headers.setIfNoneMatch("\"" + ifNoneMatch + "\"");
+	}
       }
 
       // Check whether there are credentials to be sent with the request.
@@ -752,47 +774,46 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * 
    * @param snId
    *          A String with the configuration section name.
-   * @param ifModifiedSince
-   *          A String with the timestamp to be specified in the request eTag.
+   * @param etag
+   *          A String with the timestamp to be specified in the request
+   *          If-None-Match header.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @param expectedErrorMessagePrefix
    *          A String with the beginning of the error message.
    * @return a TextMultipartResponse with the multipart response.
    */
-  private TextMultipartResponse getConfigSectionClient(String snId,
-      String ifModifiedSince, HttpStatus expectedStatus,
-      String expectedErrorMessagePrefix) {
+  private TextMultipartResponse getConfigSectionClient(String snId, String etag,
+      HttpStatus expectedStatus, String expectedErrorMessagePrefix) {
     if (logger.isDebugEnabled()) {
       logger.debug("snId = " + snId);
-      logger.debug("ifModifiedSince = " + ifModifiedSince);
+      logger.debug("etag = " + etag);
       logger.debug("expectedStatus = " + expectedStatus);
       logger.debug("expectedErrorMessagePrefix = "
 	  + expectedErrorMessagePrefix);
     }
 
-    RestConfigSection restConfigSection = new RestConfigSection();
-    restConfigSection.setSectionName(snId);
-    restConfigSection.setIfModifiedSince(ifModifiedSince);
+    RestConfigSection input = new RestConfigSection();
+    input.setSectionName(snId);
+    input.setEtag(etag);
 
     // Make the request and get the result.
-    getRestConfigClient().getConfigSection(restConfigSection);
+    RestConfigSection output = getRestConfigClient().getConfigSection(input);
 
     // Check the response status.
-    assertEquals(expectedStatus, restConfigSection.getStatusCode());
+    assertEquals(expectedStatus, output.getStatusCode());
 
     // Check the error message.
-    String errorMessage = restConfigSection.getErrorMessage();
+    String errorMessage = output.getErrorMessage();
 
     if (expectedErrorMessagePrefix == null) {
       assertNull(errorMessage);
     } else {
       assertNotNull(errorMessage);
-      logger.error("errorMessage = " + errorMessage);
       assertTrue(errorMessage.startsWith(expectedErrorMessagePrefix));
     }
 
-    TextMultipartResponse parsedResponse = restConfigSection.getResponse();
+    TextMultipartResponse parsedResponse = output.getResponse();
 
     // Return the parsed response.
     if (logger.isDebugEnabled())
@@ -801,8 +822,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
   }
 
   /**
-   * Provides the last modification timestamp of a configuration file obtained
-   * in a response after validating the response.
+   * Provides the etag containing the last modification timestamp of a
+   * configuration file obtained in a response after validating the response.
    * 
    * @param response
    *          A TextMultipartResponse with the response.
@@ -811,8 +832,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * @param expectedPayloads
    *          A List<String> with text expected to be part of the response
    *          payload.
-   * @return a String with the last modification timestamp of a configuration
-   *         file.
+   * @return a String with the etag containing the last modification timestamp
+   *         of the configuration file.
    * @throws Exception
    *           if there are problems.
    */
@@ -828,8 +849,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Get the configuration file part.
     Map<String, Part> parts = response.getParts();
-    assertTrue(parts.containsKey("config-data"));
-    Part part = parts.get("config-data");
+    assertTrue(parts.containsKey(CONFIG_PART_NAME));
+    Part part = parts.get(CONFIG_PART_NAME);
 
     // Validate the part content type.
     Map<String, String> partHeaders = part.getHeaders();
@@ -856,10 +877,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Get the part last modification timestamp.
     assertTrue(partHeaders.containsKey(HttpHeaders.ETAG));
-    String lastModified = part.getLastModified();
+    String etag = part.getEtag();
 
-    if (logger.isDebugEnabled()) logger.debug("lastModified = " + lastModified);
-    return lastModified;
+    if (logger.isDebugEnabled()) logger.debug("etag = " + etag);
+    return etag;
   }
 
   /**
@@ -1275,12 +1296,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
     expectedPayloads.add("</body>");
     expectedPayloads.add("</html>");
 
-    String lastModified = verifyMultipartResponse(configOutput,
-	MediaType.TEXT_PLAIN, expectedPayloads);
-    assertTrue(Long.parseLong(lastModified) <= TimeBase.nowMs());
+    String etag = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
+	expectedPayloads);
+    assertTrue(Long.parseLong(etag) <= TimeBase.nowMs());
 
     // Not modified since last read.
-    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, lastModified, "lockss-u",
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, etag, "lockss-u",
 	"lockss-p", HttpStatus.NOT_MODIFIED);
 
     // Not modified since creation.
@@ -1291,12 +1312,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
     configOutput = getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
 	"lockss-u", "lockss-p", HttpStatus.OK);
 
-    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
+    etag = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
 	expectedPayloads);
-    assertEquals("0", lastModified);
+    assertEquals("0", etag);
 
     // Not modified since last read.
-    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, lastModified, "lockss-u",
+    getConfigUrl(url, MediaType.MULTIPART_FORM_DATA, etag, "lockss-u",
 	"lockss-p", HttpStatus.NOT_MODIFIED);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
@@ -1310,8 +1331,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * @param acceptContentType
    *          A MediaType with the content type to be added to the request
    *          "Accept" header.
-   * @param ifModifiedSince
-   *          A String with the timestamp to be specified in the request eTag.
+   * @param etag
+   *          A String with the timestamp to be specified in the request
+   *          If-None-Match header.
    * @param user
    *          A String with the request username.
    * @param password
@@ -1323,12 +1345,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *           if there are problems.
    */
   private TextMultipartResponse getConfigUrl(String url,
-      MediaType acceptContentType, String ifModifiedSince, String user,
-      String password, HttpStatus expectedStatus) throws Exception {
+      MediaType acceptContentType, String etag, String user, String password,
+      HttpStatus expectedStatus) throws Exception {
     if (logger.isDebugEnabled()) {
       logger.debug("url = " + url);
       logger.debug("acceptContentType = " + acceptContentType);
-      logger.debug("ifModifiedSince = " + ifModifiedSince);
+      logger.debug("etag = " + etag);
       logger.debug("user = " + user);
       logger.debug("password = " + password);
       logger.debug("expectedStatus = " + expectedStatus);
@@ -1354,8 +1376,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Check whether there are any custom headers to be specified in the
     // request.
-    if (acceptContentType != null || ifModifiedSince != null
-	|| user != null || password != null) {
+    if (acceptContentType != null || etag != null || user != null
+	|| password != null) {
       // Yes: Initialize the request headers.
       HttpHeaders headers = new HttpHeaders();
 
@@ -1370,9 +1392,13 @@ public class TestConfigApiController extends SpringLockssTestCase {
       }
 
       // Check whether there is a custom eTag.
-      if (ifModifiedSince != null) {
-	// Yes: Set it.
-	headers.setETag("\"" + ifModifiedSince + "\"");
+      if (etag != null) {
+	// Yes: Set the If-None-Match header.
+	if ("*".equals(etag)) {
+	  headers.setIfNoneMatch(etag);
+	} else {
+	  headers.setIfNoneMatch("\"" + etag + "\"");
+	}
       }
 
       // Check whether there are credentials to be sent with the request.
@@ -1739,12 +1765,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	  + "No serializer found for class java.io.ByteArrayInputStream"));
     }
 
-    // Missing eTag.
+    // Missing If-Match header.
     putConfig("a1=b1", ConfigApi.SECTION_NAME_PLUGIN,
 	MediaType.MULTIPART_FORM_DATA, null, null, null,
 	HttpStatus.BAD_REQUEST);
 
-    // Missing eTag.
+    // Missing If-Match header.
     putConfig("a1=b1", ConfigApi.SECTION_NAME_PLUGIN,
 	MediaType.MULTIPART_FORM_DATA, null, "fakeUser", "fakePassword",
 	HttpStatus.BAD_REQUEST);
@@ -1765,10 +1791,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
     List<String> expectedPayloads = new ArrayList<String>(1);
     expectedPayloads.add("a1=b1");
 
-    String lastModified = verifyMultipartResponse(configOutput,
-	MediaType.TEXT_PLAIN, expectedPayloads);
+    String etag = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
+	expectedPayloads);
 
-    long writeTime = Long.parseLong(lastModified);
+    long writeTime = Long.parseLong(etag);
     assertTrue(beforeWrite <= writeTime);
     assertTrue(afterWrite >= writeTime);
 
@@ -1779,11 +1805,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Time before write.
     beforeWrite = TimeBase.nowMs();
 
-    putConfig("a2=b2", ConfigApi.SECTION_NAME_PLUGIN, null, lastModified,
+    putConfig("a2=b2", ConfigApi.SECTION_NAME_PLUGIN, null, etag,
 	"fakeUser", "fakePassword", HttpStatus.OK);
 
     configOutput = getConfigSection(ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, lastModified, "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, etag, "lockss-u", "lockss-p",
 	HttpStatus.OK);
 
     // Time after write.
@@ -1792,10 +1818,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
     expectedPayloads = new ArrayList<String>(1);
     expectedPayloads.add("a2=b2");
 
-    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
+    etag = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
 	expectedPayloads);
 
-    writeTime = Long.parseLong(lastModified);
+    writeTime = Long.parseLong(etag);
     assertTrue(beforeWrite <= writeTime);
     assertTrue(afterWrite >= writeTime);
 
@@ -1818,6 +1844,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
     putConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN,
 	MediaType.MULTIPART_FORM_DATA, "0", "fakeUser", "fakePassword",
 	HttpStatus.PRECONDITION_FAILED);
+
+    // Ignore modification time.
+    putConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN,
+	MediaType.MULTIPART_FORM_DATA, "*", "fakeUser", "fakePassword",
+	HttpStatus.OK);
 
     putConfigCommonTest();
 
@@ -1908,11 +1939,17 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     // Bad section name.
-    putConfigSectionClient("testKey=testValue", null, null, null,
-	"Invalid section name 'null'");
+    try {
+      putConfigSectionClient("testKey=testValue", null, null, null,
+	  "Invalid section name 'null'");
+      fail("Should have thrown IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {}
 
-    putConfigSectionClient("testKey=testValue", "", null, null,
-	"Invalid section name ''");
+    try {
+      putConfigSectionClient("testKey=testValue", "", null, null,
+	  "Invalid section name 'null'");
+      fail("Should have thrown IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {}
 
     // Missing Content-Type header.
     putConfig(null, ConfigApi.SECTION_NAME_EXPERT, null, null, "lockss-u",
@@ -1927,16 +1964,22 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	MediaType.MULTIPART_FORM_DATA, null, "lockss-u", "lockss-p",
 	HttpStatus.INTERNAL_SERVER_ERROR);
 
-    putConfigSectionClient(null, ConfigApi.SECTION_NAME_EXPERT, "-1", null,
-	"Configuration input stream is null");
+    try {
+      putConfigSectionClient(null, ConfigApi.SECTION_NAME_EXPERT, "-1", null,
+	  "Configuration input stream is null");
+      fail("Should have thrown IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {}
 
-    // Missing eTag.
+    // Missing If-Match header.
     putConfig("testKey=testValue", ConfigApi.SECTION_NAME_EXPERT,
 	MediaType.MULTIPART_FORM_DATA, null, "lockss-u", "lockss-p",
 	HttpStatus.BAD_REQUEST);
 
-    putConfigSectionClient("testKey=testValue", ConfigApi.SECTION_NAME_EXPERT,
-	null, null, "Invalid last modification value 'null'");
+    try {
+      putConfigSectionClient("testKey=testValue", ConfigApi.SECTION_NAME_EXPERT,
+	  null, null, "Invalid last modification value 'null'");
+      fail("Should have thrown IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {}
 
     // Modified at different time than passed timestamp.
     putConfig("testKey=testValue", ConfigApi.SECTION_NAME_EXPERT,
@@ -1968,10 +2011,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
     List<String> expectedPayloads = new ArrayList<String>(1);
     expectedPayloads.add("testKey=testValue");
 
-    String lastModified = verifyMultipartResponse(configOutput,
-	MediaType.TEXT_PLAIN, expectedPayloads);
+    String etag = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
+	expectedPayloads);
 
-    long writeTime = Long.parseLong(lastModified);
+    long writeTime = Long.parseLong(etag);
     assertTrue(beforeWrite <= writeTime);
     assertTrue(afterWrite >= writeTime);
 
@@ -1989,10 +2032,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     putConfig("testKey1=testValue1\ntestKey2=testValue2",
 	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA,
-	lastModified, "lockss-u", "lockss-p", HttpStatus.OK);
+	etag, "lockss-u", "lockss-p", HttpStatus.OK);
 
     configOutput = getConfigSection(ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.MULTIPART_FORM_DATA, lastModified, "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, etag, "lockss-u", "lockss-p",
 	HttpStatus.OK);
 
     // Time after write.
@@ -2002,37 +2045,39 @@ public class TestConfigApiController extends SpringLockssTestCase {
     expectedPayloads.add("testKey1=testValue1");
     expectedPayloads.add("testKey2=testValue2");
 
-    lastModified = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
+    etag = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
 	expectedPayloads);
 
-    writeTime = Long.parseLong(lastModified);
+    writeTime = Long.parseLong(etag);
     assertTrue(beforeWrite <= writeTime);
     assertTrue(afterWrite >= writeTime);
 
-    RestConfigSection restConfigSection = new RestConfigSection();
-    restConfigSection.setSectionName(ConfigApi.SECTION_NAME_EXPERT);
+    RestConfigSection input = new RestConfigSection();
+    input.setSectionName(ConfigApi.SECTION_NAME_EXPERT);
 
     RestConfigClient restConfigClient = getRestConfigClient();
-    restConfigClient.getConfigSection(restConfigSection);
+    RestConfigSection output = restConfigClient.getConfigSection(input);
 
-    writeTime = Long.parseLong(restConfigSection.getLastModified());
+    writeTime = Long.parseLong(output.getEtag());
     
     // Time before write.
     beforeWrite = TimeBase.nowMs();
     assertTrue(beforeWrite >= writeTime);
 
-    restConfigSection.setInputStream(
+    output.setInputStream(
 	new ByteArrayInputStream("testKey3=testValue3".getBytes("UTF-8")));
 
-    restConfigClient.putConfigSection(restConfigSection);
-    restConfigClient.getConfigSection(restConfigSection);
-
-    writeTime = Long.parseLong(restConfigSection.getLastModified());
+    RestConfigSection output2 = restConfigClient.putConfigSection(output);
+    assertEquals(HttpStatus.OK, output2.getStatusCode());
+    writeTime = Long.parseLong(output2.getEtag());
     assertTrue(writeTime >= beforeWrite);
 
     // Time after write.
     afterWrite = TimeBase.nowMs();
     assertTrue(afterWrite >= writeTime);
+
+    RestConfigSection output3 = restConfigClient.getConfigSection(output2);
+    assertEquals(HttpStatus.NOT_MODIFIED, output3.getStatusCode());
 
     // Cannot modify virtual sections.
     putConfig("testKey=testValue", ConfigApi.SECTION_NAME_CLUSTER,
@@ -2050,6 +2095,22 @@ public class TestConfigApiController extends SpringLockssTestCase {
     putConfigSectionClient("testKey=testValue", "fakesectionname",
 	"0", HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.toString());
 
+    // Ignore modification time.
+    putConfig("testKey=testValue", ConfigApi.SECTION_NAME_PLUGIN,
+	MediaType.MULTIPART_FORM_DATA, "*", "lockss-u", "lockss-p",
+	HttpStatus.OK);
+
+    putConfigSectionClient("testKey=testValue", ConfigApi.SECTION_NAME_PLUGIN,
+	"*", HttpStatus.OK, HttpStatus.OK.toString());
+
+    // Cannot modify virtual sections.
+    putConfig("testKey=testValue", ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, "*", "lockss-u", "lockss-p",
+	HttpStatus.BAD_REQUEST);
+
+    putConfigSectionClient("testKey=testValue", ConfigApi.SECTION_NAME_CLUSTER,
+	"*", HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.toString());
+
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
 
@@ -2062,8 +2123,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *          A String with the configuration section name.
    * @param contentType
    *          A MediaType with the content type of the request.
-   * @param ifUnmodifiedSince
-   *          A String with the timestamp to be specified in the request eTag.
+   * @param ifMatch
+   *          A String with the timestamp to be specified in the request
+   *          If-Match header.
    * @param user
    *          A String with the request username.
    * @param password
@@ -2072,13 +2134,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *          An HttpStatus with the HTTP status of the result.
    */
   private void putConfig(String config, String snId, MediaType contentType,
-      String ifUnmodifiedSince, String user, String password,
-      HttpStatus expectedStatus) {
+      String ifMatch, String user, String password, HttpStatus expectedStatus) {
     if (logger.isDebugEnabled()) {
       logger.debug("config = " + config);
       logger.debug("snId = " + snId);
       logger.debug("contentType = " + contentType);
-      logger.debug("ifUnmodifiedSince = " + ifUnmodifiedSince);
+      logger.debug("ifMatch = " + ifMatch);
       logger.debug("user = " + user);
       logger.debug("password = " + password);
       logger.debug("expectedStatus = " + expectedStatus);
@@ -2102,8 +2163,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Check whether there are any custom headers to be specified in the
     // request.
-    if (config != null || contentType != null
-	|| ifUnmodifiedSince != null || user != null
+    if (config != null || contentType != null || ifMatch != null || user != null
 	|| password != null) {
       // Yes.
       MultiValueMap<String, Object> parts = null;
@@ -2117,9 +2177,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	parts = new LinkedMultiValueMap<String, Object>();
 
 	NamedByteArrayResource resource =
-	    new NamedByteArrayResource("config-data", config.getBytes());
+	    new NamedByteArrayResource(CONFIG_PART_NAME, config.getBytes());
 
-	parts.add("config-data",
+	parts.add(CONFIG_PART_NAME,
 	    new HttpEntity<NamedByteArrayResource>(resource, partHeaders));
       }
 
@@ -2135,10 +2195,14 @@ public class TestConfigApiController extends SpringLockssTestCase {
       // Set the "Accept" header to accept errors at least.
       headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
 
-      // Check whether there is a custom eTag.
-      if (ifUnmodifiedSince != null) {
-	// Yes: Set it.
-	headers.setETag("\"" + ifUnmodifiedSince + "\"");
+      // Check whether there is a custom If-Match header.
+      if (ifMatch != null) {
+	// Yes.
+	if ("*".equals(ifMatch)) {
+	  headers.setIfMatch(ifMatch);
+	} else {
+	  headers.setIfMatch("\"" + ifMatch + "\"");
+	}
       }
 
       // Check whether there are credentials to be sent with the request.
@@ -2171,8 +2235,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *          A String with the configuration to be written.
    * @param snId
    *          A String with the configuration section name.
-   * @param ifUnmodifiedSince
-   *          A String with the timestamp to be specified in the request eTag.
+   * @param ifMatch
+   *          A String with the timestamp to be specified in the request
+   *          If-Match header.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @param expectedErrorMessagePrefix
@@ -2182,39 +2247,36 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *           if there are problems.
    */
   private RestConfigSection putConfigSectionClient(String config, String snId,
-      String ifUnmodifiedSince, HttpStatus expectedStatus,
+      String ifMatch, HttpStatus expectedStatus,
       String expectedErrorMessagePrefix) throws Exception {
     if (logger.isDebugEnabled()) {
       logger.debug("config = " + config);
       logger.debug("snId = " + snId);
-      logger.debug("ifUnmodifiedSince = " + ifUnmodifiedSince);
+      logger.debug("ifMatch = " + ifMatch);
       logger.debug("expectedStatus = " + expectedStatus);
       logger.debug("expectedErrorMessagePrefix = "
 	  + expectedErrorMessagePrefix);
     }
 
-    RestConfigSection restConfigSection = new RestConfigSection();
-    restConfigSection.setSectionName(snId);
+    RestConfigSection input = new RestConfigSection();
+    input.setSectionName(snId);
 
     if (config != null) {
-      restConfigSection.setInputStream(
+      input.setInputStream(
 	  new ByteArrayInputStream(config.getBytes("UTF-8")));
     }
 
-    // Check whether there is a custom eTag.
-    if (ifUnmodifiedSince != null) {
-	// Yes: Set it.
-      restConfigSection.setLastModified(ifUnmodifiedSince);
-    }
+    input.setEtag(ifMatch);
+    input.setContentType(MediaType.TEXT_PLAIN_VALUE);
 
     // Make the request and get the result;
-    getRestConfigClient().putConfigSection(restConfigSection);
+    RestConfigSection output = getRestConfigClient().putConfigSection(input);
 
     // Check the response status.
-    assertEquals(expectedStatus, restConfigSection.getStatusCode());
+    assertEquals(expectedStatus, output.getStatusCode());
 
     // Check the error message.
-    String errorMessage = restConfigSection.getErrorMessage();
+    String errorMessage = output.getErrorMessage();
 
     if (expectedErrorMessagePrefix == null) {
       assertNull(errorMessage);
@@ -2223,7 +2285,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
       assertTrue(errorMessage.startsWith(expectedErrorMessagePrefix));
     }
 
-    return restConfigSection;
+    // Check the response etag.
+    assertNotEquals(ifMatch, output.getEtag());
+
+    return output;
   }
 
   /**
