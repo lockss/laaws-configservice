@@ -76,10 +76,14 @@ public interface ConfigApi extends SpringLockssBaseApi {
    *          A String with the section name.
    * @param accept
    *          A String with the value of the "Accept" request header.
+   * @param ifMatch
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Unmodified-Since" request header but with a granularity of 1
+   *          ms to be received in the If-Match header.
    * @param ifNoneMatch
-   *          A String with a value equivalent to the "If-Modified-Since"
-   *          request header but with a granularity of 1 ms to be received in
-   *          the If-None-Match header.
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Modified-Since" request header but with a granularity of 1 ms
+   *          to be received in the If-None-Match header.
    * @return a {@code ResponseEntity<MultiValueMap<String, Object>>} with the
    *         section configuration file contents.
    */
@@ -113,8 +117,10 @@ public interface ConfigApi extends SpringLockssBaseApi {
       "The name of the section for which the configuration is requested",
       required=true) @PathVariable("sectionName") String sectionName,
       @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
+      @RequestHeader(value=HttpHeaders.IF_MATCH, required=false)
+      List<String> ifMatch,
       @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
-      String ifNoneMatch) {
+      List<String> ifNoneMatch) {
     return new ResponseEntity<MultiValueMap<String, Object>>(
 	HttpStatus.NOT_IMPLEMENTED);
   }
@@ -126,10 +132,14 @@ public interface ConfigApi extends SpringLockssBaseApi {
    *          A String with the url.
    * @param accept
    *          A String with the value of the "Accept" request header.
+   * @param ifMatch
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Unmodified-Since" request header but with a granularity of 1
+   *          ms to be received in the If-Match header.
    * @param ifNoneMatch
-   *          A String with a value equivalent to the "If-Modified-Since"
-   *          request header but with a granularity of 1 ms to be received in
-   *          the If-None-Match header.
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Modified-Since" request header but with a granularity of 1 ms
+   *          to be received in the If-None-Match header.
    * @return a {@code ResponseEntity<MultiValueMap<String, Object>>} with the
    *         section configuration file.
    */
@@ -163,8 +173,10 @@ public interface ConfigApi extends SpringLockssBaseApi {
       "The URL for which the configuration is requested",
       required=true) @RequestParam("url") String url,
       @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
+      @RequestHeader(value=HttpHeaders.IF_MATCH, required=false)
+      List<String> ifMatch,
       @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
-      String ifNoneMatch) {
+      List<String> ifNoneMatch) {
     return new ResponseEntity<MultiValueMap<String, Object>>(
 	HttpStatus.NOT_IMPLEMENTED);
   }
@@ -231,9 +243,13 @@ public interface ConfigApi extends SpringLockssBaseApi {
    * @param configFile
    *          A MultipartFile with the configuration file to be stored.
    * @param ifMatch
-   *          A String with a value equivalent to the "If-Unmodified-Since"
-   *          request header but with a granularity of 1 ms to be received in
-   *          the If-Match header.
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Unmodified-Since" request header but with a granularity of 1
+   *          ms to be received in the If-Match header.
+   * @param ifNoneMatch
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Modified-Since" request header but with a granularity of 1 ms
+   *          to be received in the If-None-Match header.
    * @return a {@code ResponseEntity<Void>}.
    */
   @ApiOperation(value = "Store the named configuration file",
@@ -266,8 +282,10 @@ public interface ConfigApi extends SpringLockssBaseApi {
       required=true) @PathVariable("sectionName") String sectionName,
       @ApiParam(value = "The configuration file to be stored",
       required=true) @RequestParam("file") MultipartFile configFile,
-      @RequestHeader(value=HttpHeaders.IF_MATCH, required=true) String ifMatch)
-  {
+      @RequestHeader(value=HttpHeaders.IF_MATCH, required=false)
+      List<String> ifMatch,
+      @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
+      List<String> ifNoneMatch) {
     return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
   }
 

@@ -29,6 +29,7 @@ package org.lockss.laaws.config.api;
 
 import static org.lockss.config.ConfigManager.*;
 import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
+import static org.lockss.config.RestConfigClient.HTTP_WEAK_VALIDATOR_PREFIX;
 import io.swagger.annotations.ApiParam;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -45,8 +46,8 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 import org.lockss.alert.AlertManagerImpl;
 import org.lockss.app.LockssApp;
-import org.lockss.config.ConfigFile;
 import org.lockss.config.ConfigManager;
+import org.lockss.config.ConfigFilePreconditionStatus;
 import org.lockss.daemon.Cron;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
@@ -107,10 +108,14 @@ implements ConfigApi {
    *          A String with the section name.
    * @param accept
    *          A String with the value of the "Accept" request header.
+   * @param ifMatch
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Unmodified-Since" request header but with a granularity of 1
+   *          ms to be received in the If-Match header.
    * @param ifNoneMatch
-   *          A String with a value equivalent to the "If-Modified-Since"
-   *          request header but with a granularity of 1 ms to be received in
-   *          the If-None-Match header.
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Modified-Since" request header but with a granularity of 1 ms
+   *          to be received in the If-None-Match header.
    * @return a {@code ResponseEntity<MultiValueMap<String, Object>>} with the
    *         section configuration file contents.
    */
@@ -121,15 +126,26 @@ implements ConfigApi {
   public ResponseEntity<?> getSectionConfig(
       @PathVariable("sectionName") String sectionName,
       @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
+      @RequestHeader(value=HttpHeaders.IF_MATCH, required=false) List<String>
+      ifMatch,
       @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
-      String ifNoneMatch) {
+      List<String> ifNoneMatch) {
     if (log.isDebugEnabled()) {
       log.debug("sectionName = " + sectionName);
       log.debug("accept = " + accept);
+      log.debug("ifMatch = " + ifMatch);
       log.debug("ifNoneMatch = " + ifNoneMatch);
     }
 
     try {
+      // Validate the If-Match and If-None-Match headers.
+      try {
+	validateIfMatchIfNoneMatchHeaders(ifMatch, ifNoneMatch);
+      } catch (MalformedParametersException mpe) {
+	return new ResponseEntity<String>(mpe.getMessage(),
+	    HttpStatus.BAD_REQUEST);
+      }
+
       // Validate the name of the section to be obtained.
       String canonicalSectionName = null;
 
@@ -168,15 +184,10 @@ implements ConfigApi {
 	if (log.isDebugEnabled()) log.debug("sectionUrl = " + sectionUrl);
       }
 
-      // Read the file.
-      InputStream is = null;
-      String partContent = null;
-
       try {
-	is = configManager.getCacheConfigFileInputStream(sectionUrl);
-	partContent = StringUtil.fromInputStream(is);
-	if (log.isDebugEnabled())
-	  log.debug("partContent = '" + partContent + "'");
+	return buildGetUrlResponse(sectionUrl, ifNoneMatch,
+	    configManager.getCacheConfigFileInputStreamIfPreconditionsMet(
+	    sectionUrl, ifMatch, ifNoneMatch));
       } catch (FileNotFoundException fnfe) {
 	String message =
 	    "Can't get the content for sectionName '" + sectionName + "'";
@@ -187,12 +198,7 @@ implements ConfigApi {
 	log.error(message, ioe);
 	return new ResponseEntity<String>(message,
 	    HttpStatus.INTERNAL_SERVER_ERROR);
-      } finally {
-	IOUtil.safeClose(is);
       }
-
-      // Build and return the response.
-      return buildGetUrlResponse(sectionUrl, ifNoneMatch, partContent);
     } catch (Exception e) {
       String message =
 	  "Cannot getSectionConfig() for sectionName = '" + sectionName + "'";
@@ -209,10 +215,14 @@ implements ConfigApi {
    *          A String with the url.
    * @param accept
    *          A String with the value of the "Accept" request header.
+   * @param ifMatch
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Unmodified-Since" request header but with a granularity of 1
+   *          ms to be received in the If-Match header.
    * @param ifNoneMatch
-   *          A String with a value equivalent to the "If-Modified-Since"
-   *          request header but with a granularity of 1 ms to be received in
-   *          the If-None-Match header.
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Modified-Since" request header but with a granularity of 1 ms
+   *          to be received in the If-None-Match header.
    * @return a {@code ResponseEntity<MultiValueMap<String, Object>>} with the
    *         section configuration file.
    */
@@ -223,15 +233,26 @@ implements ConfigApi {
   public ResponseEntity<?> getUrlConfig(
       @RequestParam("url") String url,
       @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
+      @RequestHeader(value=HttpHeaders.IF_MATCH, required=false) List<String>
+      ifMatch,
       @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
-      String ifNoneMatch) {
+      List<String> ifNoneMatch) {
     if (log.isDebugEnabled()) {
       log.debug("url = " + url);
       log.debug("accept = " + accept);
+      log.debug("ifMatch = " + ifMatch);
       log.debug("ifNoneMatch = " + ifNoneMatch);
     }
 
     try {
+      // Validate the If-Match and If-None-Match headers.
+      try {
+	validateIfMatchIfNoneMatchHeaders(ifMatch, ifNoneMatch);
+      } catch (MalformedParametersException mpe) {
+	return new ResponseEntity<String>(mpe.getMessage(),
+	    HttpStatus.BAD_REQUEST);
+      }
+
       // Check whether the request did not specify the appropriate "Accept"
       // header.
       if (accept.indexOf(MediaType.MULTIPART_FORM_DATA_VALUE) < 0) {
@@ -242,15 +263,10 @@ implements ConfigApi {
 	return new ResponseEntity<String>(message, HttpStatus.NOT_ACCEPTABLE);
       }
 
-      // Read the file.
-      InputStream is = null;
-      String partContent = null;
-
       try {
-	is = getConfigManager().getCacheConfigFileInputStream(url);
-	partContent = StringUtil.fromInputStream(is);
-	if (log.isDebugEnabled())
-	  log.debug("partContent = '" + partContent + "'");
+	return buildGetUrlResponse(url, ifNoneMatch, getConfigManager()
+	    .getCacheConfigFileInputStreamIfPreconditionsMet(url, ifMatch,
+		ifNoneMatch));
       } catch (FileNotFoundException fnfe) {
 	String message = "Can't get the content for url '" + url + "'";
 	log.error(message, fnfe);
@@ -263,17 +279,16 @@ implements ConfigApi {
 	String message = "Can't get the content for url '" + url + "'";
 	log.error(message, ce);
 	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
+      } catch (UnsupportedOperationException uoe) {
+	String message = "Can't get the content for url '" + url + "'";
+	log.error(message, uoe);
+	return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
       } catch (IOException ioe) {
 	String message = "Can't get the content for URL '" + url + "'";
 	log.error(message, ioe);
 	return new ResponseEntity<String>(message,
 	    HttpStatus.INTERNAL_SERVER_ERROR);
-      } finally {
-	IOUtil.safeClose(is);
       }
-
-      // Build and return the response.
-      return buildGetUrlResponse(url, ifNoneMatch, partContent);
     } catch (Exception e) {
       String message = "Cannot getUrlConfig() for url = '" + url + "'";
       log.error(message, e);
@@ -340,9 +355,13 @@ implements ConfigApi {
    * @param configFile
    *          A MultipartFile with the configuration file to be stored.
    * @param ifMatch
-   *          A String with a value equivalent to the "If-Unmodified-Since"
-   *          request header but with a granularity of 1 ms to be received in
-   *          the If-Match header.
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Unmodified-Since" request header but with a granularity of 1
+   *          ms to be received in the If-Match header.
+   * @param ifNoneMatch
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Modified-Since" request header but with a granularity of 1 ms
+   *          to be received in the If-None-Match header.
    * @return a {@code ResponseEntity<Void>}.
    */
   @Override
@@ -353,12 +372,15 @@ implements ConfigApi {
       @PathVariable("sectionName") String sectionName,
       @ApiParam(required=true) @RequestParam("config-data") MultipartFile
       configFile,
-      @RequestHeader(value=HttpHeaders.IF_MATCH, required=true) String ifMatch)
-  {
+      @RequestHeader(value=HttpHeaders.IF_MATCH, required=false) List<String>
+      ifMatch,
+      @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
+      List<String> ifNoneMatch) {
     if (log.isDebugEnabled()) {
       log.debug("sectionName = " + sectionName);
       log.debug("configFile = " + configFile);
       log.debug("ifMatch = " + ifMatch);
+      log.debug("ifNoneMatch = " + ifNoneMatch);
     }
 
     // Check authorization.
@@ -367,6 +389,14 @@ implements ConfigApi {
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return new ResponseEntity<String>(ace.getMessage(), HttpStatus.FORBIDDEN);
+    }
+
+    // Validate the If-Match and If-None-Match headers.
+    try {
+      validateIfMatchIfNoneMatchHeaders(ifMatch, ifNoneMatch);
+    } catch (MalformedParametersException mpe) {
+      return new ResponseEntity<String>(mpe.getMessage(),
+	  HttpStatus.BAD_REQUEST);
     }
 
     if (configFile == null) {
@@ -379,12 +409,12 @@ implements ConfigApi {
     String canonicalSectionName = null;
 
     try {
-	canonicalSectionName = validateSectionName(sectionName, false);
-	if (log.isDebugEnabled())
-	  log.debug("canonicalSectionName = " + canonicalSectionName);
+      canonicalSectionName = validateSectionName(sectionName, false);
+      if (log.isDebugEnabled())
+	log.debug("canonicalSectionName = " + canonicalSectionName);
     } catch (MalformedParametersException mpe) {
-	return new ResponseEntity<String>(mpe.getMessage(),
-	    HttpStatus.BAD_REQUEST);
+      return new ResponseEntity<String>(mpe.getMessage(),
+	  HttpStatus.BAD_REQUEST);
     }
 
     try {
@@ -398,25 +428,31 @@ implements ConfigApi {
 	  new File(configManager.getCacheConfigDir(), sectionUrl).toString();
       if (log.isDebugEnabled()) log.debug("filename = " + filename);
 
-      // Check whether the file has been modified since the passed cutoff
-      // timestamp.
-      if (!"*".equals(ifMatch)
-	  && !ifMatch.equals(getConfigFileLastModifiedAsEtag(filename))) {
-	// Yes: Return the error.
-	return new ResponseEntity<Void>(HttpStatus.PRECONDITION_FAILED);
+      ConfigFilePreconditionStatus cfps = configManager
+	  .writeCacheConfigFileIfPreconditionsMet(filename, ifMatch,
+	      ifNoneMatch, configFile.getInputStream());
+
+      String etag = "\"" + cfps.getTimestamp() + "\"";
+      if (log.isDebugEnabled()) log.debug("etag = " + etag);
+
+      if (!cfps.isPreconditionMet()) {
+        // Yes: Check whether an If-None-Match header was passed.
+        if (ifNoneMatch != null && !ifNoneMatch.isEmpty()) {
+          // Yes: Return no content, just a Not-Modified status.
+          HttpHeaders responseHeaders = new HttpHeaders();
+          responseHeaders.setETag(etag);
+          return new ResponseEntity<MultiValueMap<String, Object>>(null,
+              responseHeaders, HttpStatus.NOT_MODIFIED);
+        } else {
+          // Yes: Return no content, just a Precondition-Failed status.
+          return new ResponseEntity<MultiValueMap<String, Object>>(null, null,
+              HttpStatus.PRECONDITION_FAILED);
+        }
       }
-
-      // No: Write the file.
-      String textToWrite =
-	  StringUtil.fromInputStream(configFile.getInputStream());
-      if (log.isDebugEnabled())
-	log.debug("textToWrite = '" + textToWrite + "'");
-
-      configManager.writeCacheConfigFile(textToWrite, sectionUrl, false);
 
       // Return the new file last modification timestamp in the response.
       HttpHeaders responseHeaders = new HttpHeaders();
-      responseHeaders.setETag(getConfigFileLastModifiedAsEtag(filename));
+      responseHeaders.setETag(etag);
       if (log.isDebugEnabled())
 	log.debug("responseHeaders = " + responseHeaders);
 
@@ -472,6 +508,84 @@ implements ConfigApi {
     return new ApiStatus()
       .setVersion(API_VERSION)
       .setReady(LockssApp.getLockssApp().isAppRunning());
+  }
+
+  /**
+   * Validates the If-Match and If-None-Match headers.
+   * 
+   * @param ifMatch
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Unmodified-Since" request header but with a granularity of 1
+   *          ms to be received in the If-Match header.
+   * @param ifNoneMatch
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Modified-Since" request header but with a granularity of 1 ms
+   *          to be received in the If-None-Match header.
+   * @throws MalformedParametersException
+   *           if validation fails.
+   */
+  protected void validateIfMatchIfNoneMatchHeaders(List<String> ifMatch,
+      List<String> ifNoneMatch) {
+    if (log.isDebugEnabled()) {
+      log.debug("ifMatch = " + ifMatch);
+      log.debug("ifNoneMatch = " + ifNoneMatch);
+    }
+
+    boolean ifMatchExists = ifMatch != null && !ifMatch.isEmpty();
+    if (log.isDebugEnabled()) log.debug("ifMatchExists = " + ifMatchExists);
+
+    boolean ifNoneMatchExists = ifNoneMatch != null && !ifNoneMatch.isEmpty();
+    if (log.isDebugEnabled())
+      log.debug("ifNoneMatchExists = " + ifNoneMatchExists);
+
+    // Check whether both the If-Match and If-None-Match headers have tags.
+    if (ifMatchExists && ifNoneMatchExists) {
+      // Yes: Report the problem.
+      String message =
+	  "Invalid presence of both If-Match and If-None-Match headers";
+      log.warn(message);
+      throw new MalformedParametersException(message);
+    }
+
+    if (ifMatchExists) {
+      // Loop through the If-Match header tags.
+      for (String tag : ifMatch) {
+	if (log.isDebugEnabled()) log.debug("tag = " + tag);
+
+	// Check whether it is a weak validator tag.
+	if (tag.toUpperCase().startsWith(HTTP_WEAK_VALIDATOR_PREFIX)) {
+	  // Yes: Report the problem.
+	  String message = "Invalid If-Match entity tag '" + tag + "'";
+	  log.warn(message);
+	  throw new MalformedParametersException(message);
+	  // No: Check whether the asterisk does not appear just by itself.
+	} else if ("*".equals(tag) && ifMatch.size() > 1) {
+	  // Yes: Report the problem.
+	  String message = "Invalid If-Match entity tag mix";
+	  log.warn(message);
+	  throw new MalformedParametersException(message);
+	}
+      }
+    } else if (ifNoneMatchExists) {
+      // Loop through the If-None-Match header tags.
+      for (String tag : ifNoneMatch) {
+	if (log.isDebugEnabled()) log.debug("tag = " + tag);
+
+	// Check whether it is a weak validator tag.
+	if (tag.toUpperCase().startsWith(HTTP_WEAK_VALIDATOR_PREFIX)) {
+	  // Yes: Report the problem.
+	  String message = "Invalid If-None-Match entity tag '" + tag + "'";
+	  log.warn(message);
+	  throw new MalformedParametersException(message);
+	  // No: Check whether the asterisk does not appear just by itself.
+	} else if ("*".equals(tag) && ifNoneMatch.size() > 1) {
+	  // Yes: Report the problem.
+	  String message = "Invalid If-None-Match entity tag mix";
+	  log.warn(message);
+	  throw new MalformedParametersException(message);
+	}
+      }
+    }
   }
 
   /**
@@ -548,40 +662,70 @@ implements ConfigApi {
    * @param url
    *          A String with the URL where to get the content.
    * @param ifNoneMatch
-   *          A String with a value equivalent to the "If-Modified-Since"
-   *          request header but with a granularity of 1 ms to be received in
-   *          the If-None-Match header.
-   * @param partContent
-   *          A String with the content of the part to be included in the
-   *          response.
-   * @return a ResponseEntity<MultiValueMap<String, Object>> with the response
-   *         for the request to get the content at a URL.
+   *          A List<String> with an asterisk or values equivalent to the
+   *          "If-Modified-Since" request header but with a granularity of 1 ms
+   *          to be received in the If-None-Match header.
+   * @param cfps
+   *          A ConfigFilePreconditionStatus with an indication of whether the
+   *          precondition is met and the input stream and entity tag to be
+   *          included in the response.
+   * @return a ResponseEntity<?> with the response for the request to get the
+   *         content at a URL.
    */
-  private ResponseEntity<MultiValueMap<String, Object>> buildGetUrlResponse(
-      String url, String ifNoneMatch, String partContent) {
-    // Get the file last modification timestamp.
-    String lastModified = getConfigFileLastModifiedAsEtag(url);
-    if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
+  private ResponseEntity<?> buildGetUrlResponse(String url,
+      List<String> ifNoneMatch, ConfigFilePreconditionStatus cfps) {
+    if (log.isDebugEnabled()) {
+      log.debug("url = " + url);
+      log.debug("ifNoneMatch = " + ifNoneMatch);
+      log.debug("cfps = " + cfps);
+    }
 
-    // Check whether the modification timestamp matches the passed If-None-Match
-    // header.
-    if (ifNoneMatch != null && !ifNoneMatch.equals("*")
-	&& ifNoneMatch.equals(lastModified)) {
-	// Yes: Return no content, just a status.
+    String etag = "\"" + cfps.getTimestamp() + "\"";
+    if (log.isDebugEnabled()) log.debug("etag = " + etag);
+
+    if (!cfps.isPreconditionMet()) {
+      // Yes: Check whether an If-None-Match header was passed.
+      if (ifNoneMatch != null && !ifNoneMatch.isEmpty()) {
+	// Yes: Return no content, just a Not-Modified status.
+	HttpHeaders responseHeaders = new HttpHeaders();
+	responseHeaders.setETag(etag);
+	return new ResponseEntity<MultiValueMap<String, Object>>(null,
+	    responseHeaders, HttpStatus.NOT_MODIFIED);
+      } else {
+	// Yes: Return no content, just a Precondition-Failed status.
 	return new ResponseEntity<MultiValueMap<String, Object>>(null, null,
-	    HttpStatus.NOT_MODIFIED);
+	    HttpStatus.PRECONDITION_FAILED);
+      }
     }
 
     // Save the content last modification timestamp in the response.
     HttpHeaders partHeaders = new HttpHeaders();
-    partHeaders.setETag(lastModified);
-    if (log.isDebugEnabled()) log.debug("partHeaders = " + partHeaders);
+    partHeaders.setETag(etag);
 
     // Set the returned content type.
     if (url.toLowerCase().endsWith(".xml")) {
 	partHeaders.setContentType(MediaType.TEXT_XML);
     } else {
 	partHeaders.setContentType(MediaType.TEXT_PLAIN);
+    }
+
+    if (log.isDebugEnabled()) log.debug("partHeaders = " + partHeaders);
+
+    InputStream is = null;
+    String partContent = null;
+
+    try {
+      is = cfps.getInputStream();
+      partContent = StringUtil.fromInputStream(is);
+      if (log.isDebugEnabled())
+	log.debug("partContent = '" + partContent + "'");
+    } catch (IOException ioe) {
+      String message = "Can't get the content for URL '" + url + "'";
+      log.error(message, ioe);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
+    } finally {
+      IOUtil.safeClose(is);
     }
 
     // Build the response entity.
@@ -599,35 +743,5 @@ implements ConfigApi {
 
     return new ResponseEntity<MultiValueMap<String, Object>>(parts,
 	  responseHeaders, HttpStatus.OK);
-  }
-
-  /**
-   * Provides the last modification time of a configuration file.
-   * 
-   * @param sectionUrl
-   *          A String with the section URL of the configuration file.
-   * @return a long with the last modification time of a configuration file.
-   */
-  private String getConfigFileLastModifiedAsEtag(String sectionUrl) {
-    if (log.isDebugEnabled()) log.debug("sectionUrl = " + sectionUrl);
-
-    // Get the cached configuration file.
-    ConfigFile cacheConfigFile =
-	getConfigManager().getConfigCache().find(sectionUrl);
-    if (log.isDebugEnabled()) log.debug("cacheConfigFile = " + cacheConfigFile);
-
-    // Get the cached configuration file last modification time.
-    String lastModified = cacheConfigFile.getLastModified();
-    if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
-
-    // Format it as an ETag.
-    if (lastModified == null) {
-      lastModified = "\"0\"";
-    } else {
-      lastModified = "\"" + lastModified + "\"";
-    }
-
-    if (log.isDebugEnabled()) log.debug("lastModified = " + lastModified);
-    return lastModified;
   }
 }
