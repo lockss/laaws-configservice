@@ -47,7 +47,7 @@ import org.apache.log4j.Logger;
 import org.lockss.alert.AlertManagerImpl;
 import org.lockss.app.LockssApp;
 import org.lockss.config.ConfigManager;
-import org.lockss.config.ConfigFilePreconditionStatus;
+import org.lockss.config.ConfigFileReadWriteResult;
 import org.lockss.daemon.Cron;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
@@ -186,8 +186,8 @@ implements ConfigApi {
 
       try {
 	return buildGetUrlResponse(sectionUrl, ifNoneMatch,
-	    configManager.getCacheConfigFileInputStreamIfPreconditionsMet(
-	    sectionUrl, ifMatch, ifNoneMatch));
+	    configManager.conditionallyReadCacheConfigFile(sectionUrl, ifMatch,
+		ifNoneMatch));
       } catch (FileNotFoundException fnfe) {
 	String message =
 	    "Can't get the content for sectionName '" + sectionName + "'";
@@ -265,8 +265,7 @@ implements ConfigApi {
 
       try {
 	return buildGetUrlResponse(url, ifNoneMatch, getConfigManager()
-	    .getCacheConfigFileInputStreamIfPreconditionsMet(url, ifMatch,
-		ifNoneMatch));
+	    .conditionallyReadCacheConfigFile(url, ifMatch, ifNoneMatch));
       } catch (FileNotFoundException fnfe) {
 	String message = "Can't get the content for url '" + url + "'";
 	log.error(message, fnfe);
@@ -428,27 +427,20 @@ implements ConfigApi {
 	  new File(configManager.getCacheConfigDir(), sectionUrl).toString();
       if (log.isDebugEnabled()) log.debug("filename = " + filename);
 
-      ConfigFilePreconditionStatus cfps = configManager
-	  .writeCacheConfigFileIfPreconditionsMet(filename, ifMatch,
-	      ifNoneMatch, configFile.getInputStream());
+      // Write the file.
+      ConfigFileReadWriteResult writeResult = configManager
+	  .conditionallyWriteCacheConfigFile(filename, ifMatch, ifNoneMatch,
+	      configFile.getInputStream());
 
-      String etag = "\"" + cfps.getTimestamp() + "\"";
-      if (log.isDebugEnabled()) log.debug("etag = " + etag);
-
-      if (!cfps.isPreconditionMet()) {
-        // Yes: Check whether an If-None-Match header was passed.
-        if (ifNoneMatch != null && !ifNoneMatch.isEmpty()) {
-          // Yes: Return no content, just a Not-Modified status.
-          HttpHeaders responseHeaders = new HttpHeaders();
-          responseHeaders.setETag(etag);
-          return new ResponseEntity<MultiValueMap<String, Object>>(null,
-              responseHeaders, HttpStatus.NOT_MODIFIED);
-        } else {
-          // Yes: Return no content, just a Precondition-Failed status.
-          return new ResponseEntity<MultiValueMap<String, Object>>(null, null,
-              HttpStatus.PRECONDITION_FAILED);
-        }
+      // Check whether the preconditions have not been met.
+      if (!writeResult.isPreconditionMet()) {
+	// Yes: Return no content, just a Precondition-Failed status.
+	return new ResponseEntity<MultiValueMap<String, Object>>(null, null,
+	    HttpStatus.PRECONDITION_FAILED);
       }
+
+      String etag = "\"" + writeResult.getVersionUniqueId() + "\"";
+      if (log.isDebugEnabled()) log.debug("etag = " + etag);
 
       // Return the new file last modification timestamp in the response.
       HttpHeaders responseHeaders = new HttpHeaders();
@@ -665,49 +657,58 @@ implements ConfigApi {
    *          A List<String> with an asterisk or values equivalent to the
    *          "If-Modified-Since" request header but with a granularity of 1 ms
    *          to be received in the If-None-Match header.
-   * @param cfps
-   *          A ConfigFilePreconditionStatus with an indication of whether the
-   *          precondition is met and the input stream and entity tag to be
-   *          included in the response.
+   * @param readResult
+   *          A ConfigFileReadWriteResult with an indication of whether the
+   *          precondition is met and the input stream, entity tag and content
+   *          type to be included in the response.
    * @return a ResponseEntity<?> with the response for the request to get the
    *         content at a URL.
    */
   private ResponseEntity<?> buildGetUrlResponse(String url,
-      List<String> ifNoneMatch, ConfigFilePreconditionStatus cfps) {
+      List<String> ifNoneMatch, ConfigFileReadWriteResult readResult) {
     if (log.isDebugEnabled()) {
       log.debug("url = " + url);
       log.debug("ifNoneMatch = " + ifNoneMatch);
-      log.debug("cfps = " + cfps);
+      log.debug("readResult = " + readResult);
     }
 
-    String etag = "\"" + cfps.getTimestamp() + "\"";
+    HttpStatus status = null;
+
+    // Get the version unique identifier of the file.
+    String etag = "\"" + readResult.getVersionUniqueId() + "\"";
     if (log.isDebugEnabled()) log.debug("etag = " + etag);
 
-    if (!cfps.isPreconditionMet()) {
+    // Check whether the preconditions have not been met.
+    if (!readResult.isPreconditionMet()) {
       // Yes: Check whether an If-None-Match header was passed.
       if (ifNoneMatch != null && !ifNoneMatch.isEmpty()) {
 	// Yes: Return no content, just a Not-Modified status.
 	HttpHeaders responseHeaders = new HttpHeaders();
 	responseHeaders.setETag(etag);
-	return new ResponseEntity<MultiValueMap<String, Object>>(null,
-	    responseHeaders, HttpStatus.NOT_MODIFIED);
+	if (log.isDebugEnabled())
+	  log.debug("responseHeaders = " + responseHeaders);
+
+	status = HttpStatus.NOT_MODIFIED;
+	if (log.isDebugEnabled()) log.debug("status = " + status);
+
+	return new ResponseEntity<String>(null, responseHeaders, status);
       } else {
-	// Yes: Return no content, just a Precondition-Failed status.
-	return new ResponseEntity<MultiValueMap<String, Object>>(null, null,
-	    HttpStatus.PRECONDITION_FAILED);
+	// No: Return no content, just a Precondition-Failed status.
+	status = HttpStatus.PRECONDITION_FAILED;
+	if (log.isDebugEnabled()) log.debug("status = " + status);
+
+	return new ResponseEntity<String>(null, null, status);
       }
     }
 
-    // Save the content last modification timestamp in the response.
+    // Save the version unique identifier header in the part of the response.
     HttpHeaders partHeaders = new HttpHeaders();
     partHeaders.setETag(etag);
 
-    // Set the returned content type.
-    if (url.toLowerCase().endsWith(".xml")) {
-	partHeaders.setContentType(MediaType.TEXT_XML);
-    } else {
-	partHeaders.setContentType(MediaType.TEXT_PLAIN);
-    }
+    // Save the content type header in the part of the response.
+    MediaType contentType = readResult.getContentType();
+    if (log.isDebugEnabled()) log.debug("contentType = " + contentType);
+    partHeaders.setContentType(contentType);
 
     if (log.isDebugEnabled()) log.debug("partHeaders = " + partHeaders);
 
@@ -715,15 +716,18 @@ implements ConfigApi {
     String partContent = null;
 
     try {
-      is = cfps.getInputStream();
+      is = readResult.getInputStream();
       partContent = StringUtil.fromInputStream(is);
       if (log.isDebugEnabled())
 	log.debug("partContent = '" + partContent + "'");
     } catch (IOException ioe) {
       String message = "Can't get the content for URL '" + url + "'";
       log.error(message, ioe);
-      return new ResponseEntity<String>(message,
-	  HttpStatus.INTERNAL_SERVER_ERROR);
+
+      status = HttpStatus.INTERNAL_SERVER_ERROR;
+      if (log.isDebugEnabled()) log.debug("status = " + status);
+
+      return new ResponseEntity<String>(message, status);
     } finally {
       IOUtil.safeClose(is);
     }
@@ -741,7 +745,10 @@ implements ConfigApi {
     responseHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
     if (log.isDebugEnabled()) log.debug("responseHeaders = " + responseHeaders);
 
+    status = HttpStatus.OK;
+    if (log.isDebugEnabled()) log.debug("status = " + status);
+
     return new ResponseEntity<MultiValueMap<String, Object>>(parts,
-	  responseHeaders, HttpStatus.OK);
+	  responseHeaders, status);
   }
 }

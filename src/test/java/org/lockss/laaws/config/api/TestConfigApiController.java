@@ -27,7 +27,8 @@
  */
 package org.lockss.laaws.config.api;
 
-import static org.lockss.config.RestConfigClient.*;
+import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
+import static org.lockss.config.RestConfigClient.HTTP_WEAK_VALIDATOR_PREFIX;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
@@ -443,7 +444,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     String etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
-//    assertEquals("0", etag);
+    assertEquals("-2", etag);
 
     // Bad Accept header content type.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, MediaType.APPLICATION_JSON,
@@ -455,7 +456,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     String etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
-    assertEquals(etag, etag2);
+    assertNotEquals(etag, etag2);
 
     // Bad Accept header content type.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, etag, null,
@@ -467,7 +468,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Not modified since last read.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, etag, null, null,
+	MediaType.MULTIPART_FORM_DATA, etag2, null, null,
 	HttpStatus.NOT_MODIFIED);
 
     // Bad Accept header content type.
@@ -485,7 +486,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
-    assertEquals(etag, etag2);
+    assertNotEquals(etag, etag2);
 
     // Bad Accept header content type.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, etag,
@@ -497,11 +498,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Not modified since last read.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, etag, "fakeUser", "fakePassword",
+	MediaType.MULTIPART_FORM_DATA, etag2, "fakeUser", "fakePassword",
 	HttpStatus.NOT_MODIFIED);
 
     // Not modified since last read.
-    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag,
+    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag2,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
     configOutput = getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null,
@@ -643,10 +644,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Not found.
     getConfigSection(ConfigApi.SECTION_NAME_ALERT,
 	MediaType.MULTIPART_FORM_DATA, "0", "lockss-u", "lockss-p",
-	HttpStatus.NOT_FOUND);
+	HttpStatus.NOT_MODIFIED);
 
     getConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, "0",
-	HttpStatus.NOT_FOUND, HttpStatus.NOT_FOUND.toString());
+	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
     // Bad section name.
     getConfigSection("fakesectionname", null, null, "lockss-u", "lockss-p",
