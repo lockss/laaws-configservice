@@ -888,7 +888,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     RestConfigSection input = new RestConfigSection();
     input.setSectionName(snId);
-    input.setEtag(etag);
+
+    List<String> ifNoneMatch = new ArrayList<>();
+    if (etag != null && !etag.isEmpty()) {
+      ifNoneMatch.add(etag);
+      input.setIfNoneMatch(ifNoneMatch);
+    }
 
     // Make the request and get the result.
     RestConfigSection output = getRestConfigClient().getConfigSection(input);
@@ -1876,11 +1881,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	MediaType.MULTIPART_FORM_DATA, null, "lockss-u", "lockss-p",
 	HttpStatus.OK);
 
-    try {
-      putConfigSectionClient("testKey=testValue", ConfigApi.SECTION_NAME_EXPERT,
-	  null, null, "Invalid last modification value 'null'");
-      fail("Should have thrown IllegalArgumentException");
-    } catch (IllegalArgumentException iae) {}
+    putConfigSectionClient("testKey=testValue", ConfigApi.SECTION_NAME_EXPERT,
+	null, HttpStatus.OK, HttpStatus.OK.toString());
 
     // Modified at different time than passed timestamp.
     putConfig("testKey1=testValue1", ConfigApi.SECTION_NAME_EXPERT,
@@ -1962,6 +1964,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
     beforeWrite = TimeBase.nowMs();
     assertTrue(beforeWrite >= writeTime);
 
+    List<String> ifMatch = new ArrayList<>();
+    ifMatch.add(output.getEtag());
+    output.setIfMatch(ifMatch);
+
     output.setInputStream(
 	new ByteArrayInputStream("testKey3=testValue3".getBytes("UTF-8")));
 
@@ -1973,6 +1979,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Time after write.
     afterWrite = TimeBase.nowMs();
     assertTrue(afterWrite >= writeTime);
+
+    List<String> ifNoneMatch = new ArrayList<>();
+    ifNoneMatch.add(output2.getEtag());
+    output2.setIfNoneMatch(ifNoneMatch);
 
     RestConfigSection output3 = restConfigClient.getConfigSection(output2);
     assertEquals(HttpStatus.NOT_MODIFIED, output3.getStatusCode());
@@ -2146,12 +2156,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *           if there are problems.
    */
   private RestConfigSection putConfigSectionClient(String config, String snId,
-      String ifMatch, HttpStatus expectedStatus,
+      String etag, HttpStatus expectedStatus,
       String expectedErrorMessagePrefix) throws Exception {
     if (logger.isDebugEnabled()) {
       logger.debug("config = " + config);
       logger.debug("snId = " + snId);
-      logger.debug("ifMatch = " + ifMatch);
+      logger.debug("etag = " + etag);
       logger.debug("expectedStatus = " + expectedStatus);
       logger.debug("expectedErrorMessagePrefix = "
 	  + expectedErrorMessagePrefix);
@@ -2160,12 +2170,17 @@ public class TestConfigApiController extends SpringLockssTestCase {
     RestConfigSection input = new RestConfigSection();
     input.setSectionName(snId);
 
+    List<String> ifMatch = new ArrayList<>();
+    if (etag != null && !etag.isEmpty()) {
+      ifMatch.add(etag);
+      input.setIfMatch(ifMatch);
+    }
+
     if (config != null) {
       input.setInputStream(
 	  new ByteArrayInputStream(config.getBytes("UTF-8")));
     }
 
-    input.setEtag(ifMatch);
     input.setContentType(MediaType.TEXT_PLAIN_VALUE);
 
     // Make the request and get the result;
@@ -2185,7 +2200,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     }
 
     // Check the response etag.
-    assertNotEquals(ifMatch, output.getEtag());
+    assertNotEquals(etag, output.getEtag());
 
     return output;
   }
