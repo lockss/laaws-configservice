@@ -34,7 +34,6 @@ import io.swagger.annotations.ApiParam;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.MalformedParametersException;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
@@ -51,10 +50,10 @@ import org.lockss.config.ConfigFileReadWriteResult;
 import org.lockss.daemon.Cron;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
+import org.lockss.laaws.rs.util.NamedInputStreamResource;
 import org.lockss.laaws.status.model.ApiStatus;
 import org.lockss.spring.status.SpringLockssBaseApiController;
-import org.lockss.util.IOUtil;
-import org.lockss.util.StringUtil;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -710,34 +709,22 @@ implements ConfigApi {
     if (log.isDebugEnabled()) log.debug("contentType = " + contentType);
     partHeaders.setContentType(contentType);
 
+    // This must be set or else AbstractResource#contentLength will read the
+    // entire InputStream to determine the content length, which will exhaust
+    // the InputStream.
+    long contentLength = readResult.getContentLength();
+    if (log.isDebugEnabled()) log.debug("contentLength = " + contentLength);
+    partHeaders.setContentLength(contentLength);
+
     if (log.isDebugEnabled()) log.debug("partHeaders = " + partHeaders);
-
-    InputStream is = null;
-    String partContent = null;
-
-    try {
-      is = readResult.getInputStream();
-      partContent = StringUtil.fromInputStream(is);
-      if (log.isDebugEnabled())
-	log.debug("partContent = '" + partContent + "'");
-    } catch (IOException ioe) {
-      String message = "Can't get the content for URL '" + url + "'";
-      log.error(message, ioe);
-
-      status = HttpStatus.INTERNAL_SERVER_ERROR;
-      if (log.isDebugEnabled()) log.debug("status = " + status);
-
-      return new ResponseEntity<String>(message, status);
-    } finally {
-      IOUtil.safeClose(is);
-    }
 
     // Build the response entity.
     MultiValueMap<String, Object> parts =
 	new LinkedMultiValueMap<String, Object>();
 
-    parts.add(CONFIG_PART_NAME,
-	new HttpEntity<String>(partContent, partHeaders));
+    Resource resource = new NamedInputStreamResource(CONFIG_PART_NAME,
+	readResult.getInputStream());
+    parts.add(CONFIG_PART_NAME, new HttpEntity<>(resource, partHeaders));
     if (log.isDebugEnabled()) log.debug("parts = " + parts);
 
     // Specify the response content type.

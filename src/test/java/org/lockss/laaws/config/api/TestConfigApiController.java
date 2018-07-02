@@ -444,7 +444,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     String etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
-    assertEquals("-2", etag);
+    assertTrue(Long.parseLong(etag) <= TimeBase.nowMs());
 
     // Bad Accept header content type.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, MediaType.APPLICATION_JSON,
@@ -456,7 +456,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     String etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
-    assertNotEquals(etag, etag2);
+    assertEquals(etag, etag2);
 
     // Bad Accept header content type.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, etag, null,
@@ -486,7 +486,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
-    assertNotEquals(etag, etag2);
+    assertEquals(etag, etag2);
 
     // Bad Accept header content type.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, etag,
