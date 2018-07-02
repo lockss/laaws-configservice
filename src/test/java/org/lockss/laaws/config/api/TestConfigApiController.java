@@ -1968,8 +1968,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
     ifMatch.add(output.getEtag());
     output.setIfMatch(ifMatch);
 
-    output.setInputStream(
-	new ByteArrayInputStream("testKey3=testValue3".getBytes("UTF-8")));
+    String content = "testKey3=testValue3";
+    output.setInputStream(new ByteArrayInputStream(content.getBytes("UTF-8")));
+    output.setContentLength(content.length());
 
     RestConfigSection output2 = restConfigClient.putConfigSection(output);
     assertEquals(HttpStatus.OK, output2.getStatusCode());
@@ -2179,6 +2180,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (config != null) {
       input.setInputStream(
 	  new ByteArrayInputStream(config.getBytes("UTF-8")));
+      input.setContentLength(config.length());
     }
 
     input.setContentType(MediaType.TEXT_PLAIN_VALUE);
