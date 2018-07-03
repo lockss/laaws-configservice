@@ -52,9 +52,10 @@ import org.lockss.config.RestConfigClient;
 import org.lockss.config.RestConfigSection;
 import org.lockss.rs.multipart.MimeMultipartHttpMessageConverter;
 import org.lockss.rs.multipart.NamedByteArrayResource;
-import org.lockss.rs.multipart.TextMultipartResponse;
-import org.lockss.rs.multipart.TextMultipartResponse.Part;
+import org.lockss.rs.multipart.MultipartResponse;
+import org.lockss.rs.multipart.MultipartResponse.Part;
 import org.lockss.test.SpringLockssTestCase;
+import org.lockss.util.StringUtil;
 import org.lockss.util.TimeBase;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.slf4j.Logger;
@@ -431,7 +432,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	HttpStatus.NOT_FOUND);
 
     // Use defaults for all headers.
-    TextMultipartResponse configOutput = getConfigSection(
+    MultipartResponse configOutput = getConfigSection(
 	ConfigApi.SECTION_NAME_CLUSTER, null, null, null, null, HttpStatus.OK);
 
     List<String> expectedPayloads = new ArrayList<String>(1);
@@ -668,7 +669,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	HttpStatus.BAD_REQUEST.toString());
 
     // Cluster.
-    TextMultipartResponse configOutput = getConfigSection(
+    MultipartResponse configOutput = getConfigSection(
 	ConfigApi.SECTION_NAME_CLUSTER, MediaType.MULTIPART_FORM_DATA, null,
 	"lockss-u", "lockss-p", HttpStatus.OK);
 
@@ -760,11 +761,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *          A String with the request password.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
-   * @return a TextMultipartResponse with the multipart response.
+   * @return a MultipartResponse with the multipart response.
    * @throws Exception
    *           if there are problems.
    */
-  private TextMultipartResponse getConfigSection(String snId,
+  private MultipartResponse getConfigSection(String snId,
       MediaType acceptContentType, String ifNoneMatch, String user,
       String password, HttpStatus expectedStatus) throws Exception {
     if (logger.isDebugEnabled()) {
@@ -848,12 +849,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
     HttpStatus statusCode = response.getStatusCode();
     assertEquals(expectedStatus, statusCode);
 
-    TextMultipartResponse parsedResponse = null;
+    MultipartResponse parsedResponse = null;
 
     // Check whether it is a success response.
     if (response.getStatusCodeValue() < HttpStatus.MULTIPLE_CHOICES.value()) {
       // Yes: Parse it.
-      parsedResponse = new TextMultipartResponse(response);
+      parsedResponse = new MultipartResponse(response);
     }
 
     // Return the parsed response.
@@ -874,9 +875,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *          An HttpStatus with the HTTP status of the result.
    * @param expectedErrorMessagePrefix
    *          A String with the beginning of the error message.
-   * @return a TextMultipartResponse with the multipart response.
+   * @return a MultipartResponse with the multipart response.
    */
-  private TextMultipartResponse getConfigSectionClient(String snId, String etag,
+  private MultipartResponse getConfigSectionClient(String snId, String etag,
       HttpStatus expectedStatus, String expectedErrorMessagePrefix) {
     if (logger.isDebugEnabled()) {
       logger.debug("snId = " + snId);
@@ -911,7 +912,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
       assertTrue(errorMessage.startsWith(expectedErrorMessagePrefix));
     }
 
-    TextMultipartResponse parsedResponse = output.getResponse();
+    MultipartResponse parsedResponse = output.getResponse();
 
     // Return the parsed response.
     if (logger.isDebugEnabled())
@@ -924,7 +925,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * configuration file obtained in a response after validating the response.
    * 
    * @param response
-   *          A TextMultipartResponse with the response.
+   *          A MultipartResponse with the response.
    * @param expectedContentType
    *          A MediaType with the expected content type of the file.
    * @param expectedPayloads
@@ -935,7 +936,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * @throws Exception
    *           if there are problems.
    */
-  private String verifyMultipartResponse(TextMultipartResponse response,
+  private String verifyMultipartResponse(MultipartResponse response,
       MediaType expectedContentType, List<String> expectedPayloads)
 	  throws Exception {
     // Validate the response content type.
@@ -961,7 +962,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     long contentLength = part.getContentLength();
 
     // Get the part payload.
-    String payload = part.getPayload();
+    String payload = StringUtil.fromInputStream(part.getInputStream());
     assertEquals(contentLength, payload.length());
 
     // Validate the part payload.
@@ -1244,11 +1245,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *          A String with the request password.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
-   * @return a TextMultipartResponse with the multipart response.
+   * @return a MultipartResponse with the multipart response.
    * @throws Exception
    *           if there are problems.
    */
-  private TextMultipartResponse getConfigUrl(String url,
+  private MultipartResponse getConfigUrl(String url,
       MediaType acceptContentType, String etag, String user, String password,
       HttpStatus expectedStatus) throws Exception {
     if (logger.isDebugEnabled()) {
@@ -1329,12 +1330,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
     HttpStatus statusCode = response.getStatusCode();
     assertEquals(expectedStatus, statusCode);
 
-    TextMultipartResponse parsedResponse = null;
+    MultipartResponse parsedResponse = null;
 
     // Check whether it is a success response.
     if (response.getStatusCodeValue() < HttpStatus.MULTIPLE_CHOICES.value()) {
       // Yes: Parse it.
-      parsedResponse = new TextMultipartResponse(response);
+      parsedResponse = new MultipartResponse(response);
     }
 
     // Return the parsed response.
@@ -1684,7 +1685,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     putConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null, "0", null, null,
 	HttpStatus.PRECONDITION_FAILED);
 
-    TextMultipartResponse configOutput = getConfigSection(
+    MultipartResponse configOutput = getConfigSection(
 	ConfigApi.SECTION_NAME_PLUGIN, MediaType.MULTIPART_FORM_DATA, "0",
 	"lockss-u", "lockss-p", HttpStatus.OK);
 
@@ -1901,7 +1902,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     getConfigSection(ConfigApi.SECTION_NAME_EXPERT, null, "0", "lockss-u",
 	"lockss-p", HttpStatus.NOT_ACCEPTABLE);
 
-    TextMultipartResponse configOutput = getConfigSection(
+    MultipartResponse configOutput = getConfigSection(
 	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, "0",
 	"lockss-u", "lockss-p", HttpStatus.OK);
 
