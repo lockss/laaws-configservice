@@ -147,13 +147,13 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     controller.validateIfMatchIfNoneMatchHeaders(ifMatch, ifNoneMatch);
 
-    ifMatch.add("");
+    ifMatch.add("\"\"");
     controller.validateIfMatchIfNoneMatchHeaders(ifMatch, ifNoneMatch);
 
     ifMatch.add("\"1234567890\"");
     controller.validateIfMatchIfNoneMatchHeaders(ifMatch, ifNoneMatch);
 
-    ifNoneMatch.add("");
+    ifNoneMatch.add("\"\"");
 
     try {
       controller.validateIfMatchIfNoneMatchHeaders(ifMatch, ifNoneMatch);
@@ -163,6 +163,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	  "Invalid presence of both If-Match and If-None-Match headers"));
     }
 
+    ifMatch = new ArrayList<String>();
     String weakEtag = HTTP_WEAK_VALIDATOR_PREFIX + "\"1234567890\"";
     ifMatch.add(weakEtag);
 
@@ -172,6 +173,30 @@ public class TestConfigApiController extends SpringLockssTestCase {
     } catch (MalformedParametersException mpe) {
       assertTrue(mpe.getMessage().equals("Invalid If-Match entity tag '"
 	  + weakEtag + "'"));
+    }
+
+    ifMatch = new ArrayList<String>();
+    String undelimitedEtag = "";
+    ifMatch.add(undelimitedEtag);
+
+    try {
+      controller.validateIfMatchIfNoneMatchHeaders(ifMatch, null);
+      fail("Should have thrown MalformedParametersException");
+    } catch (MalformedParametersException mpe) {
+      assertTrue(mpe.getMessage().equals("Invalid If-Match entity tag '"
+	  + undelimitedEtag + "'"));
+    }
+
+    ifMatch = new ArrayList<String>();
+    undelimitedEtag = "1234567890";
+    ifMatch.add(undelimitedEtag);
+
+    try {
+      controller.validateIfMatchIfNoneMatchHeaders(ifMatch, null);
+      fail("Should have thrown MalformedParametersException");
+    } catch (MalformedParametersException mpe) {
+      assertTrue(mpe.getMessage().equals("Invalid If-Match entity tag '"
+	  + undelimitedEtag + "'"));
     }
 
     ifMatch = new ArrayList<String>();
@@ -210,6 +235,30 @@ public class TestConfigApiController extends SpringLockssTestCase {
     } catch (MalformedParametersException mpe) {
       assertTrue(mpe.getMessage()
 	  .equals("Invalid If-None-Match entity tag mix"));
+    }
+
+    ifNoneMatch = new ArrayList<String>();
+    undelimitedEtag = "";
+    ifNoneMatch.add(undelimitedEtag);
+
+    try {
+      controller.validateIfMatchIfNoneMatchHeaders(null, ifNoneMatch);
+      fail("Should have thrown MalformedParametersException");
+    } catch (MalformedParametersException mpe) {
+      assertTrue(mpe.getMessage().equals("Invalid If-None-Match entity tag '"
+	  + undelimitedEtag + "'"));
+    }
+
+    ifNoneMatch = new ArrayList<String>();
+    undelimitedEtag = "1234567890";
+    ifNoneMatch.add(undelimitedEtag);
+
+    try {
+      controller.validateIfMatchIfNoneMatchHeaders(null, ifNoneMatch);
+      fail("Should have thrown MalformedParametersException");
+    } catch (MalformedParametersException mpe) {
+      assertTrue(mpe.getMessage().equals("Invalid If-None-Match entity tag '"
+	  + undelimitedEtag + "'"));
     }
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
@@ -650,6 +699,42 @@ public class TestConfigApiController extends SpringLockssTestCase {
     getConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, "0",
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, "Not-There", "lockss-u", "lockss-p",
+	HttpStatus.NOT_FOUND);
+
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, "0, 1234567", "lockss-u", "lockss-p",
+	HttpStatus.NOT_MODIFIED);
+
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, "0, Not-There", "lockss-u", "lockss-p",
+	HttpStatus.NOT_MODIFIED);
+
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, "0, Not-There, 1234567", "lockss-u",
+	"lockss-p", HttpStatus.NOT_MODIFIED);
+
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, "1234567, 0", "lockss-u", "lockss-p",
+	HttpStatus.NOT_MODIFIED);
+
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, "Not-There, 0", "lockss-u", "lockss-p",
+	HttpStatus.NOT_MODIFIED);
+
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, "1234567, Not-There, 0", "lockss-u",
+	"lockss-p", HttpStatus.NOT_MODIFIED);
+
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, "1234567, Not-There", "lockss-u",
+	"lockss-p", HttpStatus.NOT_FOUND);
+
+    getConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, "Not-There, 1234567", "lockss-u",
+	"lockss-p", HttpStatus.NOT_FOUND);
+
     // Bad section name.
     getConfigSection("fakesectionname", null, null, "lockss-u", "lockss-p",
 	HttpStatus.BAD_REQUEST);
@@ -666,6 +751,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	"lockss-u", "lockss-p", HttpStatus.BAD_REQUEST);
 
     getConfigSectionClient("fakesectionname", "0", HttpStatus.BAD_REQUEST,
+	HttpStatus.BAD_REQUEST.toString());
+
+    getConfigSection("fakesectionname", MediaType.MULTIPART_FORM_DATA, "0, 1",
+	"lockss-u", "lockss-p", HttpStatus.BAD_REQUEST);
+
+    getConfigSectionClient("fakesectionname", "0, 1", HttpStatus.BAD_REQUEST,
 	HttpStatus.BAD_REQUEST.toString());
 
     // Cluster.
@@ -697,7 +788,21 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	MediaType.MULTIPART_FORM_DATA, etag, "lockss-u", "lockss-p",
 	HttpStatus.NOT_MODIFIED);
 
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, "0, " + etag, "lockss-u", "lockss-p",
+	HttpStatus.NOT_MODIFIED);
+
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, "Not-Found, " + etag, "lockss-u",
+	"lockss-p", HttpStatus.NOT_MODIFIED);
+
     getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag,
+	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
+
+    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "0, " + etag,
+	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
+
+    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "Not-Found, " + etag,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
     // Not modified since creation.
@@ -706,6 +811,13 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	HttpStatus.OK);
 
     getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "0",
+	HttpStatus.OK, null);
+
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, "0, Not-Found", "lockss-u", "lockss-p",
+	HttpStatus.OK);
+
+    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "0, Not-Found",
 	HttpStatus.OK, null);
 
     // No If-None-Match header.
@@ -732,12 +844,40 @@ public class TestConfigApiController extends SpringLockssTestCase {
     getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, etag + ", 123", "lockss-u", "lockss-p",
+	HttpStatus.NOT_MODIFIED);
+
+    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag + ", 123",
+	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
+
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, etag + ", ABCDE", "lockss-u", "lockss-p",
+	HttpStatus.NOT_MODIFIED);
+
+    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag + ", ABCDE",
+	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
+
     // No match.
     getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
 	MediaType.MULTIPART_FORM_DATA, "123", "lockss-u", "lockss-p",
 	HttpStatus.OK);
 
+    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "123",
+	HttpStatus.OK, null);
+
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, "123, ABCD", "lockss-u", "lockss-p",
+	HttpStatus.OK);
+
+    getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "123, ABCD",
+	HttpStatus.OK, null);
+
     // File already exists.
+    getConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
+	MediaType.MULTIPART_FORM_DATA, "*", "lockss-u", "lockss-p",
+	HttpStatus.NOT_MODIFIED);
+
     getConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "*",
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
@@ -753,7 +893,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *          A MediaType with the content type to be added to the request
    *          "Accept" header.
    * @param ifNoneMatch
-   *          A String with the timestamp to be specified in the request
+   *          A String with the timestamps to be specified in the request
    *          If-None-Match header.
    * @param user
    *          A String with the request username.
@@ -818,11 +958,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
       // Check whether there is a custom If-None-Match header.
       if (ifNoneMatch != null) {
 	// Yes: Set the If-None-Match header.
-	if ("*".equals(ifNoneMatch)) {
-	  headers.setIfNoneMatch(ifNoneMatch);
-	} else {
-	  headers.setIfNoneMatch("\"" + ifNoneMatch + "\"");
-	}
+	headers.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(ifNoneMatch));
       }
 
       // Check whether there are credentials to be sent with the request.
@@ -864,12 +1000,46 @@ public class TestConfigApiController extends SpringLockssTestCase {
   }
 
   /**
+   * Converts into a list a comma-separated text string representing either an
+   * If-Match or an If-None_match header.
+   * 
+   * @param headerString
+   *          A String with the comma-separated text string.
+   * @return a List<String> with the header entries.
+   */
+  private List<String> makeIfMatchNoneMatchHeaderList(String headerString) {
+    if (logger.isDebugEnabled()) logger.debug("headerString = " + headerString);
+
+    if (headerString == null) {
+      return null;
+    }
+
+    List<String> headerList = new ArrayList<>();
+
+    // Loop through all the comma-separated entries in the text string.
+    for (String item : StringUtil.breakAt(headerString, ",")) {
+      // Check whether it is an asterisk or a weak validator tag.
+      if ("*".equals(item.trim())
+	  || item.trim().startsWith(HTTP_WEAK_VALIDATOR_PREFIX)) {
+	// Yes: Use it as-is.
+	headerList.add(item.trim());
+      } else {
+	// No: Surround it with double quotes.
+	headerList.add("\"" + item.trim() + "\"");
+      }
+    }
+
+    if (logger.isDebugEnabled()) logger.debug("headerList = " + headerList);
+    return headerList;
+  }
+
+  /**
    * Performs a GET operation for a configuration section.
    * 
    * @param snId
    *          A String with the configuration section name.
-   * @param etag
-   *          A String with the timestamp to be specified in the request
+   * @param ifNoneMatch
+   *          A String with the timestamps to be specified in the request
    *          If-None-Match header.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
@@ -877,23 +1047,27 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *          A String with the beginning of the error message.
    * @return a MultipartResponse with the multipart response.
    */
-  private MultipartResponse getConfigSectionClient(String snId, String etag,
-      HttpStatus expectedStatus, String expectedErrorMessagePrefix) {
+  private MultipartResponse getConfigSectionClient(String snId,
+      String ifNoneMatch, HttpStatus expectedStatus,
+      String expectedErrorMessagePrefix) {
     if (logger.isDebugEnabled()) {
       logger.debug("snId = " + snId);
-      logger.debug("etag = " + etag);
+      logger.debug("ifNoneMatch = " + ifNoneMatch);
       logger.debug("expectedStatus = " + expectedStatus);
       logger.debug("expectedErrorMessagePrefix = "
 	  + expectedErrorMessagePrefix);
     }
+    logger.error("snId = " + snId);
+    logger.error("ifNoneMatch = " + ifNoneMatch);
+    logger.error("expectedStatus = " + expectedStatus);
+    logger.error("expectedErrorMessagePrefix = "
+	  + expectedErrorMessagePrefix);
 
     RestConfigSection input = new RestConfigSection();
     input.setSectionName(snId);
 
-    List<String> ifNoneMatch = new ArrayList<>();
-    if (etag != null && !etag.isEmpty()) {
-      ifNoneMatch.add(etag);
-      input.setIfNoneMatch(ifNoneMatch);
+    if (ifNoneMatch != null && !ifNoneMatch.isEmpty()) {
+      input.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(ifNoneMatch));
     }
 
     // Make the request and get the result.
@@ -1236,8 +1410,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * @param acceptContentType
    *          A MediaType with the content type to be added to the request
    *          "Accept" header.
-   * @param etag
-   *          A String with the timestamp to be specified in the request
+   * @param ifNoneMatch
+   *          A String with the timestamps to be specified in the request
    *          If-None-Match header.
    * @param user
    *          A String with the request username.
@@ -1250,12 +1424,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *           if there are problems.
    */
   private MultipartResponse getConfigUrl(String url,
-      MediaType acceptContentType, String etag, String user, String password,
-      HttpStatus expectedStatus) throws Exception {
+      MediaType acceptContentType, String ifNoneMatch, String user,
+      String password, HttpStatus expectedStatus) throws Exception {
     if (logger.isDebugEnabled()) {
       logger.debug("url = " + url);
       logger.debug("acceptContentType = " + acceptContentType);
-      logger.debug("etag = " + etag);
+      logger.debug("ifNoneMatch = " + ifNoneMatch);
       logger.debug("user = " + user);
       logger.debug("password = " + password);
       logger.debug("expectedStatus = " + expectedStatus);
@@ -1281,7 +1455,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Check whether there are any custom headers to be specified in the
     // request.
-    if (acceptContentType != null || etag != null || user != null
+    if (acceptContentType != null || ifNoneMatch != null || user != null
 	|| password != null) {
       // Yes: Initialize the request headers.
       HttpHeaders headers = new HttpHeaders();
@@ -1296,14 +1470,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
       }
 
-      // Check whether there is a custom eTag.
-      if (etag != null) {
+      // Check whether there is a custom If-None-Match header.
+      if (ifNoneMatch != null) {
 	// Yes: Set the If-None-Match header.
-	if ("*".equals(etag)) {
-	  headers.setIfNoneMatch(etag);
-	} else {
-	  headers.setIfNoneMatch("\"" + etag + "\"");
-	}
+	headers.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(ifNoneMatch));
       }
 
       // Check whether there are credentials to be sent with the request.
@@ -1685,6 +1855,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
     putConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null, "0", null, null,
 	HttpStatus.PRECONDITION_FAILED);
 
+    putConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null, "0, 12", null, null,
+	HttpStatus.PRECONDITION_FAILED);
+
+    putConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null, "0, 12, ABCD", null,
+	null, HttpStatus.PRECONDITION_FAILED);
+
     MultipartResponse configOutput = getConfigSection(
 	ConfigApi.SECTION_NAME_PLUGIN, MediaType.MULTIPART_FORM_DATA, "0",
 	"lockss-u", "lockss-p", HttpStatus.OK);
@@ -1748,6 +1924,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
     putConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN,
 	MediaType.MULTIPART_FORM_DATA, "0", "fakeUser", "fakePassword",
 	HttpStatus.PRECONDITION_FAILED);
+
+    putConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN, null, etag + ", 123456",
+	"fakeUser", "fakePassword", HttpStatus.OK);
 
     // Ignore modification time.
     putConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN,
@@ -1895,6 +2074,14 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	HttpStatus.PRECONDITION_FAILED.toString());
 
     putConfig("testKey1=testValue1", ConfigApi.SECTION_NAME_EXPERT,
+	MediaType.MULTIPART_FORM_DATA, "-1, ABCDE", "lockss-u", "lockss-p",
+	HttpStatus.PRECONDITION_FAILED);
+
+    putConfigSectionClient("testKey1=testValue1", ConfigApi.SECTION_NAME_EXPERT,
+	"-1, ABCDE", HttpStatus.PRECONDITION_FAILED,
+	HttpStatus.PRECONDITION_FAILED.toString());
+
+    putConfig("testKey1=testValue1", ConfigApi.SECTION_NAME_EXPERT,
 	MediaType.MULTIPART_FORM_DATA, "0", "lockss-u", "lockss-p",
 	HttpStatus.PRECONDITION_FAILED);
 
@@ -1926,6 +2113,14 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     putConfigSectionClient("testKey1=testValue1\ntestKey2=testValue2",
 	ConfigApi.SECTION_NAME_EXPERT, "0", HttpStatus.PRECONDITION_FAILED,
+	HttpStatus.PRECONDITION_FAILED.toString());
+
+    putConfig("testKey1=testValue1\ntestKey2=testValue2",
+	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, "0, 1",
+	"lockss-u", "lockss-p", HttpStatus.PRECONDITION_FAILED);
+
+    putConfigSectionClient("testKey1=testValue1\ntestKey2=testValue2",
+	ConfigApi.SECTION_NAME_EXPERT, "0, 1", HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
     // Time before write.
@@ -1965,9 +2160,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     beforeWrite = TimeBase.nowMs();
     assertTrue(beforeWrite >= writeTime);
 
-    List<String> ifMatch = new ArrayList<>();
-    ifMatch.add(output.getEtag());
-    output.setIfMatch(ifMatch);
+    output.setIfMatch(makeIfMatchNoneMatchHeaderList(output.getEtag() + ", 0"));
 
     String content = "testKey3=testValue3";
     output.setInputStream(new ByteArrayInputStream(content.getBytes("UTF-8")));
@@ -1982,9 +2175,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
     afterWrite = TimeBase.nowMs();
     assertTrue(afterWrite >= writeTime);
 
-    List<String> ifNoneMatch = new ArrayList<>();
-    ifNoneMatch.add(output2.getEtag());
-    output2.setIfNoneMatch(ifNoneMatch);
+    output2.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(output2.getEtag()
+	+ ", ABCD"));
 
     RestConfigSection output3 = restConfigClient.getConfigSection(output2);
     assertEquals(HttpStatus.NOT_MODIFIED, output3.getStatusCode());
@@ -2108,12 +2300,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
       // Check whether there is a custom If-Match header.
       if (ifMatch != null) {
-	// Yes.
-	if ("*".equals(ifMatch)) {
-	  headers.setIfMatch(ifMatch);
-	} else {
-	  headers.setIfMatch("\"" + ifMatch + "\"");
-	}
+	// Yes: Set the If-Match header.
+	headers.setIfMatch(makeIfMatchNoneMatchHeaderList(ifMatch));
       }
 
       // Check whether there are credentials to be sent with the request.
@@ -2158,12 +2346,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *           if there are problems.
    */
   private RestConfigSection putConfigSectionClient(String config, String snId,
-      String etag, HttpStatus expectedStatus,
+      String ifMatch, HttpStatus expectedStatus,
       String expectedErrorMessagePrefix) throws Exception {
     if (logger.isDebugEnabled()) {
       logger.debug("config = " + config);
       logger.debug("snId = " + snId);
-      logger.debug("etag = " + etag);
+      logger.debug("ifMatch = " + ifMatch);
       logger.debug("expectedStatus = " + expectedStatus);
       logger.debug("expectedErrorMessagePrefix = "
 	  + expectedErrorMessagePrefix);
@@ -2172,10 +2360,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
     RestConfigSection input = new RestConfigSection();
     input.setSectionName(snId);
 
-    List<String> ifMatch = new ArrayList<>();
-    if (etag != null && !etag.isEmpty()) {
-      ifMatch.add(etag);
-      input.setIfMatch(ifMatch);
+    if (ifMatch != null && !ifMatch.isEmpty()) {
+      input.setIfMatch(makeIfMatchNoneMatchHeaderList(ifMatch));
     }
 
     if (config != null) {
@@ -2203,7 +2389,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     }
 
     // Check the response etag.
-    assertNotEquals(etag, output.getEtag());
+    assertNotEquals(ifMatch, output.getEtag());
 
     return output;
   }

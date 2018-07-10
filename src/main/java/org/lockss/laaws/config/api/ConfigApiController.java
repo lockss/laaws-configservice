@@ -549,10 +549,19 @@ implements ConfigApi {
 	  String message = "Invalid If-Match entity tag '" + tag + "'";
 	  log.warn(message);
 	  throw new MalformedParametersException(message);
-	  // No: Check whether the asterisk does not appear just by itself.
-	} else if ("*".equals(tag) && ifMatch.size() > 1) {
+	  // No: Check whether it is an asterisk.
+	} else if ("*".equals(tag)) {
+	  // Yes: Check whether the asterisk does not appear just by itself.
+	  if (ifMatch.size() > 1) {
+	    // Yes: Report the problem.
+	    String message = "Invalid If-Match entity tag mix";
+	    log.warn(message);
+	    throw new MalformedParametersException(message);
+	  }
+	  // No: Check whether a normal tag is not delimited by double quotes.
+	} else if (!tag.startsWith("\"") || !tag.endsWith("\"")) {
 	  // Yes: Report the problem.
-	  String message = "Invalid If-Match entity tag mix";
+	  String message = "Invalid If-Match entity tag '" + tag + "'";
 	  log.warn(message);
 	  throw new MalformedParametersException(message);
 	}
@@ -569,9 +578,18 @@ implements ConfigApi {
 	  log.warn(message);
 	  throw new MalformedParametersException(message);
 	  // No: Check whether the asterisk does not appear just by itself.
-	} else if ("*".equals(tag) && ifNoneMatch.size() > 1) {
+	} else if ("*".equals(tag)) {
+	  // Yes: Check whether the asterisk does not appear just by itself.
+	  if (ifNoneMatch.size() > 1) {
+	    // Yes: Report the problem.
+	    String message = "Invalid If-None-Match entity tag mix";
+	    log.warn(message);
+	    throw new MalformedParametersException(message);
+	  }
+	  // No: Check whether a normal tag is not delimited by double quotes.
+	} else if (!tag.startsWith("\"") || !tag.endsWith("\"")) {
 	  // Yes: Report the problem.
-	  String message = "Invalid If-None-Match entity tag mix";
+	  String message = "Invalid If-None-Match entity tag '" + tag + "'";
 	  log.warn(message);
 	  throw new MalformedParametersException(message);
 	}
