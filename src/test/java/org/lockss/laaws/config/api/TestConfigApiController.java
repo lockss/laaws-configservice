@@ -55,6 +55,8 @@ import org.lockss.rs.multipart.NamedByteArrayResource;
 import org.lockss.rs.multipart.MultipartResponse;
 import org.lockss.rs.multipart.MultipartResponse.Part;
 import org.lockss.test.SpringLockssTestCase;
+import org.lockss.util.AccessType;
+import org.lockss.util.ListUtil;
 import org.lockss.util.StringUtil;
 import org.lockss.util.TimeBase;
 import org.skyscreamer.jsonassert.JSONAssert;
@@ -87,6 +89,35 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class TestConfigApiController extends SpringLockssTestCase {
+  public static final String EMPTY_STRING = "";
+  public static final String ZERO = "0";
+  public static final String NUMBER = "9876543210";
+  public static final String TEXT = "text";
+
+  // Preconditions.
+  public static final String EMPTY_PRECONDITION = "\"\"";
+  public static final String NUMERIC_PRECONDITION = "\"1234567890\"";
+  public static final String ALPHA_PRECONDITION = "\"ABCD\"";
+
+  public static final String WEAK_PRECONDITION =
+      HTTP_WEAK_VALIDATOR_PREFIX + NUMERIC_PRECONDITION;
+
+  public static final String ASTERISK_PRECONDITION = "*";
+
+  public static final List<String> EMPTY_PRECONDITION_LIST =
+      new ArrayList<String>();
+
+  // Section names.
+  public static final String UIIPACCESS = "UI_IP_ACCESS";
+  public static final String CLUSTER = "CLUSTER";
+  public static final String BAD_SN = "badSectionName";
+
+  // Credentials.
+  public static final String GOOD_USER = "lockss-u";
+  public static final String GOOD_PWD = "lockss-p";
+  public static final String BAD_USER = "badUser";
+  public static final String BAD_PWD = "badPassword";
+
   private static final Logger logger =
       LoggerFactory.getLogger(TestConfigApiController.class);
 
@@ -138,127 +169,103 @@ public class TestConfigApiController extends SpringLockssTestCase {
     ConfigApiController controller = new ConfigApiController();
 
     controller.validateIfMatchIfNoneMatchHeaders(null, null);
+    controller.validateIfMatchIfNoneMatchHeaders(EMPTY_PRECONDITION_LIST, null);
+    controller.validateIfMatchIfNoneMatchHeaders(null, EMPTY_PRECONDITION_LIST);
 
-    List<String> ifMatch = new ArrayList<String>();
-    controller.validateIfMatchIfNoneMatchHeaders(ifMatch, null);
+    controller.validateIfMatchIfNoneMatchHeaders(EMPTY_PRECONDITION_LIST,
+	EMPTY_PRECONDITION_LIST);
 
-    List<String> ifNoneMatch = new ArrayList<String>();
-    controller.validateIfMatchIfNoneMatchHeaders(null, ifNoneMatch);
+    controller.validateIfMatchIfNoneMatchHeaders(
+	ListUtil.list(EMPTY_PRECONDITION), EMPTY_PRECONDITION_LIST);
 
-    controller.validateIfMatchIfNoneMatchHeaders(ifMatch, ifNoneMatch);
-
-    ifMatch.add("\"\"");
-    controller.validateIfMatchIfNoneMatchHeaders(ifMatch, ifNoneMatch);
-
-    ifMatch.add("\"1234567890\"");
-    controller.validateIfMatchIfNoneMatchHeaders(ifMatch, ifNoneMatch);
-
-    ifNoneMatch.add("\"\"");
+    controller.validateIfMatchIfNoneMatchHeaders(
+	ListUtil.list(EMPTY_PRECONDITION, NUMERIC_PRECONDITION),
+	EMPTY_PRECONDITION_LIST);
 
     try {
-      controller.validateIfMatchIfNoneMatchHeaders(ifMatch, ifNoneMatch);
+      controller.validateIfMatchIfNoneMatchHeaders(
+	  ListUtil.list(EMPTY_PRECONDITION, NUMERIC_PRECONDITION),
+	  ListUtil.list(EMPTY_PRECONDITION));
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
       assertTrue(mpe.getMessage().equals(
 	  "Invalid presence of both If-Match and If-None-Match headers"));
     }
 
-    ifMatch = new ArrayList<String>();
-    String weakEtag = HTTP_WEAK_VALIDATOR_PREFIX + "\"1234567890\"";
-    ifMatch.add(weakEtag);
-
     try {
-      controller.validateIfMatchIfNoneMatchHeaders(ifMatch, null);
+      controller.validateIfMatchIfNoneMatchHeaders(
+	  ListUtil.list(WEAK_PRECONDITION), null);
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
       assertTrue(mpe.getMessage().equals("Invalid If-Match entity tag '"
-	  + weakEtag + "'"));
+	  + WEAK_PRECONDITION + "'"));
     }
 
-    ifMatch = new ArrayList<String>();
-    String undelimitedEtag = "";
-    ifMatch.add(undelimitedEtag);
-
     try {
-      controller.validateIfMatchIfNoneMatchHeaders(ifMatch, null);
+      controller.validateIfMatchIfNoneMatchHeaders(ListUtil.list(EMPTY_STRING),
+	  null);
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
       assertTrue(mpe.getMessage().equals("Invalid If-Match entity tag '"
-	  + undelimitedEtag + "'"));
+	  + EMPTY_STRING + "'"));
     }
 
-    ifMatch = new ArrayList<String>();
-    undelimitedEtag = "1234567890";
-    ifMatch.add(undelimitedEtag);
-
     try {
-      controller.validateIfMatchIfNoneMatchHeaders(ifMatch, null);
+      controller.validateIfMatchIfNoneMatchHeaders(ListUtil.list(NUMBER), null);
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
       assertTrue(mpe.getMessage().equals("Invalid If-Match entity tag '"
-	  + undelimitedEtag + "'"));
+	  + NUMBER + "'"));
     }
 
-    ifMatch = new ArrayList<String>();
-    ifMatch.add("\"9876543210\"");
-    ifMatch.add("*");
-
     try {
-      controller.validateIfMatchIfNoneMatchHeaders(ifMatch, null);
+      controller.validateIfMatchIfNoneMatchHeaders(
+	  ListUtil.list(NUMERIC_PRECONDITION, ASTERISK_PRECONDITION), null);
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
       assertTrue(mpe.getMessage().equals("Invalid If-Match entity tag mix"));
     }
 
-    controller.validateIfMatchIfNoneMatchHeaders(null, ifNoneMatch);
+    controller.validateIfMatchIfNoneMatchHeaders(null,
+	ListUtil.list(EMPTY_PRECONDITION));
 
-    ifNoneMatch.add("\"1234567890\"");
-    controller.validateIfMatchIfNoneMatchHeaders(null, ifNoneMatch);
-
-    ifNoneMatch.add(weakEtag);
+    controller.validateIfMatchIfNoneMatchHeaders(null,
+	ListUtil.list(EMPTY_PRECONDITION, NUMERIC_PRECONDITION));
 
     try {
-      controller.validateIfMatchIfNoneMatchHeaders(null, ifNoneMatch);
+      controller.validateIfMatchIfNoneMatchHeaders(null,
+	  ListUtil.list(EMPTY_PRECONDITION, NUMERIC_PRECONDITION,
+	      WEAK_PRECONDITION));
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
       assertTrue(mpe.getMessage().equals("Invalid If-None-Match entity tag '"
-	  + weakEtag + "'"));
+	  + WEAK_PRECONDITION + "'"));
     }
 
-    ifNoneMatch = new ArrayList<String>();
-    ifNoneMatch.add("*");
-    ifNoneMatch.add("");
-
     try {
-      controller.validateIfMatchIfNoneMatchHeaders(null, ifNoneMatch);
+      controller.validateIfMatchIfNoneMatchHeaders(null,
+	  ListUtil.list(ASTERISK_PRECONDITION, EMPTY_STRING));
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
       assertTrue(mpe.getMessage()
 	  .equals("Invalid If-None-Match entity tag mix"));
     }
 
-    ifNoneMatch = new ArrayList<String>();
-    undelimitedEtag = "";
-    ifNoneMatch.add(undelimitedEtag);
-
     try {
-      controller.validateIfMatchIfNoneMatchHeaders(null, ifNoneMatch);
+      controller.validateIfMatchIfNoneMatchHeaders(null,
+	  ListUtil.list(EMPTY_STRING));
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
       assertTrue(mpe.getMessage().equals("Invalid If-None-Match entity tag '"
-	  + undelimitedEtag + "'"));
+	  + EMPTY_STRING + "'"));
     }
 
-    ifNoneMatch = new ArrayList<String>();
-    undelimitedEtag = "1234567890";
-    ifNoneMatch.add(undelimitedEtag);
-
     try {
-      controller.validateIfMatchIfNoneMatchHeaders(null, ifNoneMatch);
+      controller.validateIfMatchIfNoneMatchHeaders(null, ListUtil.list(NUMBER));
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
       assertTrue(mpe.getMessage().equals("Invalid If-None-Match entity tag '"
-	  + undelimitedEtag + "'"));
+	  + NUMBER + "'"));
     }
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
@@ -277,46 +284,52 @@ public class TestConfigApiController extends SpringLockssTestCase {
     ConfigApiController controller = new ConfigApiController();
 
     try {
-      controller.validateSectionName(null, false);
+      controller.validateSectionName(null, AccessType.WRITE);
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
       assertTrue(mpe.getMessage().startsWith("Invalid sectionName 'null'"));
     }
 
     try {
-      controller.validateSectionName("fake", false);
+      controller.validateSectionName(BAD_SN, AccessType.WRITE);
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
-      assertTrue(mpe.getMessage().startsWith("Invalid sectionName 'fake'"));
+      assertTrue(mpe.getMessage().startsWith("Invalid sectionName '" + BAD_SN
+	  + "'"));
     }
 
-    assertEquals(ConfigApi.SECTION_NAME_UI_IP_ACCESS, controller
-	.validateSectionName(ConfigApi.SECTION_NAME_UI_IP_ACCESS, false));
     assertEquals(ConfigApi.SECTION_NAME_UI_IP_ACCESS,
-	controller.validateSectionName("UI_IP_ACCESS", false));
-    assertEquals(ConfigApi.SECTION_NAME_UI_IP_ACCESS, controller
-	.validateSectionName(ConfigApi.SECTION_NAME_UI_IP_ACCESS, true));
+	controller.validateSectionName(UIIPACCESS, AccessType.WRITE));
     assertEquals(ConfigApi.SECTION_NAME_UI_IP_ACCESS,
-	controller.validateSectionName("UI_IP_ACCESS", true));
+	controller.validateSectionName(UIIPACCESS.toLowerCase(),
+	    AccessType.WRITE));
+    assertEquals(ConfigApi.SECTION_NAME_UI_IP_ACCESS,
+	controller.validateSectionName(UIIPACCESS, AccessType.READ));
+    assertEquals(ConfigApi.SECTION_NAME_UI_IP_ACCESS,
+	controller.validateSectionName(UIIPACCESS.toLowerCase(),
+	    AccessType.READ));
 
     try {
-      controller.validateSectionName(ConfigApi.SECTION_NAME_CLUSTER, false);
+      controller.validateSectionName(CLUSTER, AccessType.WRITE);
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
-      assertTrue(mpe.getMessage().startsWith("Invalid sectionName 'cluster'"));
+      assertTrue(mpe.getMessage().startsWith(
+	  "Invalid writing operation on sectionName '" + CLUSTER + "'"));
     }
 
     try {
-      controller.validateSectionName("CLUSTER", false);
+      controller.validateSectionName(CLUSTER.toLowerCase(), AccessType.WRITE);
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
-      assertTrue(mpe.getMessage().startsWith("Invalid sectionName 'CLUSTER'"));
+      assertTrue(mpe.getMessage().startsWith(
+	  "Invalid writing operation on sectionName '" + CLUSTER.toLowerCase()
+	  + "'"));
     }
 
-    assertEquals(ConfigApi.SECTION_NAME_CLUSTER, controller
-	.validateSectionName(ConfigApi.SECTION_NAME_CLUSTER, true));
     assertEquals(ConfigApi.SECTION_NAME_CLUSTER,
-	controller.validateSectionName("CLUSTER", true));
+	controller.validateSectionName(CLUSTER, AccessType.READ));
+    assertEquals(ConfigApi.SECTION_NAME_CLUSTER,
+	controller.validateSectionName(CLUSTER.toLowerCase(), AccessType.READ));
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -469,30 +482,34 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	MediaType.MULTIPART_FORM_DATA, null, null, null, HttpStatus.NOT_FOUND);
 
     // Bad Accept header content type.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null,
-	"fakeUser", "fakePassword", HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, BAD_USER,
+	BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, null, "fakeUser", "fakePassword",
+	MediaType.APPLICATION_JSON, null, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Good Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, "fakeUser", "fakePassword",
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_FOUND);
 
     // Use defaults for all headers.
     MultipartResponse configOutput = runTestGetConfigSection(
 	ConfigApi.SECTION_NAME_CLUSTER, null, null, null, null, HttpStatus.OK);
 
-    List<String> expectedPayloads = new ArrayList<String>(1);
-    expectedPayloads.add("<lockss-config>");
-    expectedPayloads.add("<property name=\"org.lockss.auxPropUrls\">");
-    expectedPayloads.add("<list append=\"false\">");
-    expectedPayloads.add("</list>");
-    expectedPayloads.add("</property>");
-    expectedPayloads.add("</lockss-config>");
+    List<String> expectedPayloads = ListUtil.list(
+	"<lockss-config>",
+	"  <property name=\"org.lockss.auxPropUrls\">",
+	"    <list append=\"false\">",
+	"",
+	"      <!-- Put static URLs here -->",
+	"",
+	"    </list>",
+	"  </property>",
+	"</lockss-config>"
+	);
 
     String etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
@@ -527,17 +544,16 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, null,
-	"fakeUser", "fakePassword", HttpStatus.NOT_ACCEPTABLE);
+	BAD_USER, BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.APPLICATION_JSON, null, "fakeUser", "fakePassword",
+	MediaType.APPLICATION_JSON, null, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Good Accept header content type.
     configOutput = runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, "fakeUser", "fakePassword",
-	HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD, HttpStatus.OK);
 
     etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
@@ -545,19 +561,19 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, etag,
-	"fakeUser", "fakePassword", HttpStatus.NOT_ACCEPTABLE);
+	BAD_USER, BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.APPLICATION_JSON, etag, "fakeUser", "fakePassword",
+	MediaType.APPLICATION_JSON, etag, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Not modified since last read.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, etag2, "fakeUser", "fakePassword",
+	MediaType.MULTIPART_FORM_DATA, etag2, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_MODIFIED);
 
-    // Not modified since last read.
+    // Not modified since last read using the REST service client.
     runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag2,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
@@ -568,7 +584,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	expectedPayloads);
     assertTrue(Long.parseLong(etag) <= TimeBase.nowMs());
 
-    // Not modified since last read.
+    // Not modified since last read using the REST service client.
     runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
@@ -579,7 +595,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // File already exists.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, "*", null, null,
+	MediaType.MULTIPART_FORM_DATA, ASTERISK_PRECONDITION, null, null,
 	HttpStatus.NOT_MODIFIED);
 
     getConfigSectionCommonTest();
@@ -610,44 +626,44 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, "0", null, null,
-	HttpStatus.UNAUTHORIZED);
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, ZERO, null,
+	null, HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, "0", null, null, HttpStatus.UNAUTHORIZED);
+	MediaType.APPLICATION_JSON, ZERO, null, null, HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, "0", null, null,
+	MediaType.MULTIPART_FORM_DATA, ZERO, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, "0", "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, ZERO, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, "0", "fakeUser", "fakePassword",
-	HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, "0", "fakeUser", "fakePassword",
-	HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null,
-	"fakeUser", "fakePassword", HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, null, "fakeUser", "fakePassword",
+	MediaType.APPLICATION_JSON, ZERO, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, "fakeUser", "fakePassword",
+	MediaType.MULTIPART_FORM_DATA, ZERO, BAD_USER, BAD_PWD,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.APPLICATION_JSON, null, BAD_USER, BAD_PWD,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     getConfigSectionCommonTest();
@@ -664,7 +680,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getConfigSectionCommonTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    // Bad section name.
+    // Bad section name using the REST service client.
     try {
       runTestGetConfigSectionClient(null, null, null, null);
       fail("Should have thrown IllegalArgumentException");
@@ -673,149 +689,160 @@ public class TestConfigApiController extends SpringLockssTestCase {
     }
 
     try {
-      runTestGetConfigSectionClient("", null, null, null);
+      runTestGetConfigSectionClient(EMPTY_STRING, null, null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid section name ''", iae.getMessage());
     }
 
-    // Bad preconditions.
+    // Bad preconditions using the REST service client.
     try {
       runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT,
-	HTTP_WEAK_VALIDATOR_PREFIX + "\"1234567\"", null, null);
+	  WEAK_PRECONDITION, null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
-      assertEquals("Invalid If-None-Match entity tag '"
-	  + HTTP_WEAK_VALIDATOR_PREFIX + "\"1234567\"'", iae.getMessage());
+      assertEquals("Invalid If-None-Match entity tag '" + WEAK_PRECONDITION
+	  + "'", iae.getMessage());
     }
 
     try {
-      runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, "*, 1234567",
-	  null, null);
+      runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT,
+	  ASTERISK_PRECONDITION + "," + NUMBER, null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid If-None-Match entity tag mix", iae.getMessage());
     }
 
     try {
-      runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, "*, *", null,
-	  null);
+      runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT,
+	  ASTERISK_PRECONDITION + "," + ASTERISK_PRECONDITION, null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid If-None-Match entity tag mix", iae.getMessage());
     }
 
     // Bad Accept header content type.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null,
-	"lockss-u", "lockss-p", HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, GOOD_USER,
+	GOOD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, null, "lockss-u", "lockss-p",
+	MediaType.APPLICATION_JSON, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, "0", "lockss-u", "lockss-p",
+	MediaType.APPLICATION_JSON, ZERO, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, "0", "lockss-u",
-	"lockss-p", HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, ZERO, GOOD_USER,
+	GOOD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Not found.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
+    // Not found using the REST service client.
     runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, null,
 	HttpStatus.NOT_FOUND, HttpStatus.NOT_FOUND.toString());
 
     // Not found.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, "0", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, ZERO, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_MODIFIED);
 
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, "0",
+    // Not found using the REST service client.
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, ZERO,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, "Not-There", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, TEXT, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, "0, 1234567", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, ZERO + "," + NUMBER, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_MODIFIED);
 
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, "0, Not-There", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, ZERO + "," + TEXT, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_MODIFIED);
 
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, "0, Not-There, 1234567", "lockss-u",
-	"lockss-p", HttpStatus.NOT_MODIFIED);
+	MediaType.MULTIPART_FORM_DATA, ZERO + "," + TEXT + "," + NUMBER,
+	GOOD_USER, GOOD_PWD, HttpStatus.NOT_MODIFIED);
 
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, "1234567, 0", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, NUMBER + "," + ZERO + "," + TEXT,
+	GOOD_USER, GOOD_PWD, HttpStatus.NOT_MODIFIED);
+
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, TEXT + "," + ZERO, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_MODIFIED);
 
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, "Not-There, 0", "lockss-u", "lockss-p",
-	HttpStatus.NOT_MODIFIED);
+	MediaType.MULTIPART_FORM_DATA, NUMBER + "," + TEXT + "," + ZERO,
+	GOOD_USER, GOOD_PWD, HttpStatus.NOT_MODIFIED);
 
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, "1234567, Not-There, 0", "lockss-u",
-	"lockss-p", HttpStatus.NOT_MODIFIED);
+	MediaType.MULTIPART_FORM_DATA, NUMBER + "," + TEXT, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
 
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, "1234567, Not-There", "lockss-u",
-	"lockss-p", HttpStatus.NOT_FOUND);
-
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, "Not-There, 1234567", "lockss-u",
-	"lockss-p", HttpStatus.NOT_FOUND);
+	MediaType.MULTIPART_FORM_DATA, TEXT + "," + NUMBER, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
 
     // Bad section name.
-    runTestGetConfigSection("fakesectionname", null, null, "lockss-u",
-	"lockss-p", HttpStatus.BAD_REQUEST);
+    runTestGetConfigSection(BAD_SN, null, null, GOOD_USER, GOOD_PWD,
+	HttpStatus.BAD_REQUEST);
 
-    runTestGetConfigSectionClient("fakesectionname", null,
-	HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.toString());
-
-    // Bad section name.
-    runTestGetConfigSection("fakesectionname", MediaType.MULTIPART_FORM_DATA,
-	null, "lockss-u", "lockss-p", HttpStatus.BAD_REQUEST);
+    // Bad section name using the REST service client.
+    runTestGetConfigSectionClient(BAD_SN, null, HttpStatus.BAD_REQUEST,
+	HttpStatus.BAD_REQUEST.toString());
 
     // Bad section name.
-    runTestGetConfigSection("fakesectionname", MediaType.MULTIPART_FORM_DATA,
-	"0", "lockss-u", "lockss-p", HttpStatus.BAD_REQUEST);
+    runTestGetConfigSection(BAD_SN, MediaType.MULTIPART_FORM_DATA, null,
+	GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
 
-    runTestGetConfigSectionClient("fakesectionname", "0",
-	HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.toString());
+    // Bad section name.
+    runTestGetConfigSection(BAD_SN, MediaType.MULTIPART_FORM_DATA, ZERO,
+	GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
 
-    runTestGetConfigSection("fakesectionname", MediaType.MULTIPART_FORM_DATA,
-	"0, 1", "lockss-u", "lockss-p", HttpStatus.BAD_REQUEST);
+    // Bad section name using the REST service client.
+    runTestGetConfigSectionClient(BAD_SN, ZERO, HttpStatus.BAD_REQUEST,
+	HttpStatus.BAD_REQUEST.toString());
 
-    runTestGetConfigSectionClient("fakesectionname", "0, 1",
+    // Bad section name.
+    runTestGetConfigSection(BAD_SN, MediaType.MULTIPART_FORM_DATA,
+	ZERO + "," + NUMBER, GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
+
+    // Bad section name using the REST service client.
+    runTestGetConfigSectionClient(BAD_SN, ZERO + "," + NUMBER,
 	HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.toString());
 
     // Cluster.
     MultipartResponse configOutput = runTestGetConfigSection(
 	ConfigApi.SECTION_NAME_CLUSTER, MediaType.MULTIPART_FORM_DATA, null,
-	"lockss-u", "lockss-p", HttpStatus.OK);
+	GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
-    List<String> expectedPayloads = new ArrayList<String>(1);
-    expectedPayloads.add("<lockss-config>");
-    expectedPayloads.add("<property name=\"org.lockss.auxPropUrls\">");
-    expectedPayloads.add("<list append=\"false\">");
-    expectedPayloads.add("</list>");
-    expectedPayloads.add("</property>");
-    expectedPayloads.add("</lockss-config>");
+    List<String> expectedPayloads = ListUtil.list(
+	"<lockss-config>",
+	"  <property name=\"org.lockss.auxPropUrls\">",
+	"    <list append=\"false\">",
+	"",
+	"      <!-- Put static URLs here -->",
+	"",
+	"    </list>",
+	"  </property>",
+	"</lockss-config>"
+	);
 
     String etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
     assertTrue(Long.parseLong(etag) <= TimeBase.nowMs());
 
+    // Successful using the REST service client.
     configOutput = runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER,
 	null, HttpStatus.OK, null);
 
@@ -825,51 +852,57 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Not modified since last read.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, etag, "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, etag, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_MODIFIED);
 
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, "0, " + etag, "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, ZERO + "," + etag, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_MODIFIED);
 
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, "Not-Found, " + etag, "lockss-u",
-	"lockss-p", HttpStatus.NOT_MODIFIED);
+	MediaType.MULTIPART_FORM_DATA, TEXT + "," + etag, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_MODIFIED);
 
+    // Not modified since last read, using the REST service client.
     runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "0, " + etag,
-	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER,
+	ZERO + "," + etag, HttpStatus.NOT_MODIFIED,
+	HttpStatus.NOT_MODIFIED.toString());
 
     runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER,
-	"Not-Found, " + etag, HttpStatus.NOT_MODIFIED,
+	TEXT + "," + etag, HttpStatus.NOT_MODIFIED,
 	HttpStatus.NOT_MODIFIED.toString());
 
     // Not modified since creation.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, "0", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, ZERO, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "0",
+    // Not modified since creation, using the REST service client.
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, ZERO,
 	HttpStatus.OK, null);
 
+    // Successful.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, "0, Not-Found", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, ZERO + "," + TEXT, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
+    // Successful using the REST service client.
     runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER,
-	"0, Not-Found", HttpStatus.OK, null);
+	ZERO + "," + TEXT, HttpStatus.OK, null);
 
     // No If-None-Match header.
     configOutput = runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
     String etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
     assertEquals(etag, etag2);
 
+    // No If-None-Match header using the REST service client.
     configOutput = runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER,
 	null, HttpStatus.OK, null);
 
@@ -879,50 +912,60 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Not modified since last read.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, etag, "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, etag, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_MODIFIED);
 
+    // Not modified since last read, using the REST service client.
     runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
+    // Not modified since last read.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, etag + ", 123", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, etag + "," + NUMBER, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_MODIFIED);
 
+    // Not modified since last read, using the REST service client.
     runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER,
-	etag + ", 123", HttpStatus.NOT_MODIFIED,
+	etag + "," + NUMBER, HttpStatus.NOT_MODIFIED,
 	HttpStatus.NOT_MODIFIED.toString());
 
+    // Not modified since last read.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, etag + ", ABCDE", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, etag + "," + TEXT, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_MODIFIED);
 
+    // Not modified since last read, using the REST service client.
     runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER,
-	etag + ", ABCDE", HttpStatus.NOT_MODIFIED,
+	etag + "," + TEXT, HttpStatus.NOT_MODIFIED,
 	HttpStatus.NOT_MODIFIED.toString());
 
     // No match.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, "123", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, NUMBER, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "123",
+    // No match using the REST service client.
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, NUMBER,
 	HttpStatus.OK, null);
 
+    // No match.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, "123, ABCD", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, NUMBER + "," + TEXT, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "123, ABCD",
-	HttpStatus.OK, null);
+    // No match using the REST service client.
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER,
+	NUMBER + "," + TEXT, HttpStatus.OK, null);
 
     // File already exists.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, "*", "lockss-u", "lockss-p",
-	HttpStatus.NOT_MODIFIED);
+	MediaType.MULTIPART_FORM_DATA, ASTERISK_PRECONDITION, GOOD_USER,
+	GOOD_PWD, HttpStatus.NOT_MODIFIED);
 
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, "*",
-	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
+    // File already exists, using the REST service client.
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER,
+	ASTERISK_PRECONDITION, HttpStatus.NOT_MODIFIED,
+	HttpStatus.NOT_MODIFIED.toString());
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -1004,14 +1047,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	headers.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(ifNoneMatch));
       }
 
-      // Check whether there are credentials to be sent with the request.
-      if (user != null && password != null) {
-	// Yes: Set the authentication credentials.
-	String credentials = user + ":" + password;
-	String authHeaderValue = "Basic " + Base64.getEncoder()
-	.encodeToString(credentials.getBytes(Charset.forName("US-ASCII")));
-	headers.set("Authorization", authHeaderValue);
-      }
+      // Set up  the authentication credentials, if necessary.
+      setUpCredentials(user, password, headers);
 
       if (logger.isDebugEnabled())
 	logger.debug("requestHeaders = " + headers.toSingleValueMap());
@@ -1062,7 +1099,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Loop through all the comma-separated entries in the text string.
     for (String item : StringUtil.breakAt(headerString, ",")) {
       // Check whether it is an asterisk or a weak validator tag.
-      if ("*".equals(item.trim())
+      if (ASTERISK_PRECONDITION.equals(item.trim())
 	  || item.trim().startsWith(HTTP_WEAK_VALIDATOR_PREFIX)) {
 	// Yes: Use it as-is.
 	headerList.add(item.trim());
@@ -1077,7 +1114,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
   }
 
   /**
-   * Performs a GET operation for a configuration section.
+   * Performs a GET operation for a configuration section using the REST service
+   * client.
    * 
    * @param snId
    *          A String with the configuration section name.
@@ -1179,9 +1217,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Validate the part payload.
     if (expectedPayloads.size() > 0) {
-      for (String expectedPayload : expectedPayloads) {
-	assertTrue(payload.indexOf(expectedPayload) >= 0);
-      }
+      String expectedPayload =
+	  StringUtil.separatedString(expectedPayloads, "\n");
+      assertTrue(payload.indexOf(expectedPayload) >= 0);
     } else {
       assertEquals(0, contentLength);
     }
@@ -1209,14 +1247,14 @@ public class TestConfigApiController extends SpringLockssTestCase {
     runTestGetConfigUrl(url, null, null, null, null, HttpStatus.BAD_REQUEST);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, null, "0", null, null, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, null, ZERO, null, null, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, "0", null,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, ZERO, null,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Good Accept header content type.
@@ -1224,24 +1262,24 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	HttpStatus.BAD_REQUEST);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, null, null, "fakeUser", "fakePassword",
+    runTestGetConfigUrl(url, null, null, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, null, "0", "fakeUser", "fakePassword",
+    runTestGetConfigUrl(url, null, ZERO, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, "fakeUser",
-	"fakePassword", HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, BAD_USER,
+	BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, "0", "fakeUser",
-	"fakePassword", HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, ZERO, BAD_USER,
+	BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Good Accept header content type.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "fakeUser",
-	"fakePassword", HttpStatus.BAD_REQUEST);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, BAD_USER,
+	BAD_PWD, HttpStatus.BAD_REQUEST);
 
     getConfigUrlCommonTest();
 
@@ -1271,39 +1309,39 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, null, "0", null, null, HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, null, ZERO, null, null, HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, "0", null, null,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, ZERO, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", null, null,
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, ZERO, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, null, null, "fakeUser", "fakePassword",
+    runTestGetConfigUrl(url, null, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, null, "0", "fakeUser", "fakePassword",
+    runTestGetConfigUrl(url, null, ZERO, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, "0", "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, ZERO, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, ZERO, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     url = "http://localhost:12345";
 
@@ -1319,39 +1357,39 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, null, "0", null, null, HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, null, ZERO, null, null, HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, "0", null, null,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, ZERO, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", null, null,
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, ZERO, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, null, null, "fakeUser", "fakePassword",
+    runTestGetConfigUrl(url, null, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, null, "0", "fakeUser", "fakePassword",
+    runTestGetConfigUrl(url, null, ZERO, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, "0", "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, ZERO, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, ZERO, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     url = "http://example.com";
 
@@ -1367,39 +1405,39 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, null, "0", null, null, HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, null, ZERO, null, null, HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, "0", null, null,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, ZERO, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", null, null,
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, ZERO, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, null, null, "fakeUser", "fakePassword",
+    runTestGetConfigUrl(url, null, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, null, "0", "fakeUser", "fakePassword",
+    runTestGetConfigUrl(url, null, ZERO, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, "0", "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, ZERO, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, ZERO, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     getConfigUrlCommonTest();
 
@@ -1418,24 +1456,24 @@ public class TestConfigApiController extends SpringLockssTestCase {
     String url = "http://something";
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, null, null, "lockss-u", "lockss-p",
+    runTestGetConfigUrl(url, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, "lockss-u",
-	"lockss-p", HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, GOOD_USER,
+	GOOD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, "0", "lockss-u",
-	"lockss-p", HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, ZERO, GOOD_USER,
+	GOOD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, null, "0", "lockss-u", "lockss-p",
+    runTestGetConfigUrl(url, null, ZERO, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Not found.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, "0", "lockss-u",
-	"lockss-p", HttpStatus.BAD_REQUEST);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, ZERO, GOOD_USER,
+	GOOD_PWD, HttpStatus.BAD_REQUEST);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -1514,14 +1552,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	headers.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(ifNoneMatch));
       }
 
-      // Check whether there are credentials to be sent with the request.
-      if (user != null && password != null) {
-	// Yes: Set the authentication credentials.
-	String credentials = user + ":" + password;
-	String authHeaderValue = "Basic " + Base64.getEncoder()
-	.encodeToString(credentials.getBytes(Charset.forName("US-ASCII")));
-	headers.set("Authorization", authHeaderValue);
-      }
+      // Set up  the authentication credentials, if necessary.
+      setUpCredentials(user, password, headers);
 
       if (logger.isDebugEnabled())
 	logger.debug("requestHeaders = " + headers.toSingleValueMap());
@@ -1559,8 +1591,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     runTestGetLastUpdateTime(null, null, null, HttpStatus.OK);
-
-    runTestGetLastUpdateTime(null, "fakeUser", "fakePassword",	HttpStatus.OK);
+    runTestGetLastUpdateTime(null, BAD_USER, BAD_PWD,	HttpStatus.OK);
 
     getLastUpdateTimeCommonTest();
 
@@ -1574,9 +1605,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     runTestGetLastUpdateTime(null, null, null, HttpStatus.UNAUTHORIZED);
-
-    runTestGetLastUpdateTime(null, "fakeUser", "fakePassword",
-	HttpStatus.UNAUTHORIZED);
+    runTestGetLastUpdateTime(null, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     getLastUpdateTimeCommonTest();
 
@@ -1589,9 +1618,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getLastUpdateTimeCommonTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    runTestGetLastUpdateTime(null, "lockss-u", "lockss-p", HttpStatus.OK);
+    runTestGetLastUpdateTime(null, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
-    runTestGetLastUpdateTime(MediaType.APPLICATION_JSON, "lockss-u", "lockss-p",
+    runTestGetLastUpdateTime(MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
@@ -1652,14 +1681,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
       }
 
-      // Check whether there are credentials to be sent with the request.
-      if (user != null && password != null) {
-	// Yes: Set the authentication credentials.
-	String credentials = user + ":" + password;
-	String authHeaderValue = "Basic " + Base64.getEncoder()
-	.encodeToString(credentials.getBytes(Charset.forName("US-ASCII")));
-	headers.set("Authorization", authHeaderValue);
-      }
+      // Set up  the authentication credentials, if necessary.
+      setUpCredentials(user, password, headers);
+
+      if (logger.isDebugEnabled())
+	logger.debug("requestHeaders = " + headers.toSingleValueMap());
 
       // Create the request entity.
       requestEntity = new HttpEntity<String>(null, headers);
@@ -1700,10 +1726,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
     runTestGetLoadedUrlList(MediaType.APPLICATION_JSON, null, null,
 	HttpStatus.OK);
 
-    runTestGetLoadedUrlList(null, "fakeUser", "fakePassword", HttpStatus.OK);
+    runTestGetLoadedUrlList(null, BAD_USER, BAD_PWD, HttpStatus.OK);
 
-    runTestGetLoadedUrlList(MediaType.APPLICATION_JSON, "fakeUser",
-	"fakePassword", HttpStatus.OK);
+    runTestGetLoadedUrlList(MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD,
+	HttpStatus.OK);
 
     getLoadedUrlListCommonTest();
 
@@ -1724,11 +1750,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
     runTestGetLoadedUrlList(MediaType.APPLICATION_JSON, null, null,
 	HttpStatus.UNAUTHORIZED);
 
-    runTestGetLoadedUrlList(null, "fakeUser", "fakePassword",
-	HttpStatus.UNAUTHORIZED);
+    runTestGetLoadedUrlList(null, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
 
-    runTestGetLoadedUrlList(MediaType.APPLICATION_JSON, "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestGetLoadedUrlList(MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD,
+	HttpStatus.UNAUTHORIZED);
 
     getLoadedUrlListCommonTest();
 
@@ -1744,9 +1769,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getLoadedUrlListCommonTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    runTestGetLoadedUrlList(null, "lockss-u", "lockss-p", HttpStatus.OK);
+    runTestGetLoadedUrlList(null, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
-    runTestGetLoadedUrlList(MediaType.APPLICATION_JSON, "lockss-u", "lockss-p",
+    runTestGetLoadedUrlList(MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
@@ -1803,14 +1828,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
       }
 
-      // Check whether there are credentials to be sent with the request.
-      if (user != null && password != null) {
-	// Yes: Set the authentication credentials.
-	String credentials = user + ":" + password;
-	String authHeaderValue = "Basic " + Base64.getEncoder()
-	.encodeToString(credentials.getBytes(Charset.forName("US-ASCII")));
-	headers.set("Authorization", authHeaderValue);
-      }
+      // Set up  the authentication credentials, if necessary.
+      setUpCredentials(user, password, headers);
+
+      if (logger.isDebugEnabled())
+	logger.debug("requestHeaders = " + headers.toSingleValueMap());
 
       // Create the request entity.
       requestEntity = new HttpEntity<String>(null, headers);
@@ -1841,12 +1863,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     // Missing Content-Type header.
-    runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null, null, null,
-	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null, null,
+	null, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Missing Content-Type header.
-    runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null,
-	"fakeUser", "fakePassword", HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Bad Content-Type header.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN,
@@ -1860,7 +1882,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Missing payload.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, null, "fakeUser", "fakePassword",
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD,
 	HttpStatus.INTERNAL_SERVER_ERROR);
 
     // Missing eTag.
@@ -1869,7 +1891,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Missing eTag.
     runTestPutConfig("a1=b2", ConfigApi.SECTION_NAME_PLUGIN, null, null,
-	"fakeUser", "fakePassword", HttpStatus.OK);
+	BAD_USER, BAD_PWD, HttpStatus.OK);
 
     // Bad Content-Type header.
     try {
@@ -1890,57 +1912,51 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Missing If-Match header.
     runTestPutConfig("a1=b4", ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, null, "fakeUser", "fakePassword",
-	HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD, HttpStatus.OK);
 
-    runTestPutConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null, "0", null,
+    runTestPutConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null, ZERO, null,
 	null, HttpStatus.PRECONDITION_FAILED);
 
-    runTestPutConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null, "0, 12",
-	null, null, HttpStatus.PRECONDITION_FAILED);
+    runTestPutConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null,
+	ZERO + "," + NUMBER, null, null, HttpStatus.PRECONDITION_FAILED);
 
     runTestPutConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null,
-	"0, 12, ABCD", null, null, HttpStatus.PRECONDITION_FAILED);
+	ZERO + "," + NUMBER + "," + TEXT, null, null,
+	HttpStatus.PRECONDITION_FAILED);
 
     MultipartResponse configOutput = runTestGetConfigSection(
-	ConfigApi.SECTION_NAME_PLUGIN, MediaType.MULTIPART_FORM_DATA, "0",
-	"lockss-u", "lockss-p", HttpStatus.OK);
+	ConfigApi.SECTION_NAME_PLUGIN, MediaType.MULTIPART_FORM_DATA, ZERO,
+	GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // Time after write.
     long afterWrite = TimeBase.nowMs();
 
-    List<String> expectedPayloads = new ArrayList<String>(1);
-    expectedPayloads.add("a1=b4");
-
     String etag = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
-	expectedPayloads);
+	ListUtil.list("a1=b4"));
 
     long writeTime = Long.parseLong(etag);
     assertTrue(beforeWrite <= writeTime);
     assertTrue(afterWrite >= writeTime);
 
     // Modified since passed timestamp.
-    runTestPutConfig("a2=b2", ConfigApi.SECTION_NAME_PLUGIN, null, "0",
-	"fakeUser", "fakePassword", HttpStatus.PRECONDITION_FAILED);
+    runTestPutConfig("a2=b2", ConfigApi.SECTION_NAME_PLUGIN, null, ZERO,
+	BAD_USER, BAD_PWD, HttpStatus.PRECONDITION_FAILED);
 
     // Time before write.
     beforeWrite = TimeBase.nowMs();
 
     runTestPutConfig("a2=b2", ConfigApi.SECTION_NAME_PLUGIN, null, etag,
-	"fakeUser", "fakePassword", HttpStatus.OK);
+	BAD_USER, BAD_PWD, HttpStatus.OK);
 
     configOutput = runTestGetConfigSection(ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, etag, "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, etag, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
     // Time after write.
     afterWrite = TimeBase.nowMs();
 
-    expectedPayloads = new ArrayList<String>(1);
-    expectedPayloads.add("a2=b2");
-
     etag = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
-	expectedPayloads);
+	ListUtil.list("a2=b2"));
 
     writeTime = Long.parseLong(etag);
     assertTrue(beforeWrite <= writeTime);
@@ -1949,7 +1965,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Bad Content-Type header.
     try {
       runTestPutConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN,
-	  MediaType.APPLICATION_JSON, "0", null, null, HttpStatus.BAD_REQUEST);
+	  MediaType.APPLICATION_JSON, ZERO, null, null, HttpStatus.BAD_REQUEST);
       fail("Should have thrown HttpMessageNotWritableException");
     } catch (HttpMessageNotWritableException hmnwe) {
       assertTrue(hmnwe.getMessage().startsWith("Could not write JSON: "
@@ -1958,20 +1974,20 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Modified since creation time.
     runTestPutConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, "0", null, null,
+	MediaType.MULTIPART_FORM_DATA, ZERO, null, null,
 	HttpStatus.PRECONDITION_FAILED);
 
     // Modified since creation time.
     runTestPutConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, "0", "fakeUser", "fakePassword",
+	MediaType.MULTIPART_FORM_DATA, ZERO, BAD_USER, BAD_PWD,
 	HttpStatus.PRECONDITION_FAILED);
 
     runTestPutConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN, null,
-	etag + ", 123456", "fakeUser", "fakePassword", HttpStatus.OK);
+	etag + "," + NUMBER, BAD_USER, BAD_PWD, HttpStatus.OK);
 
     // Ignore modification time.
     runTestPutConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, "*", "fakeUser", "fakePassword",
+	MediaType.MULTIPART_FORM_DATA, ASTERISK_PRECONDITION, BAD_USER, BAD_PWD,
 	HttpStatus.OK);
 
     putConfigCommonTest();
@@ -1990,8 +2006,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	null, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null,
-	"fakeUser", "fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN,
@@ -1999,7 +2015,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Bad credentials.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.APPLICATION_JSON, null, "fakeUser", "fakePassword",
+	MediaType.APPLICATION_JSON, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
@@ -2009,7 +2025,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Bad credentials.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, null, "fakeUser", "fakePassword",
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
@@ -2017,8 +2033,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	null, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestPutConfig("a=b", ConfigApi.SECTION_NAME_PLUGIN, null, null,
-	"fakeUser", "fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestPutConfig("a=b", ConfigApi.SECTION_NAME_PLUGIN, null, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad Content-Type header.
     try {
@@ -2034,7 +2050,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Bad Content-Type header.
     try {
       runTestPutConfig("a=b", ConfigApi.SECTION_NAME_PLUGIN,
-	  MediaType.APPLICATION_JSON, null, "fakeUser", "fakePassword",
+	  MediaType.APPLICATION_JSON, null, BAD_USER, BAD_PWD,
 	  HttpStatus.UNAUTHORIZED);
       fail("Should have thrown HttpMessageNotWritableException");
     } catch (HttpMessageNotWritableException hmnwe) {
@@ -2049,7 +2065,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Bad credentials.
     runTestPutConfig("a=b", ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, null, "fakeUser", "fakePassword",
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     putConfigCommonTest();
@@ -2063,7 +2079,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void putConfigCommonTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    // Bad section name.
+    // Bad section name using the REST service client.
     try {
       runTestPutConfigSectionClient("testKey=testValue", null, null, null,
 	  null);
@@ -2073,26 +2089,27 @@ public class TestConfigApiController extends SpringLockssTestCase {
     }
 
     try {
-      runTestPutConfigSectionClient("testKey=testValue", "", null, null, null);
+      runTestPutConfigSectionClient("testKey=testValue", EMPTY_STRING, null,
+	  null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid section name ''", iae.getMessage());
     }
 
-    // Bad preconditions.
+    // Bad preconditions using the REST service client.
     try {
       runTestPutConfigSectionClient("testKey=testValue",
-	  ConfigApi.SECTION_NAME_EXPERT,
-	  HTTP_WEAK_VALIDATOR_PREFIX + "\"1234567\"", null, null);
+	  ConfigApi.SECTION_NAME_EXPERT, WEAK_PRECONDITION, null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
-      assertEquals("Invalid If-Match entity tag '"
-	  + HTTP_WEAK_VALIDATOR_PREFIX + "\"1234567\"'", iae.getMessage());
+      assertEquals("Invalid If-Match entity tag '" + WEAK_PRECONDITION + "'",
+	  iae.getMessage());
     }
 
     try {
       runTestPutConfigSectionClient("testKey=testValue",
-	  ConfigApi.SECTION_NAME_EXPERT, "*, 1234567", null, null);
+	  ConfigApi.SECTION_NAME_EXPERT, ASTERISK_PRECONDITION + "," + NUMBER,
+	  null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid If-Match entity tag mix", iae.getMessage());
@@ -2100,28 +2117,30 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     try {
       runTestPutConfigSectionClient("testKey=testValue",
-	  ConfigApi.SECTION_NAME_EXPERT, "*, *", null, null);
+	  ConfigApi.SECTION_NAME_EXPERT,
+	  ASTERISK_PRECONDITION + "," + ASTERISK_PRECONDITION, null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid If-Match entity tag mix", iae.getMessage());
     }
 
     // Missing Content-Type header.
-    runTestPutConfig(null, ConfigApi.SECTION_NAME_EXPERT, null, null,
-	"lockss-u", "lockss-p", HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    runTestPutConfig(null, ConfigApi.SECTION_NAME_EXPERT, null, null, GOOD_USER,
+	GOOD_PWD, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Bad Content-Type header.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.APPLICATION_JSON, null, "lockss-u", "lockss-p",
+	MediaType.APPLICATION_JSON, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Missing payload.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.MULTIPART_FORM_DATA, null, "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.INTERNAL_SERVER_ERROR);
 
+    // Missing payload using the REST service client.
     try {
-      runTestPutConfigSectionClient(null, ConfigApi.SECTION_NAME_EXPERT, "-1",
+      runTestPutConfigSectionClient(null, ConfigApi.SECTION_NAME_EXPERT, NUMBER,
 	  null, "Configuration input stream is null");
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {}
@@ -2131,111 +2150,132 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Missing If-Match header.
     runTestPutConfig("testKey=testValue", ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.MULTIPART_FORM_DATA, null, "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
+    // Missing If-Match header using the REST service client.
     runTestPutConfigSectionClient("testKey=testValue",
 	ConfigApi.SECTION_NAME_EXPERT, null, HttpStatus.OK,
 	HttpStatus.OK.toString());
 
     // Modified at different time than passed timestamp.
     runTestPutConfig("testKey1=testValue1", ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.MULTIPART_FORM_DATA, "-1", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, NUMBER, GOOD_USER, GOOD_PWD,
 	HttpStatus.PRECONDITION_FAILED);
 
+    // Modified at different time than passed timestamp, using the REST service
+    // client.
     runTestPutConfigSectionClient("testKey1=testValue1",
-	ConfigApi.SECTION_NAME_EXPERT, "-1", HttpStatus.PRECONDITION_FAILED,
+	ConfigApi.SECTION_NAME_EXPERT, NUMBER, HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
+    // Modified at different time than passed timestamps.
     runTestPutConfig("testKey1=testValue1", ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.MULTIPART_FORM_DATA, "-1, ABCDE", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, NUMBER + "," + TEXT, GOOD_USER, GOOD_PWD,
 	HttpStatus.PRECONDITION_FAILED);
 
+    // Modified at different time than passed timestamps, using the REST service
+    // client.
     runTestPutConfigSectionClient("testKey1=testValue1",
-	ConfigApi.SECTION_NAME_EXPERT, "-1, ABCDE",
+	ConfigApi.SECTION_NAME_EXPERT, NUMBER + "," + TEXT,
 	HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
+    // Modified at different time than passed timestamp.
     runTestPutConfig("testKey1=testValue1", ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.MULTIPART_FORM_DATA, "0", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, ZERO, GOOD_USER, GOOD_PWD,
 	HttpStatus.PRECONDITION_FAILED);
 
+    // Modified at different time than passed timestamp, using the REST service
+    // client.
+    runTestPutConfigSectionClient("testKey1=testValue1",
+	ConfigApi.SECTION_NAME_EXPERT, ZERO, HttpStatus.PRECONDITION_FAILED,
+	HttpStatus.PRECONDITION_FAILED.toString());
+
     // Bad Accept header content type.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_EXPERT, null, "0",
-	"lockss-u", "lockss-p", HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_EXPERT, null, ZERO,
+	GOOD_USER, GOOD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
+    // Get the file written earlier..
     MultipartResponse configOutput = runTestGetConfigSection(
-	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, "0",
-	"lockss-u", "lockss-p", HttpStatus.OK);
+	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, ZERO,
+	GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
-    // Time after write.
-    long afterWrite = TimeBase.nowMs();
-
-    List<String> expectedPayloads = new ArrayList<String>(1);
-    expectedPayloads.add("testKey=testValue");
+    // Time after subsequent read.
+    long afterRead = TimeBase.nowMs();
 
     String etag = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
-	expectedPayloads);
+	ListUtil.list("testKey=testValue"));
 
     long writeTime = Long.parseLong(etag);
     assertTrue(beforeWrite <= writeTime);
-    assertTrue(afterWrite >= writeTime);
+    assertTrue(afterRead >= writeTime);
 
     // Modified at different time than passed timestamp.
     runTestPutConfig("testKey1=testValue1\ntestKey2=testValue2",
-	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, "0",
-	"lockss-u", "lockss-p", HttpStatus.PRECONDITION_FAILED);
+	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, ZERO,
+	GOOD_USER, GOOD_PWD, HttpStatus.PRECONDITION_FAILED);
 
+    // Modified at different time than passed timestamp, using the REST service
+    // client.
     runTestPutConfigSectionClient("testKey1=testValue1\ntestKey2=testValue2",
-	ConfigApi.SECTION_NAME_EXPERT, "0", HttpStatus.PRECONDITION_FAILED,
+	ConfigApi.SECTION_NAME_EXPERT, ZERO, HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
+    // Modified at different time than passed timestamps.
     runTestPutConfig("testKey1=testValue1\ntestKey2=testValue2",
-	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, "0, 1",
-	"lockss-u", "lockss-p", HttpStatus.PRECONDITION_FAILED);
+	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA,
+	ZERO + "," + NUMBER, GOOD_USER, GOOD_PWD,
+	HttpStatus.PRECONDITION_FAILED);
 
+    // Modified at different time than passed timestamps, using the REST service
+    // client.
     runTestPutConfigSectionClient("testKey1=testValue1\ntestKey2=testValue2",
-	ConfigApi.SECTION_NAME_EXPERT, "0, 1", HttpStatus.PRECONDITION_FAILED,
+	ConfigApi.SECTION_NAME_EXPERT, ZERO + "," + NUMBER,
+	HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
     // Time before write.
     beforeWrite = TimeBase.nowMs();
 
+    // Modified at the passed timestamp.
     runTestPutConfig("testKey1=testValue1\ntestKey2=testValue2",
-	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA,
-	etag, "lockss-u", "lockss-p", HttpStatus.OK);
+	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, etag,
+	GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
+    // Read file with the old timestamp.
     configOutput = runTestGetConfigSection(ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.MULTIPART_FORM_DATA, etag, "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, etag, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
-    // Time after write.
-    afterWrite = TimeBase.nowMs();
-
-    expectedPayloads = new ArrayList<String>(2);
-    expectedPayloads.add("testKey1=testValue1");
-    expectedPayloads.add("testKey2=testValue2");
+    // Time after subsequent read.
+    afterRead = TimeBase.nowMs();
 
     etag = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
-	expectedPayloads);
+	ListUtil.list("testKey1=testValue1","testKey2=testValue2"));
 
     writeTime = Long.parseLong(etag);
     assertTrue(beforeWrite <= writeTime);
-    assertTrue(afterWrite >= writeTime);
+    assertTrue(afterRead >= writeTime);
 
+    // Read file with no timestamp using the REST service client.
     RestConfigSection input = new RestConfigSection();
     input.setSectionName(ConfigApi.SECTION_NAME_EXPERT);
 
     RestConfigClient restConfigClient = getRestConfigClient();
     RestConfigSection output = restConfigClient.getConfigSection(input);
 
-    writeTime = Long.parseLong(output.getEtag());
-    
+    // ETags should match.
+    long writeTime2 = Long.parseLong(output.getEtag());
+    assertEquals(writeTime, writeTime2);
+
     // Time before write.
     beforeWrite = TimeBase.nowMs();
-    assertTrue(beforeWrite >= writeTime);
+    assertTrue(beforeWrite >= writeTime2);
 
-    output.setIfMatch(makeIfMatchNoneMatchHeaderList(output.getEtag() + ", 0"));
+    // Write file with matching timestamp using the REST service client.
+    output.setIfMatch(makeIfMatchNoneMatchHeaderList(output.getEtag() + ","
+	+ ZERO));
 
     String content = "testKey3=testValue3";
     output.setInputStream(new ByteArrayInputStream(content.getBytes("UTF-8")));
@@ -2247,49 +2287,54 @@ public class TestConfigApiController extends SpringLockssTestCase {
     assertTrue(writeTime >= beforeWrite);
 
     // Time after write.
-    afterWrite = TimeBase.nowMs();
+    long afterWrite = TimeBase.nowMs();
     assertTrue(afterWrite >= writeTime);
 
+    // Read file with matching timestamp using the REST service client.
     output2.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(output2.getEtag()
-	+ ", ABCD"));
+	+ "," + TEXT));
 
     RestConfigSection output3 = restConfigClient.getConfigSection(output2);
     assertEquals(HttpStatus.NOT_MODIFIED, output3.getStatusCode());
 
     // Cannot modify virtual sections.
     runTestPutConfig("testKey=testValue", ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, "0", "lockss-u", "lockss-p",
+	MediaType.MULTIPART_FORM_DATA, ZERO, GOOD_USER, GOOD_PWD,
 	HttpStatus.BAD_REQUEST);
 
+    // Cannot modify virtual sections, using the REST service client.
     runTestPutConfigSectionClient("testKey=testValue",
-	ConfigApi.SECTION_NAME_CLUSTER, "0", HttpStatus.BAD_REQUEST,
+	ConfigApi.SECTION_NAME_CLUSTER, ZERO, HttpStatus.BAD_REQUEST,
 	HttpStatus.BAD_REQUEST.toString());
 
     // Bad section name.
-    runTestPutConfig("testKey=testValue", "fakesectionname",
-	MediaType.MULTIPART_FORM_DATA, "0", "lockss-u", "lockss-p",
-	HttpStatus.BAD_REQUEST);
+    runTestPutConfig("testKey=testValue", BAD_SN, MediaType.MULTIPART_FORM_DATA,
+	ZERO, GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
 
-    runTestPutConfigSectionClient("testKey=testValue", "fakesectionname",
-	"0", HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.toString());
+    // Bad section name using the REST service client.
+    runTestPutConfigSectionClient("testKey=testValue", BAD_SN, ZERO,
+	HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.toString());
 
-    // Ignore modification time.
+    // Missing file.
     runTestPutConfig("testKey=testValue", ConfigApi.SECTION_NAME_ICP_SERVER,
-	MediaType.MULTIPART_FORM_DATA, "*", "lockss-u", "lockss-p",
-	HttpStatus.PRECONDITION_FAILED);
+	MediaType.MULTIPART_FORM_DATA, ASTERISK_PRECONDITION, GOOD_USER,
+	GOOD_PWD, HttpStatus.PRECONDITION_FAILED);
 
+    // Missing file using the REST service client.
     runTestPutConfigSectionClient("testKey=testValue",
-	ConfigApi.SECTION_NAME_ICP_SERVER, "*", HttpStatus.PRECONDITION_FAILED,
+	ConfigApi.SECTION_NAME_ICP_SERVER, ASTERISK_PRECONDITION,
+	HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
     // Cannot modify virtual sections.
     runTestPutConfig("testKey=testValue", ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, "*", "lockss-u", "lockss-p",
-	HttpStatus.BAD_REQUEST);
+	MediaType.MULTIPART_FORM_DATA, ASTERISK_PRECONDITION, GOOD_USER,
+	GOOD_PWD, HttpStatus.BAD_REQUEST);
 
+    // Cannot modify virtual sections, using the REST service client.
     runTestPutConfigSectionClient("testKey=testValue",
-	ConfigApi.SECTION_NAME_CLUSTER, "*", HttpStatus.BAD_REQUEST,
-	HttpStatus.BAD_REQUEST.toString());
+	ConfigApi.SECTION_NAME_CLUSTER, ASTERISK_PRECONDITION,
+	HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.toString());
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -2382,14 +2427,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	headers.setIfMatch(makeIfMatchNoneMatchHeaderList(ifMatch));
       }
 
-      // Check whether there are credentials to be sent with the request.
-      if (user != null && password != null) {
-	// Yes: Set the authentication credentials.
-	String credentials = user + ":" + password;
-	String authHeaderValue = "Basic " + Base64.getEncoder()
-	.encodeToString(credentials.getBytes(Charset.forName("US-ASCII")));
-	headers.set("Authorization", authHeaderValue);
-      }
+      // Set up  the authentication credentials, if necessary.
+      setUpCredentials(user, password, headers);
+
+      if (logger.isDebugEnabled())
+	logger.debug("requestHeaders = " + headers.toSingleValueMap());
 
       // Create the request entity.
       requestEntity =
@@ -2406,7 +2448,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
   }
 
   /**
-   * Performs a PUT operation for a configuration section.
+   * Performs a PUT operation for a configuration section using the REST service
+   * client.
    * 
    * @param config
    *          A String with the configuration to be written.
@@ -2479,14 +2522,13 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     runTestPutConfigReload(null, null, null, HttpStatus.OK);
-
-    runTestPutConfigReload(null, "fakeUser", "fakePassword", HttpStatus.OK);
+    runTestPutConfigReload(null, BAD_USER, BAD_PWD, HttpStatus.OK);
 
     runTestPutConfigReload(MediaType.APPLICATION_JSON, null, null,
 	HttpStatus.OK);
 
-    runTestPutConfigReload(MediaType.APPLICATION_JSON, "fakeUser",
-	"fakePassword", HttpStatus.OK);
+    runTestPutConfigReload(MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD,
+	HttpStatus.OK);
 
     putConfigReloadCommonTest();
 
@@ -2500,15 +2542,13 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     runTestPutConfigReload(null, null, null, HttpStatus.UNAUTHORIZED);
-
-    runTestPutConfigReload(null, "fakeUser", "fakePassword",
-	HttpStatus.UNAUTHORIZED);
+    runTestPutConfigReload(null, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     runTestPutConfigReload(MediaType.APPLICATION_JSON, null, null,
 	HttpStatus.UNAUTHORIZED);
 
-    runTestPutConfigReload(MediaType.APPLICATION_JSON, "fakeUser",
-	"fakePassword", HttpStatus.UNAUTHORIZED);
+    runTestPutConfigReload(MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD,
+	HttpStatus.UNAUTHORIZED);
 
     putConfigReloadCommonTest();
 
@@ -2521,9 +2561,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void putConfigReloadCommonTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    runTestPutConfigReload(null, "lockss-u", "lockss-p", HttpStatus.OK);
+    runTestPutConfigReload(null, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
-    runTestPutConfigReload(MediaType.APPLICATION_JSON, "lockss-u", "lockss-p",
+    runTestPutConfigReload(MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
@@ -2583,14 +2623,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
       }
 
-      // Check whether there are credentials to be sent with the request.
-      if (user != null && password != null) {
-	// Yes: Set the authentication credentials.
-	String credentials = user + ":" + password;
-	String authHeaderValue = "Basic " + Base64.getEncoder()
-	.encodeToString(credentials.getBytes(Charset.forName("US-ASCII")));
-	headers.set("Authorization", authHeaderValue);
-      }
+      // Set up  the authentication credentials, if necessary.
+      setUpCredentials(user, password, headers);
+
+      if (logger.isDebugEnabled())
+	logger.debug("requestHeaders = " + headers.toSingleValueMap());
 
       // Create the request entity.
       requestEntity = new HttpEntity<String>(null, headers);
@@ -2618,11 +2655,35 @@ public class TestConfigApiController extends SpringLockssTestCase {
   }
 
   /**
+   * Adds credentials to the HTTP headers, if necessary.
+   * 
+   * @param user
+   *          A String with the credentials username.
+   * @param password
+   *          A String with the credentials password.
+   * @param headers
+   *          An HttpHeaders with the HTTP headers.
+   */
+  private void setUpCredentials(String user, String password,
+      HttpHeaders headers) {
+    // Check whether there are credentials to be added.
+    if (user != null && password != null) {
+      // Yes: Set the authentication credentials.
+      String credentials = user + ":" + password;
+      String authHeaderValue = "Basic " + Base64.getEncoder()
+      .encodeToString(credentials.getBytes(Charset.forName("US-ASCII")));
+
+      headers.set("Authorization", authHeaderValue);
+    }
+  }
+
+  /**
    * Provides the REST Configuration service client to be tested.
    * 
    * @return a RestConfigClient with the REST Configuration service client.
    */
   private RestConfigClient getRestConfigClient() {
-    return new RestConfigClient("http://lockss-u:lockss-p@localhost:" + port);
+    return new RestConfigClient("http://" + GOOD_USER + ":" + GOOD_PWD
+	+ "@localhost:" + port);
   }
 }

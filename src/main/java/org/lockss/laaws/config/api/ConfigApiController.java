@@ -53,6 +53,7 @@ import org.lockss.spring.auth.SpringAuthenticationFilter;
 import org.lockss.laaws.rs.util.NamedInputStreamResource;
 import org.lockss.laaws.status.model.ApiStatus;
 import org.lockss.spring.status.SpringLockssBaseApiController;
+import org.lockss.util.AccessType;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -149,7 +150,8 @@ implements ConfigApi {
       String canonicalSectionName = null;
 
       try {
-	canonicalSectionName = validateSectionName(sectionName, true);
+	canonicalSectionName =
+	    validateSectionName(sectionName, AccessType.READ);
 	if (log.isDebugEnabled())
 	  log.debug("canonicalSectionName = " + canonicalSectionName);
       } catch (MalformedParametersException mpe) {
@@ -407,7 +409,7 @@ implements ConfigApi {
     String canonicalSectionName = null;
 
     try {
-      canonicalSectionName = validateSectionName(sectionName, false);
+      canonicalSectionName = validateSectionName(sectionName, AccessType.WRITE);
       if (log.isDebugEnabled())
 	log.debug("canonicalSectionName = " + canonicalSectionName);
     } catch (MalformedParametersException mpe) {
@@ -602,19 +604,21 @@ implements ConfigApi {
    * 
    * @param sectionName
    *          A String with the section name.
-   * @param forReading
-   *          A boolean indicating whether this is for a reading operation.
+   * @param access
+   *          An AccessType indicating whether this is for a reading or writing
+   *          operation.
    * @return a String with the validated canonical version of the section name.
    * @throws MalformedParametersException
    *           if validation fails.
    */
-  protected String validateSectionName(String sectionName, boolean forReading)
+  protected String validateSectionName(String sectionName, AccessType access)
       throws MalformedParametersException {
     if (log.isDebugEnabled()) {
       log.debug("sectionName = " + sectionName);
-      log.debug("forReading = " + forReading);
+      log.debug("access = " + access);
     }
 
+    // Verify that some section name has been passed.
     if (sectionName == null || sectionName.isEmpty()) {
       String message = "Invalid sectionName '" + sectionName + "'";
       log.warn(message);
@@ -625,10 +629,19 @@ implements ConfigApi {
     if (log.isDebugEnabled())
       log.debug("canonicalVersion = " + canonicalVersion);
 
-    if ((!forReading
-	|| !getConfigReadOnlySectionMap().containsKey(canonicalVersion))
-	&& !configWritableSectionMap.containsKey(canonicalVersion)) {
+    // Verify that the passed section name is known.
+    if (!configWritableSectionMap.containsKey(canonicalVersion)
+	&& !getConfigReadOnlySectionMap().containsKey(canonicalVersion)) {
       String message = "Invalid sectionName '" + sectionName + "'";
+      log.warn(message);
+      throw new MalformedParametersException(message);
+    }
+
+    // Verify that the section is writable, if needed.
+    if (access == AccessType.WRITE
+	&& !configWritableSectionMap.containsKey(canonicalVersion)) {
+      String message =
+	  "Invalid writing operation on sectionName '" + sectionName + "'";
       log.warn(message);
       throw new MalformedParametersException(message);
     }
