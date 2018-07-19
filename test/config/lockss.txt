@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+# Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
 # all rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -78,5 +78,3 @@ org.lockss.ws.enabled=false
 
 # No Repository Manager.
 org.lockss.plugin.auContentFromWs=true
-
-org.lockss.ui.port=54421

@@ -90,6 +90,10 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class TestConfigApiController extends SpringLockssTestCase {
+  public static final String UI_PORT_CONFIGURATION_TEMPLATE =
+      "UiPortConfigTemplate.txt";
+  public static final String UI_PORT_CONFIGURATION_FILE = "UiPort.opt";
+
   public static final String EMPTY_STRING = "";
   public static final String ZERO = "0";
   public static final String NUMBER = "9876543210";
@@ -155,6 +159,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
       logger.debug("srcTree = " + srcTree.getAbsolutePath());
 
     copyToTempDir(srcTree);
+
+    // Set up the UI port.
+    setUpUiPort(UI_PORT_CONFIGURATION_TEMPLATE, UI_PORT_CONFIGURATION_FILE);
   }
 
   /**
@@ -346,7 +353,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Specify the command line parameters to be used for the tests.
     List<String> cmdLineArgs = getCommandLineArguments();
     cmdLineArgs.add("-p");
-    cmdLineArgs.add("test/config/configApiControllerTestAuthOff.opt");
+    cmdLineArgs.add("test/config/testAuthOff.opt");
 
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
@@ -374,7 +381,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Specify the command line parameters to be used for the tests.
     List<String> cmdLineArgs = getCommandLineArguments();
     cmdLineArgs.add("-p");
-    cmdLineArgs.add("test/config/configApiControllerTestAuthOn.opt");
+    cmdLineArgs.add("test/config/testAuthOn.opt");
 
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
@@ -409,6 +416,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     cmdLineArgs.add("-x");
     cmdLineArgs.add(folder.getAbsolutePath());
+    cmdLineArgs.add("-p");
+    cmdLineArgs.add(getUiPortConfigFile().getAbsolutePath());
     cmdLineArgs.add("-p");
     cmdLineArgs.add("test/config/lockss.txt");
     cmdLineArgs.add("-p");
@@ -853,6 +862,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	expectedPayloads);
     assertTrue(Long.parseLong(etag) <= TimeBase.nowMs());
 
+    // Independent verification.
+    assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
+	.conditionallyReadCacheConfigFile("dyn:cluster.xml", null, null)
+	.getInputStream()).indexOf(StringUtil
+	    .separatedString(expectedPayloads, "\n")) > 0);
+
     // Successful using the REST service client.
     configOutput = runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER,
 	null, null, HttpStatus.OK, null);
@@ -860,6 +875,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
     etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
     assertTrue(Long.parseLong(etag) <= TimeBase.nowMs());
+
+    // Independent verification.
+    assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
+	.conditionallyReadCacheConfigFile("dyn:cluster.xml", null, null)
+	.getInputStream()).indexOf(StringUtil
+	    .separatedString(expectedPayloads, "\n")) > 0);
 
     // Not modified since last read.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
@@ -1682,6 +1703,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
     String etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
     assertTrue(Long.parseLong(etag) <= TimeBase.nowMs());
+
+    // Independent verification.
+    assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
+	.conditionallyReadCacheConfigFile(url, null, null).getInputStream())
+	.indexOf(StringUtil.separatedString(expectedPayloads, "\n")) > 0);
 
     // Not modified since last read.
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, etag,
@@ -2514,6 +2540,14 @@ public class TestConfigApiController extends SpringLockssTestCase {
     assertTrue(beforeWrite <= writeTime);
     assertTrue(afterRead >= writeTime);
 
+    // Independent verification.
+    String filePath =
+	getTempDirPath() + "/cache/config/" + ConfigManager.CONFIG_FILE_EXPERT;
+
+    assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
+	.conditionallyReadCacheConfigFile(filePath, null, null)
+	.getInputStream()).indexOf("testKey=testValue") == 0);
+
     // Modified at different time than passed timestamp.
     runTestPutConfig("testKey1=testValue1\ntestKey2=testValue2",
 	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, ZERO,
@@ -2562,6 +2596,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
     assertTrue(beforeWrite <= writeTime);
     assertTrue(afterRead >= writeTime);
 
+    // Independent verification.
+    assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
+	.conditionallyReadCacheConfigFile(filePath, null, null)
+	.getInputStream())
+	.indexOf("testKey1=testValue1\ntestKey2=testValue2") == 0);
+
     // Read file with no timestamp using the REST service client.
     RestConfigSection input = new RestConfigSection();
     input.setSectionName(ConfigApi.SECTION_NAME_EXPERT);
@@ -2593,6 +2633,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Time after write.
     long afterWrite = TimeBase.nowMs();
     assertTrue(afterWrite >= writeTime);
+
+    // Independent verification.
+    assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
+	.conditionallyReadCacheConfigFile(filePath, null, null)
+	.getInputStream()).indexOf("testKey3=testValue3") == 0);
 
     // Read file with matching timestamp using the REST service client.
     output2.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(output2.getEtag()
@@ -2640,7 +2685,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Read file with the old timestamp.
     configOutput = runTestGetConfigSection(ConfigApi.SECTION_NAME_ICP_SERVER,
-	MediaType.MULTIPART_FORM_DATA, null, etag, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
     // Time after subsequent read.
@@ -2652,6 +2697,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
     writeTime = Long.parseLong(etag);
     assertTrue(beforeWrite <= writeTime);
     assertTrue(afterRead >= writeTime);
+
+    // Write again the now-existing file.
+    runTestPutConfig("testKey4a=testValue4a", ConfigApi.SECTION_NAME_ICP_SERVER,
+	MediaType.MULTIPART_FORM_DATA, null, ASTERISK_PRECONDITION, GOOD_USER,
+	GOOD_PWD, HttpStatus.PRECONDITION_FAILED);
 
     // Time before write.
     beforeWrite = TimeBase.nowMs();
@@ -2686,6 +2736,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
     etag = verifyMultipartResponse(output5.getResponse(), MediaType.TEXT_PLAIN,
 	ListUtil.list("testKey5=testValue5"));
     assertTrue(Long.parseLong(etag) <= TimeBase.nowMs());
+
+    // Write again the now-existing file using the REST service client.
+    runTestPutConfigSectionClient("testKey5a=testValue5a",
+	ConfigApi.SECTION_NAME_ACCESS_GROUPS, null, ASTERISK_PRECONDITION,
+	HttpStatus.PRECONDITION_FAILED,
+	HttpStatus.PRECONDITION_FAILED.toString());
 
     // Cannot modify virtual sections.
     runTestPutConfig("testKey=testValue", ConfigApi.SECTION_NAME_CLUSTER,
@@ -2890,7 +2946,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
     }
 
     // Check the response etag.
-    assertNotEquals(ifMatch, output.getEtag());
+    if (ifMatch != null && !ASTERISK_PRECONDITION.equals(ifMatch)) {
+      assertNotEquals(ifMatch, output.getEtag());
+    }
 
     return output;
   }
