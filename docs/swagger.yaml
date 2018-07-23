@@ -315,8 +315,6 @@ paths:
       summary: Delete the the configuration of an AU
       description: Delete the configuration of an AU given the AU identifier
       operationId: deleteAuConfig
-      consumes:
-        - application/json
       produces:
         - application/json
       parameters:

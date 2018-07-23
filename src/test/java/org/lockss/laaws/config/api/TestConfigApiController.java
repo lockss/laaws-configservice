@@ -90,38 +90,38 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class TestConfigApiController extends SpringLockssTestCase {
-  public static final String UI_PORT_CONFIGURATION_TEMPLATE =
+  private static final String UI_PORT_CONFIGURATION_TEMPLATE =
       "UiPortConfigTemplate.txt";
-  public static final String UI_PORT_CONFIGURATION_FILE = "UiPort.opt";
+  private static final String UI_PORT_CONFIGURATION_FILE = "UiPort.opt";
 
-  public static final String EMPTY_STRING = "";
-  public static final String ZERO = "0";
-  public static final String NUMBER = "9876543210";
-  public static final String TEXT = "text";
+  private static final String EMPTY_STRING = "";
+  private static final String ZERO = "0";
+  private static final String NUMBER = "9876543210";
+  private static final String TEXT = "text";
 
   // Preconditions.
-  public static final String EMPTY_PRECONDITION = "\"\"";
-  public static final String NUMERIC_PRECONDITION = "\"1234567890\"";
-  public static final String ALPHA_PRECONDITION = "\"ABCD\"";
+  private static final String EMPTY_PRECONDITION = "\"\"";
+  private static final String NUMERIC_PRECONDITION = "\"1234567890\"";
+  private static final String ALPHA_PRECONDITION = "\"ABCD\"";
 
-  public static final String WEAK_PRECONDITION =
+  private static final String WEAK_PRECONDITION =
       HTTP_WEAK_VALIDATOR_PREFIX + NUMERIC_PRECONDITION;
 
-  public static final String ASTERISK_PRECONDITION = "*";
+  private static final String ASTERISK_PRECONDITION = "*";
 
-  public static final List<String> EMPTY_PRECONDITION_LIST =
+  private static final List<String> EMPTY_PRECONDITION_LIST =
       new ArrayList<String>();
 
   // Section names.
-  public static final String UIIPACCESS = "UI_IP_ACCESS";
-  public static final String CLUSTER = "CLUSTER";
-  public static final String BAD_SN = "badSectionName";
+  private static final String UIIPACCESS = "UI_IP_ACCESS";
+  private static final String CLUSTER = "CLUSTER";
+  private static final String BAD_SN = "badSectionName";
 
   // Credentials.
-  public static final String GOOD_USER = "lockss-u";
-  public static final String GOOD_PWD = "lockss-p";
-  public static final String BAD_USER = "badUser";
-  public static final String BAD_PWD = "badPassword";
+  private static final String GOOD_USER = "lockss-u";
+  private static final String GOOD_PWD = "lockss-p";
+  private static final String BAD_USER = "badUser";
+  private static final String BAD_PWD = "badPassword";
 
   private static final Logger logger =
       LoggerFactory.getLogger(TestConfigApiController.class);
@@ -238,12 +238,13 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	ListUtil.list(EMPTY_PRECONDITION));
 
     controller.validateIfMatchIfNoneMatchHeaders(null,
-	ListUtil.list(EMPTY_PRECONDITION, NUMERIC_PRECONDITION));
+	ListUtil.list(EMPTY_PRECONDITION, NUMERIC_PRECONDITION,
+	    ALPHA_PRECONDITION));
 
     try {
       controller.validateIfMatchIfNoneMatchHeaders(null,
 	  ListUtil.list(EMPTY_PRECONDITION, NUMERIC_PRECONDITION,
-	      WEAK_PRECONDITION));
+	      WEAK_PRECONDITION, ALPHA_PRECONDITION));
       fail("Should have thrown MalformedParametersException");
     } catch (MalformedParametersException mpe) {
       assertTrue(mpe.getMessage().equals("Invalid If-None-Match entity tag '"
@@ -478,6 +479,14 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getConfigSectionUnAuthenticatedTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
+    // No section.
+    runTestGetConfigSection(null, null, null, null, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Empty section.
+    runTestGetConfigSection(EMPTY_STRING, null, null, null, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
     // Use defaults for all headers.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, null,
 	null, null, HttpStatus.NOT_FOUND);
@@ -625,7 +634,16 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getConfigSectionAuthenticatedTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    // Missing Accept header for UNAUTHORIZED response.
+    // No section: Spring checks the Accept header before credentials.
+    runTestGetConfigSection(null, null, null, null, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Empty section: Spring checks the Accept header before credentials.
+    runTestGetConfigSection(EMPTY_STRING, null, null, null, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Missing Accept header: Spring checks the Accept header before
+    // credentials.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, null,
 	null, null, HttpStatus.NOT_ACCEPTABLE);
 
@@ -695,6 +713,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getConfigSectionCommonTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
+    // No section.
+    runTestGetConfigSection(null, null, null, null, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
+
     // Bad section name using the REST service client.
     try {
       runTestGetConfigSectionClient(null, null, null, null, null);
@@ -702,6 +724,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid section name 'null'", iae.getMessage());
     }
+
+    // Empty section.
+    runTestGetConfigSection(EMPTY_STRING, null, null, null, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
 
     try {
       runTestGetConfigSectionClient(EMPTY_STRING, null, null, null, null);
@@ -1323,6 +1349,14 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getConfigUrlUnAuthenticatedTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
+    // No URL.
+    runTestGetConfigUrl(null, null, null, null, null, null,
+	HttpStatus.NOT_FOUND);
+
+    // Empty URL.
+    runTestGetConfigUrl(EMPTY_STRING, null, null, null, null, null,
+	HttpStatus.NOT_FOUND);
+
     String url = "http://something";
 
     // Use defaults for all headers.
@@ -1464,9 +1498,18 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getConfigUrlAuthenticatedTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
+    // No URL: Spring checks the Accept header before credentials.
+    runTestGetConfigUrl(null, null, null, null, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Empty URL: Spring checks the Accept header before credentials.
+    runTestGetConfigUrl(EMPTY_STRING, null, null, null, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
     String url = "http://something";
 
-    // Missing Accept header for UNAUTHORIZED response.
+    // Missing Accept header: Spring checks the Accept header
+    // before credentials.
     runTestGetConfigUrl(url, null, null, null, null, null,
 	HttpStatus.NOT_ACCEPTABLE);
 
@@ -1659,6 +1702,14 @@ public class TestConfigApiController extends SpringLockssTestCase {
    */
   private void getConfigUrlCommonTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
+
+    // No URL.
+    runTestGetConfigUrl(null, null, null, null, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Empty URL.
+    runTestGetConfigUrl(EMPTY_STRING, null, null, null, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_ACCEPTABLE);
 
     String url = "http://something";
 
@@ -1866,20 +1917,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getLastUpdateTimeUnAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    runTestGetLastUpdateTime(null, null, null, HttpStatus.OK);
-    runTestGetLastUpdateTime(null, BAD_USER, BAD_PWD,	HttpStatus.OK);
-
-    runTestGetLastUpdateTime(MediaType.APPLICATION_JSON, null, null,
-	HttpStatus.OK);
-
-    runTestGetLastUpdateTime(MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD,
-	HttpStatus.OK);
-
-    runTestGetLastUpdateTime(MediaType.MULTIPART_FORM_DATA, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
-
-    runTestGetLastUpdateTime(MediaType.MULTIPART_FORM_DATA, BAD_USER, BAD_PWD,
-	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetLastUpdateTime(null, null, HttpStatus.OK);
+    runTestGetLastUpdateTime(BAD_USER, BAD_PWD, HttpStatus.OK);
 
     getLastUpdateTimeCommonTest();
 
@@ -1892,20 +1931,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getLastUpdateTimeAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    runTestGetLastUpdateTime(null, null, null, HttpStatus.UNAUTHORIZED);
-    runTestGetLastUpdateTime(null, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
-
-    runTestGetLastUpdateTime(MediaType.APPLICATION_JSON, null, null,
-	HttpStatus.UNAUTHORIZED);
-
-    runTestGetLastUpdateTime(MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD,
-	HttpStatus.UNAUTHORIZED);
-
-    runTestGetLastUpdateTime(MediaType.MULTIPART_FORM_DATA, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
-
-    runTestGetLastUpdateTime(MediaType.MULTIPART_FORM_DATA, BAD_USER, BAD_PWD,
-	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetLastUpdateTime(null, null, HttpStatus.UNAUTHORIZED);
+    runTestGetLastUpdateTime(BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     getLastUpdateTimeCommonTest();
 
@@ -1918,13 +1945,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getLastUpdateTimeCommonTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    runTestGetLastUpdateTime(null, GOOD_USER, GOOD_PWD, HttpStatus.OK);
-
-    runTestGetLastUpdateTime(MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD,
-	HttpStatus.OK);
-
-    runTestGetLastUpdateTime(MediaType.MULTIPART_FORM_DATA, GOOD_USER, GOOD_PWD,
-	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetLastUpdateTime(GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -1932,9 +1953,6 @@ public class TestConfigApiController extends SpringLockssTestCase {
   /**
    * Performs a GET lastupdatetime operation.
    * 
-   * @param acceptContentType
-   *          A MediaType with the content type to be added to the request
-   *          "Accept" header.
    * @param user
    *          A String with the request username.
    * @param password
@@ -1943,10 +1961,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *          An HttpStatus with the HTTP status of the result.
    * @return a Date with the configuration last update time.
    */
-  private void runTestGetLastUpdateTime(MediaType acceptContentType,
-      String user, String password, HttpStatus expectedStatus) {
+  private void runTestGetLastUpdateTime(String user, String password,
+      HttpStatus expectedStatus) {
     if (logger.isDebugEnabled()) {
-      logger.debug("acceptContentType = " + acceptContentType);
       logger.debug("user = " + user);
       logger.debug("password = " + password);
       logger.debug("expectedStatus = " + expectedStatus);
@@ -1970,18 +1987,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Check whether there are any custom headers to be specified in the
     // request.
-    if (acceptContentType != null || user != null || password != null) {
+    if (user != null || password != null) {
       // Yes: Initialize the request headers.
       HttpHeaders headers = new HttpHeaders();
-
-      // Check whether there is a custom "Accept" header.
-      if (acceptContentType != null) {
-	// Yes: Set it.
-	headers.setAccept(Arrays.asList(acceptContentType));
-      } else {
-	// No: Set it to accept errors at least.
-	headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-      }
 
       // Set up  the authentication credentials, if necessary.
       setUpCredentials(user, password, headers);
@@ -2026,21 +2034,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getLoadedUrlListUnAuthenticatedTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    runTestGetLoadedUrlList(null, null, null, HttpStatus.OK);
-
-    runTestGetLoadedUrlList(MediaType.APPLICATION_JSON, null, null,
-	HttpStatus.OK);
-
-    runTestGetLoadedUrlList(MediaType.MULTIPART_FORM_DATA, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
-
-    runTestGetLoadedUrlList(null, BAD_USER, BAD_PWD, HttpStatus.OK);
-
-    runTestGetLoadedUrlList(MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD,
-	HttpStatus.OK);
-
-    runTestGetLoadedUrlList(MediaType.MULTIPART_FORM_DATA, BAD_USER, BAD_PWD,
-	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetLoadedUrlList(null, null, HttpStatus.OK);
+    runTestGetLoadedUrlList(BAD_USER, BAD_PWD, HttpStatus.OK);
 
     getLoadedUrlListCommonTest();
 
@@ -2056,21 +2051,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getLoadedUrlListAuthenticatedTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    runTestGetLoadedUrlList(null, null, null, HttpStatus.UNAUTHORIZED);
-
-    runTestGetLoadedUrlList(MediaType.APPLICATION_JSON, null, null,
-	HttpStatus.UNAUTHORIZED);
-
-    runTestGetLoadedUrlList(MediaType.MULTIPART_FORM_DATA, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
-
-    runTestGetLoadedUrlList(null, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
-
-    runTestGetLoadedUrlList(MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD,
-	HttpStatus.UNAUTHORIZED);
-
-    runTestGetLoadedUrlList(MediaType.MULTIPART_FORM_DATA, BAD_USER, BAD_PWD,
-	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetLoadedUrlList(null, null, HttpStatus.UNAUTHORIZED);
+    runTestGetLoadedUrlList(BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     getLoadedUrlListCommonTest();
 
@@ -2086,13 +2068,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getLoadedUrlListCommonTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    runTestGetLoadedUrlList(null, GOOD_USER, GOOD_PWD, HttpStatus.OK);
-
-    runTestGetLoadedUrlList(MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD,
-	HttpStatus.OK);
-
-    runTestGetLoadedUrlList(MediaType.MULTIPART_FORM_DATA, GOOD_USER, GOOD_PWD,
-	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetLoadedUrlList(GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -2100,6 +2076,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
   /**
    * Performs a GET loadedurls operation.
    * 
+   * @param user
+   *          A String with the request username.
+   * @param password
+   *          A String with the request password.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @return a List<String> with the loaded URLs.
@@ -2107,10 +2087,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * @throws Exception
    *           if there are problems.
    */
-  private void runTestGetLoadedUrlList(MediaType acceptContentType, String user,
-      String password, HttpStatus expectedStatus) throws Exception {
+  private void runTestGetLoadedUrlList(String user, String password,
+      HttpStatus expectedStatus) throws Exception {
     if (logger.isDebugEnabled()) {
-      logger.debug("acceptContentType = " + acceptContentType);
       logger.debug("user = " + user);
       logger.debug("password = " + password);
       logger.debug("expectedStatus = " + expectedStatus);
@@ -2134,18 +2113,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Check whether there are any custom headers to be specified in the
     // request.
-    if (acceptContentType != null || user != null || password != null) {
+    if (user != null || password != null) {
       // Yes: Initialize the request headers.
       HttpHeaders headers = new HttpHeaders();
-
-      // Check whether there is a custom "Accept" header.
-      if (acceptContentType != null) {
-	// Yes: Set it.
-	headers.setAccept(Arrays.asList(acceptContentType));
-      } else {
-	// No: Set it to accept errors at least.
-	headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-      }
 
       // Set up  the authentication credentials, if necessary.
       setUpCredentials(user, password, headers);
@@ -2181,6 +2151,14 @@ public class TestConfigApiController extends SpringLockssTestCase {
    */
   private void putConfigUnAuthenticatedTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
+
+    // No section.
+    runTestPutConfig(null, null, null, null, null, null, null,
+	HttpStatus.NOT_FOUND);
+
+    // Empty section.
+    runTestPutConfig(null, EMPTY_STRING, null, null, null, null, null,
+	HttpStatus.NOT_FOUND);
 
     // Missing Content-Type header.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null, null,
@@ -2326,6 +2304,14 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void putConfigAuthenticatedTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
+    // No section.
+    runTestPutConfig(null, null, null, null, null, null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Empty section.
+    runTestPutConfig(null, EMPTY_STRING, null, null, null, null, null,
+	HttpStatus.UNAUTHORIZED);
+
     // Missing credentials.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null, null,
 	null, null, HttpStatus.UNAUTHORIZED);
@@ -2405,7 +2391,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void putConfigCommonTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    // Bad section name using the REST service client.
+    // No section.
+    runTestPutConfig(null, null, null, null, null, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
+
+    // No section name using the REST service client.
     try {
       runTestPutConfigSectionClient("testKey=testValue", null, null, null,
 	  null, null);
@@ -2414,6 +2404,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
       assertEquals("Invalid section name 'null'", iae.getMessage());
     }
 
+    // Empty section.
+    runTestPutConfig(null, EMPTY_STRING, null, null, null, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
+
+    // Empty section name using the REST service client.
     try {
       runTestPutConfigSectionClient("testKey=testValue", EMPTY_STRING, null,
 	  null, null, null);
@@ -2959,20 +2954,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void putConfigReloadUnAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    runTestPutConfigReload(null, null, null, HttpStatus.OK);
-    runTestPutConfigReload(null, BAD_USER, BAD_PWD, HttpStatus.OK);
-
-    runTestPutConfigReload(MediaType.APPLICATION_JSON, null, null,
-	HttpStatus.OK);
-
-    runTestPutConfigReload(MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD,
-	HttpStatus.OK);
-
-    runTestPutConfigReload(MediaType.MULTIPART_FORM_DATA, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
-
-    runTestPutConfigReload(MediaType.MULTIPART_FORM_DATA, BAD_USER, BAD_PWD,
-	HttpStatus.NOT_ACCEPTABLE);
+    runTestPutConfigReload(null, null, HttpStatus.OK);
+    runTestPutConfigReload(BAD_USER, BAD_PWD, HttpStatus.OK);
 
     putConfigReloadCommonTest();
 
@@ -2985,20 +2968,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void putConfigReloadAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    runTestPutConfigReload(null, null, null, HttpStatus.UNAUTHORIZED);
-    runTestPutConfigReload(null, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
-
-    runTestPutConfigReload(MediaType.APPLICATION_JSON, null, null,
-	HttpStatus.UNAUTHORIZED);
-
-    runTestPutConfigReload(MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD,
-	HttpStatus.UNAUTHORIZED);
-
-    runTestPutConfigReload(MediaType.MULTIPART_FORM_DATA, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
-
-    runTestPutConfigReload(MediaType.MULTIPART_FORM_DATA, BAD_USER, BAD_PWD,
-	HttpStatus.NOT_ACCEPTABLE);
+    runTestPutConfigReload(null, null, HttpStatus.UNAUTHORIZED);
+    runTestPutConfigReload(BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     putConfigReloadCommonTest();
 
@@ -3011,13 +2982,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void putConfigReloadCommonTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    runTestPutConfigReload(null, GOOD_USER, GOOD_PWD, HttpStatus.OK);
-
-    runTestPutConfigReload(MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD,
-	HttpStatus.OK);
-
-    runTestPutConfigReload(MediaType.MULTIPART_FORM_DATA, GOOD_USER, GOOD_PWD,
-	HttpStatus.NOT_ACCEPTABLE);
+    runTestPutConfigReload(GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -3025,9 +2990,6 @@ public class TestConfigApiController extends SpringLockssTestCase {
   /**
    * Performs a PUT config reload operation.
    * 
-   * @param acceptContentType
-   *          A MediaType with the content type to be added to the request
-   *          "Accept" header.
    * @param user
    *          A String with the request username.
    * @param password
@@ -3035,10 +2997,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    */
-  private void runTestPutConfigReload(MediaType acceptContentType, String user,
-      String password, HttpStatus expectedStatus) {
+  private void runTestPutConfigReload(String user, String password,
+      HttpStatus expectedStatus) {
     if (logger.isDebugEnabled()) {
-      logger.debug("acceptContentType = " + acceptContentType);
       logger.debug("user = " + user);
       logger.debug("password = " + password);
       logger.debug("expectedStatus = " + expectedStatus);
@@ -3062,18 +3023,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Check whether there are any custom headers to be specified in the
     // request.
-    if (acceptContentType != null || user != null || password != null) {
+    if (user != null || password != null) {
       // Yes: Initialize the request headers.
       HttpHeaders headers = new HttpHeaders();
-
-      // Check whether there is a custom "Accept" header.
-      if (acceptContentType != null) {
-	// Yes: Set it.
-	headers.setAccept(Arrays.asList(acceptContentType));
-      } else {
-	// No: Set it to accept errors at least.
-	headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
-      }
 
       // Set up  the authentication credentials, if necessary.
       setUpCredentials(user, password, headers);

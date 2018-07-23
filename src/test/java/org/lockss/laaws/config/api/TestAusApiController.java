@@ -34,7 +34,9 @@ package org.lockss.laaws.config.api;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -42,6 +44,9 @@ import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.lockss.app.LockssDaemon;
+import org.lockss.config.ConfigManager;
+import org.lockss.config.Configuration;
 import org.lockss.laaws.config.model.ConfigExchange;
 import org.lockss.plugin.PluginManager;
 import org.lockss.test.SpringLockssTestCase;
@@ -61,6 +66,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -70,6 +76,27 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class TestAusApiController extends SpringLockssTestCase {
+  private static final String UI_PORT_CONFIGURATION_TEMPLATE =
+      "UiPortConfigTemplate.txt";
+  private static final String UI_PORT_CONFIGURATION_FILE = "UiPort.opt";
+
+  private static final String EMPTY_STRING = "";
+
+  // The identifier of an AU that exists in the test system.
+  private static final String GOOD_AUID =
+      "org|lockss|plugin|pensoft|oai|PensoftOaiPlugin"
+      + "&au_oai_date~2014&au_oai_set~biorisk"
+      + "&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F";
+
+  // The identifier of an AU that does not exist in the test system.
+  private static final String UNKNOWN_AUID ="unknown_auid";
+
+  // Credentials.
+  private static final String GOOD_USER = "lockss-u";
+  private static final String GOOD_PWD = "lockss-p";
+  private static final String BAD_USER = "badUser";
+  private static final String BAD_PWD = "badPassword";
+
   private static final Logger logger =
       LoggerFactory.getLogger(TestAusApiController.class);
 
@@ -81,14 +108,6 @@ public class TestAusApiController extends SpringLockssTestCase {
   // used for the tests.
   @Autowired
   ApplicationContext appCtx;
-
-  // The identifier of an AU that exists in the test system.
-  String goodAuid = "org|lockss|plugin|pensoft|oai|PensoftOaiPlugin"
-      + "&au_oai_date~2014&au_oai_set~biorisk"
-      + "&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F";
-
-  // The name of an AU that exists in the test system.
-  String goodAuName = "BioRisk Volume 2014";
 
   /**
    * Set up code to be run before each test.
@@ -114,6 +133,9 @@ public class TestAusApiController extends SpringLockssTestCase {
       logger.debug("srcTree = " + srcTree.getAbsolutePath());
 
     copyToTempDir(srcTree);
+
+    // Set up the UI port.
+    setUpUiPort(UI_PORT_CONFIGURATION_TEMPLATE, UI_PORT_CONFIGURATION_FILE);
   }
 
   /**
@@ -127,7 +149,7 @@ public class TestAusApiController extends SpringLockssTestCase {
     // Specify the command line parameters to be used for the tests.
     List<String> cmdLineArgs = getCommandLineArguments();
     cmdLineArgs.add("-p");
-    cmdLineArgs.add("test/config/ausApiControllerTestAuthOff.opt");
+    cmdLineArgs.add("test/config/testAuthOff.opt");
 
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
@@ -152,7 +174,7 @@ public class TestAusApiController extends SpringLockssTestCase {
     // Specify the command line parameters to be used for the tests.
     List<String> cmdLineArgs = getCommandLineArguments();
     cmdLineArgs.add("-p");
-    cmdLineArgs.add("test/config/ausApiControllerTestAuthOn.opt");
+    cmdLineArgs.add("test/config/testAuthOn.opt");
 
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
@@ -184,6 +206,8 @@ public class TestAusApiController extends SpringLockssTestCase {
 
     cmdLineArgs.add("-x");
     cmdLineArgs.add(folder.getAbsolutePath());
+    cmdLineArgs.add("-p");
+    cmdLineArgs.add(getUiPortConfigFile().getAbsolutePath());
     cmdLineArgs.add("-p");
     cmdLineArgs.add("test/config/lockss.txt");
     cmdLineArgs.add("-p");
@@ -220,46 +244,102 @@ public class TestAusApiController extends SpringLockssTestCase {
   private void putAuConfigUnAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    String template = getTestUrlTemplate("/aus/{auid}");
+    // No AUId.
+    runTestPutAuConfig(null, null, null, null, null, HttpStatus.NOT_FOUND);
 
-    // Create the URI of the request to the REST service.
-    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
-	.build().expand(Collections.singletonMap("auid", goodAuid));
+    // Empty AUId.
+    runTestPutAuConfig(null, EMPTY_STRING, null, null, null,
+	HttpStatus.NOT_FOUND);
 
-    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
-	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
+    // No Content-Type header.
+    runTestPutAuConfig(null, GOOD_AUID, null, null, null,
+	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    ResponseEntity<String> errorResponse = new TestRestTemplate().exchange(uri,
-	HttpMethod.PUT, null, String.class);
+    runTestPutAuConfig(null, GOOD_AUID, null, BAD_USER, BAD_PWD,
+	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
+    // No payload.
+    runTestPutAuConfig(null, GOOD_AUID, MediaType.APPLICATION_JSON, null, null,
+	HttpStatus.INTERNAL_SERVER_ERROR);
 
-    errorResponse = new TestRestTemplate("fakeUser", "fakePassword")
-	.exchange(uri, HttpMethod.PUT, null, String.class);
+    runTestPutAuConfig(null, GOOD_AUID, MediaType.APPLICATION_JSON, BAD_USER,
+	BAD_PWD, HttpStatus.INTERNAL_SERVER_ERROR);
 
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
+    // Get the current configuration.
+    ConfigExchange backupConfig =
+	runTestGetAuConfig(GOOD_AUID, null, null, HttpStatus.OK);
 
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
+    // Verify.
+    Map<String, String> backupProps = backupConfig.getProps();
+    verifyGoodAuConfig(backupProps);
 
-    errorResponse = new TestRestTemplate().exchange(uri, HttpMethod.PUT,
-	new HttpEntity<String>(null, headers), String.class);
+    // The payload to be sent.
+    Map<String, String> props = new HashMap<String, String>();
+    props.put("testKey1", "testValue1");
+    props.put("testKey2", "testValue2");
 
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, statusCode);
+    ConfigExchange configInput = new ConfigExchange();
+    configInput.setProps(props);
 
-    headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
+    // Update the AU configuration.
+    Map<String, String> result = runTestPutAuConfig(configInput, GOOD_AUID,
+	MediaType.APPLICATION_JSON, null, null, HttpStatus.OK).getProps();
 
-    errorResponse = new TestRestTemplate("fakeUser", "fakePassword")
-	.exchange(uri, HttpMethod.PUT, new HttpEntity<String>(null, headers),
-	    String.class);
+    // Verify.
+    assertEquals(props, result);
 
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, statusCode);
+    // Verify independently.
+    Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
+	.getStoredAuConfiguration(GOOD_AUID);
+
+    assertEquals(config.keySet().size(), result.size());
+
+    for (String key : config.keySet()) {
+      assertEquals(config.get(key), result.get(key));
+    }
+
+    // Restore the original configuration.
+    result = runTestPutAuConfig(backupConfig, GOOD_AUID,
+	MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD, HttpStatus.OK)
+	.getProps();
+
+    // Verify.
+    assertEquals(backupProps, result);
+
+    // Update the AU configuration of a non-existent AU with empty properties.
+    result = runTestPutAuConfig(new ConfigExchange(), UNKNOWN_AUID,
+	MediaType.APPLICATION_JSON, null, null, HttpStatus.OK).getProps();
+
+    // Verify.
+    assertTrue(result.keySet().isEmpty());
+
+    // Verify independently.
+    config = LockssDaemon.getLockssDaemon().getPluginManager()
+	.getStoredAuConfiguration(UNKNOWN_AUID);
+
+    assertTrue(config.keySet().isEmpty());
+
+    // Update the AU configuration of a non-existent AU with a payload.
+    result = runTestPutAuConfig(configInput, UNKNOWN_AUID,
+	MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD, HttpStatus.OK)
+	.getProps();
+
+    // Verify.
+    assertEquals(props, result);
+
+    // Verify independently.
+    config = LockssDaemon.getLockssDaemon().getPluginManager()
+	.getStoredAuConfiguration(UNKNOWN_AUID);
+
+    assertEquals(config.keySet().size(), result.size());
+
+    for (String key : config.keySet()) {
+      assertEquals(config.get(key), result.get(key));
+    }
+
+    // Delete the configuration just added.
+    assertEquals(props,
+	runTestDeleteAus(UNKNOWN_AUID, null, null, HttpStatus.OK).getProps());
 
     putAuConfigCommonTest();
 
@@ -272,46 +352,42 @@ public class TestAusApiController extends SpringLockssTestCase {
   private void putAuConfigAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    String template = getTestUrlTemplate("/aus/{auid}");
+    // No AUId.
+    runTestPutAuConfig(null, null, null, null, null, HttpStatus.UNAUTHORIZED);
 
-    // Create the URI of the request to the REST service.
-    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
-	.build().expand(Collections.singletonMap("auid", goodAuid));
+    // Empty AUId.
+    runTestPutAuConfig(null, EMPTY_STRING, null, null, null,
+	HttpStatus.UNAUTHORIZED);
 
-    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
-	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
+    // No Content-Type header.
+    runTestPutAuConfig(null, GOOD_AUID, null, null, null,
+	HttpStatus.UNAUTHORIZED);
 
-    ResponseEntity<String> errorResponse = new TestRestTemplate().exchange(uri,
-	HttpMethod.PUT, null, String.class);
+    runTestPutAuConfig(null, GOOD_AUID, null, BAD_USER, BAD_PWD,
+	HttpStatus.UNAUTHORIZED);
 
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNAUTHORIZED, statusCode);
+    // No payload.
+    runTestPutAuConfig(null, GOOD_AUID, MediaType.APPLICATION_JSON, null, null,
+	HttpStatus.UNAUTHORIZED);
 
-    errorResponse = new TestRestTemplate("fakeUser", "fakePassword")
-	.exchange(uri, HttpMethod.PUT, null, String.class);
+    runTestPutAuConfig(null, GOOD_AUID, MediaType.APPLICATION_JSON, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNAUTHORIZED, statusCode);
+    // The payload to be sent.
+    Map<String, String> props = new HashMap<String, String>();
+    props.put("testKey1", "testValue1");
+    props.put("testKey2", "testValue2");
 
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
+    ConfigExchange configInput = new ConfigExchange();
+    configInput.setProps(props);
 
-    errorResponse = new TestRestTemplate().exchange(uri, HttpMethod.PUT,
-	new HttpEntity<String>(null, headers), String.class);
+    // No credentials.
+    runTestPutAuConfig(configInput, GOOD_AUID, MediaType.APPLICATION_JSON, null,
+	null, HttpStatus.UNAUTHORIZED);
 
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNAUTHORIZED, statusCode);
-
-    headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-
-    errorResponse = new TestRestTemplate("fakeUser", "fakePassword")
-	.exchange(uri, HttpMethod.PUT, new HttpEntity<String>(null, headers),
-	    String.class);
-
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNAUTHORIZED, statusCode);
+    // Bad credentials.
+    runTestPutAuConfig(configInput, GOOD_AUID, MediaType.APPLICATION_JSON,
+	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     putAuConfigCommonTest();
 
@@ -324,38 +400,31 @@ public class TestAusApiController extends SpringLockssTestCase {
   private void putAuConfigCommonTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    ConfigExchange backupConfig = getAuConfig(HttpStatus.OK);
+    // No AUId.
+    runTestPutAuConfig(null, null, null, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
+
+    // Empty AUId.
+    runTestPutAuConfig(null, EMPTY_STRING, null, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
+
+    // No Content-Type header.
+    runTestPutAuConfig(null, GOOD_AUID, null, GOOD_USER, GOOD_PWD,
+	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+
+    // No payload.
+    runTestPutAuConfig(null, GOOD_AUID, MediaType.APPLICATION_JSON, GOOD_USER,
+	GOOD_PWD, HttpStatus.INTERNAL_SERVER_ERROR);
+
+    // Get the current configuration.
+    ConfigExchange backupConfig =
+	runTestGetAuConfig(GOOD_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+
+    // Verify.
     Map<String, String> backupProps = backupConfig.getProps();
-    assertEquals("2014", backupProps.get("au_oai_date"));
-    assertEquals("biorisk", backupProps.get("au_oai_set"));
-    assertNull(backupProps.get("testKey1"));
-    assertNull(backupProps.get("testKey2"));
+    verifyGoodAuConfig(backupProps);
 
-    String template = getTestUrlTemplate("/aus/{auid}");
-
-    // Create the URI of the request to the REST service.
-    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
-	.build().expand(Collections.singletonMap("auid", goodAuid));
-
-    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
-	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
-
-    ResponseEntity<String> errorResponse = new TestRestTemplate("lockss-u",
-	"lockss-p").exchange(uri, HttpMethod.PUT, null, String.class);
-
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
-
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-
-    errorResponse = new TestRestTemplate("lockss-u", "lockss-p").exchange(uri,
-	HttpMethod.PUT, new HttpEntity<String>(null, headers), String.class);
-
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, statusCode);
-
+    // The payload to be sent.
     Map<String, String> props = new HashMap<String, String>();
     props.put("testKey1", "testValue1");
     props.put("testKey2", "testValue2");
@@ -363,44 +432,67 @@ public class TestAusApiController extends SpringLockssTestCase {
     ConfigExchange configInput = new ConfigExchange();
     configInput.setProps(props);
 
-    Map<String, String> result =
-	putAuConfig(uri, configInput, HttpStatus.OK).getProps();
-    assertNull(result.get("journal_id"));
-    assertNull(result.get("volume_name"));
-    assertEquals("testValue1", result.get("testKey1"));
-    assertEquals("testValue2", result.get("testKey2"));
+    // Update the AU configuration.
+    Map<String, String> result = runTestPutAuConfig(configInput, GOOD_AUID,
+	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD, HttpStatus.OK)
+	.getProps();
 
-    result = putAuConfig(uri, backupConfig, HttpStatus.OK).getProps();
-    assertEquals("2014", backupProps.get("au_oai_date"));
-    assertEquals("biorisk", backupProps.get("au_oai_set"));
-    assertNull(result.get("testKey1"));
-    assertNull(result.get("testKey2"));
+    // Verify.
+    assertEquals(props, result);
 
-    // Create the URI of the request to the REST service.
-    uriComponents = UriComponentsBuilder.fromUriString(template).build()
-	.expand(Collections.singletonMap("auid", "fakeauid"));
+    // Verify independently.
+    Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
+	.getStoredAuConfiguration(GOOD_AUID);
 
-    uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
-	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
+    assertEquals(config.keySet().size(), result.size());
 
-    result = putAuConfig(uri, configInput, HttpStatus.OK).getProps();
-    assertEquals("testValue1", result.get("testKey1"));
-    assertEquals("testValue2", result.get("testKey2"));
+    for (String key : config.keySet()) {
+      assertEquals(config.get(key), result.get(key));
+    }
 
-    result = putAuConfig(uri, new ConfigExchange(), HttpStatus.OK).getProps();
+    // Restore the original configuration.
+    result = runTestPutAuConfig(backupConfig, GOOD_AUID,
+	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD, HttpStatus.OK)
+	.getProps();
+
+    // Verify.
+    assertEquals(backupProps, result);
+
+    // Update the AU configuration of a non-existent AU with empty properties.
+    result = runTestPutAuConfig(new ConfigExchange(), UNKNOWN_AUID,
+	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD, HttpStatus.OK)
+	.getProps();
+
+    // Verify.
     assertTrue(result.keySet().isEmpty());
 
-    ResponseEntity<ConfigExchange> successResponse =
-	new TestRestTemplate("lockss-u", "lockss-p").exchange(uri,
-	    HttpMethod.DELETE, new HttpEntity<String>(null, headers),
-	    ConfigExchange.class);
+    // Verify independently.
+    config = LockssDaemon.getLockssDaemon().getPluginManager()
+	.getStoredAuConfiguration(UNKNOWN_AUID);
 
-    statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
+    assertTrue(config.keySet().isEmpty());
 
-    result = successResponse.getBody().getProps();
-    assertTrue(result.keySet().isEmpty());
+    // Update the AU configuration of a non-existent AU with a payload.
+    result = runTestPutAuConfig(configInput, UNKNOWN_AUID,
+	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD, HttpStatus.OK)
+	.getProps();
+
+    // Verify.
+    assertEquals(props, result);
+
+    // Verify independently.
+    config = LockssDaemon.getLockssDaemon().getPluginManager()
+	.getStoredAuConfiguration(UNKNOWN_AUID);
+
+    assertEquals(config.keySet().size(), result.size());
+
+    for (String key : config.keySet()) {
+      assertEquals(config.get(key), result.get(key));
+    }
+
+    // Delete the configuration just added.
+    assertEquals(props, runTestDeleteAus(UNKNOWN_AUID, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps());
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -408,24 +500,78 @@ public class TestAusApiController extends SpringLockssTestCase {
   /**
    * Performs a PUT operation.
    * 
-   * @param uri
-   *          A URI with the URI of the operation.
    * @param config
    *          A ConfigExchange with the Archival Unit configuration.
+   * @param auId
+   *          A String with the identifier of the Archival Unit.
+   * @param contentType
+   *          A MediaType with the content type of the request.
+   * @param user
+   *          A String with the request username.
+   * @param password
+   *          A String with the request password.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @return a ConfigExchange with the Archival Unit configuration.
    */
-  private ConfigExchange putAuConfig(URI uri, ConfigExchange config,
+  private ConfigExchange runTestPutAuConfig(ConfigExchange config, String auId,
+      MediaType contentType, String user, String password,
       HttpStatus expectedStatus) {
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
+    if (logger.isDebugEnabled()) {
+      logger.debug("config = " + config);
+      logger.debug("auId = " + auId);
+      logger.debug("contentType = " + contentType);
+      logger.debug("user = " + user);
+      logger.debug("password = " + password);
+      logger.debug("expectedStatus = " + expectedStatus);
+    }
 
+    // Get the test URL template.
+    String template = getTestUrlTemplate("/aus/{auid}");
+
+    // Create the URI of the request to the REST service.
+    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
+	.build().expand(Collections.singletonMap("auid", auId));
+
+    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
+	.build().encode().toUri();
+    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
+
+    // Initialize the request to the REST service.
+    RestTemplate restTemplate = new RestTemplate();
+
+    HttpEntity<ConfigExchange> requestEntity = null;
+
+    // Check whether there are any custom headers to be specified in the
+    // request.
+    if (config != null || contentType != null || user != null
+	|| password != null) {
+
+      // Initialize the request headers.
+      HttpHeaders headers = new HttpHeaders();
+
+      // Check whether there is a custom "Content-Type" header.
+      if (contentType != null) {
+	// Yes: Set it.
+	headers.setContentType(contentType);
+      }
+
+      // Set up the authentication credentials, if necessary.
+      setUpCredentials(user, password, headers);
+
+      if (logger.isDebugEnabled())
+	logger.debug("requestHeaders = " + headers.toSingleValueMap());
+
+      // Create the request entity.
+      requestEntity = new HttpEntity<ConfigExchange>(config, headers);
+    }
+
+    // Make the request and get the response. 
     ResponseEntity<ConfigExchange> response =
-	new TestRestTemplate("lockss-u", "lockss-p").exchange(uri,
-	    HttpMethod.PUT, new HttpEntity<ConfigExchange>(config, headers),
-	    ConfigExchange.class);
+	new TestRestTemplate(restTemplate). exchange(uri, HttpMethod.PUT,
+	    requestEntity, ConfigExchange.class);
 
+    // Get the response status.
     HttpStatus statusCode = response.getStatusCode();
     assertEquals(expectedStatus, statusCode);
 
@@ -438,35 +584,38 @@ public class TestAusApiController extends SpringLockssTestCase {
   private void getAuConfigUnAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    String template = getTestUrlTemplate("/aus/{auid}");
+    // No AUId.
+    runTestGetAuConfig(null, null, null, HttpStatus.NOT_FOUND);
 
-    // Create the URI of the request to the REST service.
-    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
-	.build().expand(Collections.singletonMap("auid", goodAuid));
+    // Empty AUId.
+    runTestGetAuConfig(EMPTY_STRING, null, null, HttpStatus.NOT_FOUND);
 
-    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
-	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
+    // No credentials.
+    ConfigExchange configOutput =
+	runTestGetAuConfig(GOOD_AUID, null, null, HttpStatus.OK);
 
-    ResponseEntity<ConfigExchange> successResponse = new TestRestTemplate()
-	.exchange(uri, HttpMethod.GET, null, ConfigExchange.class);
+    // Verify.
+    Map<String, String> goodAuidProps = configOutput.getProps();
+    verifyGoodAuConfig(goodAuidProps);
 
-    HttpStatus statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
+    // Bad credentials.
+    configOutput =
+	runTestGetAuConfig(GOOD_AUID, BAD_USER, BAD_PWD, HttpStatus.OK);
 
-    ConfigExchange configOutput = successResponse.getBody();
-    assertEquals("2014", configOutput.getProps().get("au_oai_date"));
-    assertEquals("biorisk", configOutput.getProps().get("au_oai_set"));
+    // Verify.
+    assertEquals(goodAuidProps, configOutput.getProps());
 
-    successResponse = new TestRestTemplate("fakeUser", "fakePassword")
-	.exchange(uri, HttpMethod.GET, null, ConfigExchange.class);
+    // Non-existent AUId.
+    configOutput = runTestGetAuConfig(UNKNOWN_AUID, null, null, HttpStatus.OK);
 
-    statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
+    // Verify.
+    assertTrue(configOutput.getProps().isEmpty());
 
-    configOutput = successResponse.getBody();
-    assertEquals("2014", configOutput.getProps().get("au_oai_date"));
-    assertEquals("biorisk", configOutput.getProps().get("au_oai_set"));
+    // Verify independently.
+    Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
+	.getStoredAuConfiguration(UNKNOWN_AUID);
+
+    assertTrue(config.keySet().isEmpty());
 
     getAuConfigCommonTest();
 
@@ -479,27 +628,20 @@ public class TestAusApiController extends SpringLockssTestCase {
   private void getAuConfigAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    String template = getTestUrlTemplate("/aus/{auid}");
+    // No AUId.
+    runTestGetAuConfig(null, null, null, HttpStatus.UNAUTHORIZED);
 
-    // Create the URI of the request to the REST service.
-    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
-	.build().expand(Collections.singletonMap("auid", goodAuid));
+    // Empty AUId.
+    runTestGetAuConfig(EMPTY_STRING, null, null, HttpStatus.UNAUTHORIZED);
 
-    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
-	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
+    // No credentials.
+    runTestGetAuConfig(GOOD_AUID, null, null, HttpStatus.UNAUTHORIZED);
+    runTestGetAuConfig(UNKNOWN_AUID, null, null, HttpStatus.UNAUTHORIZED);
 
-    ResponseEntity<ConfigExchange> errorResponse = new TestRestTemplate()
-	.exchange(uri, HttpMethod.GET, null, ConfigExchange.class);
-
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNAUTHORIZED, statusCode);
-
-    errorResponse = new TestRestTemplate("fakeUser", "fakePassword")
-	.exchange(uri, HttpMethod.GET, null, ConfigExchange.class);
-
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNAUTHORIZED, statusCode);
+    // Bad credentials.
+    runTestGetAuConfig(GOOD_AUID, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestGetAuConfig(UNKNOWN_AUID, BAD_USER, BAD_PWD,
+	HttpStatus.UNAUTHORIZED);
 
     getAuConfigCommonTest();
 
@@ -512,52 +654,31 @@ public class TestAusApiController extends SpringLockssTestCase {
   private void getAuConfigCommonTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    String template = getTestUrlTemplate("/aus/{auid}");
+    // No AUId.
+    runTestGetAuConfig(null, GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
 
-    // Create the URI of the request to the REST service.
-    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
-	.build().expand(Collections.singletonMap("auid", goodAuid));
+    // Empty AUId.
+    runTestGetAuConfig(EMPTY_STRING, GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
 
-    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
-	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
+    // Good AUId.
+    ConfigExchange configOutput =
+	runTestGetAuConfig(GOOD_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
-    ResponseEntity<ConfigExchange> successResponse =
-	new TestRestTemplate("lockss-u", "lockss-p").exchange(uri,
-	    HttpMethod.GET, null, ConfigExchange.class);
+    // Verify.
+    verifyGoodAuConfig(configOutput.getProps());
 
-    HttpStatus statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
+    // Non-existent AUId.
+    configOutput =
+	runTestGetAuConfig(UNKNOWN_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
-    ConfigExchange configOutput = successResponse.getBody();
-    assertEquals("2014", configOutput.getProps().get("au_oai_date"));
-    assertEquals("biorisk", configOutput.getProps().get("au_oai_set"));
-
-    configOutput = getAuConfig(HttpStatus.OK);
-
-    assertEquals("2014", configOutput.getProps().get("au_oai_date"));
-    assertEquals("biorisk", configOutput.getProps().get("au_oai_set"));
-
-    // Create the URI of the request to the REST service.
-    uriComponents = UriComponentsBuilder.fromUriString(template).build()
-	.expand(Collections.singletonMap("auid", "fakeauid"));
-
-    uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
-	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
-
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-
-    successResponse = new TestRestTemplate("lockss-u", "lockss-p")
-	.exchange(uri, HttpMethod.GET, new HttpEntity<String>(null, headers),
-	    ConfigExchange.class);
-
-    statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
-
-    configOutput = successResponse.getBody();
+    // Verify.
     assertTrue(configOutput.getProps().isEmpty());
+
+    // Verify independently.
+    Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
+	.getStoredAuConfiguration(UNKNOWN_AUID);
+
+    assertTrue(config.keySet().isEmpty());
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -565,28 +686,64 @@ public class TestAusApiController extends SpringLockssTestCase {
   /**
    * Performs a GET operation for an Archival Unit.
    * 
+   * @param auId
+   *          A String with the identifier of the Archival Unit.
+   * @param user
+   *          A String with the request username.
+   * @param password
+   *          A String with the request password.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @return a ConfigExchange with the Archival Unit configuration.
    */
-  private ConfigExchange getAuConfig(HttpStatus expectedStatus) {
+  private ConfigExchange runTestGetAuConfig(String auId, String user,
+      String password, HttpStatus expectedStatus) {
+    if (logger.isDebugEnabled()) {
+      logger.debug("auId = " + auId);
+      logger.debug("user = " + user);
+      logger.debug("password = " + password);
+      logger.debug("expectedStatus = " + expectedStatus);
+    }
+
+    // Get the test URL template.
     String template = getTestUrlTemplate("/aus/{auid}");
 
     // Create the URI of the request to the REST service.
     UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
-	.build().expand(Collections.singletonMap("auid", goodAuid));
+	.build().expand(Collections.singletonMap("auid", auId));
 
     URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
 	.build().encode().toUri();
     if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
 
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
+    // Initialize the request to the REST service.
+    RestTemplate restTemplate = new RestTemplate();
 
-    ResponseEntity<ConfigExchange> response = new TestRestTemplate("lockss-u",
-	"lockss-p").exchange(uri, HttpMethod.GET,
-	    new HttpEntity<String>(null, headers), ConfigExchange.class);
+    HttpEntity<ConfigExchange> requestEntity = null;
 
+    // Check whether there are any custom headers to be specified in the
+    // request.
+    if (user != null || password != null) {
+
+      // Initialize the request headers.
+      HttpHeaders headers = new HttpHeaders();
+
+      // Set up the authentication credentials, if necessary.
+      setUpCredentials(user, password, headers);
+
+      if (logger.isDebugEnabled())
+	logger.debug("requestHeaders = " + headers.toSingleValueMap());
+
+      // Create the request entity.
+      requestEntity = new HttpEntity<ConfigExchange>(null, headers);
+    }
+
+    // Make the request and get the response. 
+    ResponseEntity<ConfigExchange> response =
+	new TestRestTemplate(restTemplate). exchange(uri, HttpMethod.GET,
+	    requestEntity, ConfigExchange.class);
+
+    // Get the response status.
     HttpStatus statusCode = response.getStatusCode();
     assertEquals(expectedStatus, statusCode);
 
@@ -599,29 +756,51 @@ public class TestAusApiController extends SpringLockssTestCase {
   private void getAllAuConfigUnAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    String url = getTestUrlTemplate("/aus");
+    // No credentials.
+    ConfigExchange configOutput =
+	runTestGetAllAuConfig(null, null, HttpStatus.OK);
 
-    ResponseEntity<ConfigExchange> successResponse = new TestRestTemplate()
-	.exchange(url, HttpMethod.GET, null, ConfigExchange.class);
+    // The configuration key for the good AU.
+    String configKey = PluginManager.configKeyFromAuId(GOOD_AUID);
 
-    HttpStatus statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
+    // Verify.
+    Map<String, String> allAuProps = configOutput.getProps();
+    assertEquals(6, allAuProps.size());
+    assertEquals("2014", allAuProps.get(configKey + ".au_oai_date"));
+    assertEquals("biorisk", allAuProps.get(configKey + ".au_oai_set"));
+    assertEquals("BioRisk Volume 2014",
+	allAuProps.get(configKey + ".reserved.displayName"));
+    assertEquals("false", allAuProps.get(configKey + ".reserved.disabled"));
+    assertEquals("http://biorisk.pensoft.net/",
+	allAuProps.get(configKey + ".base_url"));
+    assertEquals("local:./cache",
+	allAuProps.get(configKey + ".reserved.repository"));
 
-    String configKey = PluginManager.configKeyFromAuId(goodAuid);
+    // Verify independently.
+    Configuration config = ConfigManager.getCurrentConfig()
+	  .getConfigTree(PluginManager.PARAM_AU_TREE);
 
-    Map<String, String> result = successResponse.getBody().getProps();
-    assertEquals("2014", result.get(configKey + ".au_oai_date"));
-    assertEquals("biorisk", result.get(configKey + ".au_oai_set"));
+    assertEquals(config.keySet().size(), allAuProps.size());
 
-    successResponse = new TestRestTemplate("fakeUser", "fakePassword")
-	.exchange(url, HttpMethod.GET, null, ConfigExchange.class);
+    for (String key : config.keySet()) {
+      assertEquals(config.get(key), allAuProps.get(key));
+    }
 
-    statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
+    // Bad credentials.
+    configOutput = runTestGetAllAuConfig(BAD_USER, BAD_PWD, HttpStatus.OK);
 
-    result = successResponse.getBody().getProps();
-    assertEquals("2014", result.get(configKey + ".au_oai_date"));
-    assertEquals("biorisk", result.get(configKey + ".au_oai_set"));
+    // Verify.
+    assertEquals(allAuProps, configOutput.getProps());
+
+    // Verify independently.
+    config = ConfigManager.getCurrentConfig()
+	  .getConfigTree(PluginManager.PARAM_AU_TREE);
+
+    assertEquals(config.keySet().size(), configOutput.getProps().size());
+
+    for (String key : config.keySet()) {
+      assertEquals(config.get(key), allAuProps.get(key));
+    }
 
     getAllAuConfigCommonTest();
 
@@ -634,19 +813,11 @@ public class TestAusApiController extends SpringLockssTestCase {
   private void getAllAuConfigAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    String url = getTestUrlTemplate("/aus");
+    // No credentials.
+    runTestGetAllAuConfig(null, null, HttpStatus.UNAUTHORIZED);
 
-    ResponseEntity<ConfigExchange> errorResponse = new TestRestTemplate()
-	.exchange(url, HttpMethod.GET, null, ConfigExchange.class);
-
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNAUTHORIZED, statusCode);
-
-    errorResponse = new TestRestTemplate("fakeUser", "fakePassword")
-	.exchange(url, HttpMethod.GET, null, ConfigExchange.class);
-
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNAUTHORIZED, statusCode);
+    // Bad credentials.
+    runTestGetAllAuConfig(BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     getAllAuConfigCommonTest();
 
@@ -659,27 +830,33 @@ public class TestAusApiController extends SpringLockssTestCase {
   private void getAllAuConfigCommonTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    String url = getTestUrlTemplate("/aus");
+    ConfigExchange configOutput =
+	runTestGetAllAuConfig(GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
-    ResponseEntity<ConfigExchange> successResponse =
-	new TestRestTemplate("lockss-u", "lockss-p").exchange(url,
-	    HttpMethod.GET, null, ConfigExchange.class);
+    String configKey = PluginManager.configKeyFromAuId(GOOD_AUID);
 
-    HttpStatus statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
+    // Verify.
+    Map<String, String> allAuProps = configOutput.getProps();
+    assertEquals(6, allAuProps.size());
+    assertEquals("2014", allAuProps.get(configKey + ".au_oai_date"));
+    assertEquals("biorisk", allAuProps.get(configKey + ".au_oai_set"));
+    assertEquals("BioRisk Volume 2014",
+	allAuProps.get(configKey + ".reserved.displayName"));
+    assertEquals("false", allAuProps.get(configKey + ".reserved.disabled"));
+    assertEquals("http://biorisk.pensoft.net/",
+	allAuProps.get(configKey + ".base_url"));
+    assertEquals("local:./cache",
+	allAuProps.get(configKey + ".reserved.repository"));
 
-    String configKey = PluginManager.configKeyFromAuId(goodAuid);
+    // Verify independently.
+    Configuration config = ConfigManager.getCurrentConfig()
+	  .getConfigTree(PluginManager.PARAM_AU_TREE);
 
-    Map<String, String> result = successResponse.getBody().getProps();
-    assertEquals("2014", result.get(configKey + ".au_oai_date"));
-    assertEquals("biorisk", result.get(configKey + ".au_oai_set"));
+    assertEquals(config.keySet().size(), allAuProps.size());
 
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-
-    result = getAllAuConfig(HttpStatus.OK).getProps();
-    assertEquals("2014", result.get(configKey + ".au_oai_date"));
-    assertEquals("biorisk", result.get(configKey + ".au_oai_set"));
+    for (String key : config.keySet()) {
+      assertEquals(config.get(key), allAuProps.get(key));
+    }
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -687,20 +864,61 @@ public class TestAusApiController extends SpringLockssTestCase {
   /**
    * Performs a GET operation for all Archival Units.
    * 
+   * @param user
+   *          A String with the request username.
+   * @param password
+   *          A String with the request password.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @return a ConfigExchange with the Archival Unit configuration.
    */
-  private ConfigExchange getAllAuConfig(HttpStatus expectedStatus) {
-    String url = getTestUrlTemplate("/aus");
+  private ConfigExchange runTestGetAllAuConfig(String user, String password,
+      HttpStatus expectedStatus) {
+    if (logger.isDebugEnabled()) {
+      logger.debug("user = " + user);
+      logger.debug("password = " + password);
+      logger.debug("expectedStatus = " + expectedStatus);
+    }
 
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
+    // Get the test URL template.
+    String template = getTestUrlTemplate("/aus");
 
-    ResponseEntity<ConfigExchange> response = new TestRestTemplate("lockss-u",
-	"lockss-p").exchange(url, HttpMethod.GET,
-	    new HttpEntity<String>(null, headers), ConfigExchange.class);
+    // Create the URI of the request to the REST service.
+    UriComponents uriComponents =
+	UriComponentsBuilder.fromUriString(template).build();
 
+    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
+	.build().encode().toUri();
+    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
+
+    // Initialize the request to the REST service.
+    RestTemplate restTemplate = new RestTemplate();
+
+    HttpEntity<ConfigExchange> requestEntity = null;
+
+    // Check whether there are any custom headers to be specified in the
+    // request.
+    if (user != null || password != null) {
+
+      // Initialize the request headers.
+      HttpHeaders headers = new HttpHeaders();
+
+      // Set up the authentication credentials, if necessary.
+      setUpCredentials(user, password, headers);
+
+      if (logger.isDebugEnabled())
+	logger.debug("requestHeaders = " + headers.toSingleValueMap());
+
+      // Create the request entity.
+      requestEntity = new HttpEntity<ConfigExchange>(null, headers);
+    }
+
+    // Make the request and get the response. 
+    ResponseEntity<ConfigExchange> response =
+	new TestRestTemplate(restTemplate). exchange(uri, HttpMethod.GET,
+	    requestEntity, ConfigExchange.class);
+
+    // Get the response status.
     HttpStatus statusCode = response.getStatusCode();
     assertEquals(expectedStatus, statusCode);
 
@@ -713,57 +931,35 @@ public class TestAusApiController extends SpringLockssTestCase {
   private void deleteAusUnAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    ConfigExchange backupConfig = getAuConfig(HttpStatus.OK);
+    // Get the current configuration.
+    ConfigExchange backupConfig =
+	runTestGetAuConfig(GOOD_AUID, null, null, HttpStatus.OK);
+
+    // Verify.
     Map<String, String> backupProps = backupConfig.getProps();
-    assertEquals("2014", backupProps.get("au_oai_date"));
-    assertEquals("biorisk", backupProps.get("au_oai_set"));
+    verifyGoodAuConfig(backupProps);
 
-    String template = getTestUrlTemplate("/aus/{auid}");
+    // No credentials.
+    ConfigExchange result =
+	runTestDeleteAus(GOOD_AUID, null, null, HttpStatus.OK);
 
-    // Create the URI of the request to the REST service.
-    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
-	.build().expand(Collections.singletonMap("auid", goodAuid));
-
-    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
-	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
-
-    ResponseEntity<String> errorResponse = new TestRestTemplate().exchange(uri,
-	HttpMethod.DELETE, null, String.class);
-
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
-
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-
-    ResponseEntity<ConfigExchange> successResponse =
-	new TestRestTemplate().exchange(uri, HttpMethod.DELETE,
-	    new HttpEntity<String>(null, headers), ConfigExchange.class);
-
-    statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
-
-    ConfigExchange result = successResponse.getBody();
+    // Verify.
     Map<String, String> props = result.getProps();
     assertEquals(backupProps, props);
 
-    headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
+    // Bad credentials.
+    result = runTestDeleteAus(GOOD_AUID, BAD_USER, BAD_PWD, HttpStatus.OK);
 
-    successResponse = new TestRestTemplate("fakeUser", "fakePassword")
-	.exchange(uri, HttpMethod.DELETE, new HttpEntity<String>(null, headers),
-	    ConfigExchange.class);
-
-    statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
-
-    result = successResponse.getBody();
+    // Verify.
     assertTrue(result.getProps().keySet().isEmpty());
 
-    props = putAuConfig(uri, backupConfig, HttpStatus.OK).getProps();
-    assertEquals("2014", props.get("au_oai_date"));
-    assertEquals("biorisk", props.get("au_oai_set"));
+    // Restore the original configuration.
+    props = runTestPutAuConfig(backupConfig, GOOD_AUID,
+	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps();
+
+    // Verify.
+    assertEquals(backupProps, props);
 
     deleteAusCommonTest();
 
@@ -776,74 +972,19 @@ public class TestAusApiController extends SpringLockssTestCase {
   private void deleteAusAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    ConfigExchange backupConfig = getAuConfig(HttpStatus.OK);
-    Map<String, String> backupProps = backupConfig.getProps();
-    assertEquals("2014", backupProps.get("au_oai_date"));
-    assertEquals("biorisk", backupProps.get("au_oai_set"));
+    // No AUId.
+    runTestDeleteAus(null, null, null, HttpStatus.UNAUTHORIZED);
 
-    String template = getTestUrlTemplate("/aus/{auid}");
+    // Empty AUId.
+    runTestDeleteAus(EMPTY_STRING, null, null, HttpStatus.UNAUTHORIZED);
 
-    // Create the URI of the request to the REST service.
-    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
-	.build().expand(Collections.singletonMap("auid", goodAuid));
+    // No credentials.
+    runTestDeleteAus(GOOD_AUID, null, null, HttpStatus.UNAUTHORIZED);
+    runTestDeleteAus(UNKNOWN_AUID, null, null, HttpStatus.UNAUTHORIZED);
 
-    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
-	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
-
-    ResponseEntity<String> errorResponse = new TestRestTemplate().exchange(uri,
-	HttpMethod.DELETE, null, String.class);
-
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNAUTHORIZED, statusCode);
-
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-
-    errorResponse = new TestRestTemplate().exchange(uri, HttpMethod.DELETE,
-	new HttpEntity<String>(null, headers), String.class);
-
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNAUTHORIZED, statusCode);
-
-    headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-
-    errorResponse = new TestRestTemplate("fakeUser", "fakePassword")
-	.exchange(uri, HttpMethod.DELETE, new HttpEntity<String>(null, headers),
-	    String.class);
-
-    statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNAUTHORIZED, statusCode);
-
-    ResponseEntity<ConfigExchange> successResponse =
-	new TestRestTemplate("lockss-u", "lockss-p").exchange(uri,
-	    HttpMethod.DELETE, new HttpEntity<String>(null, headers),
-	    ConfigExchange.class);
-
-    statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
-
-    ConfigExchange result = successResponse.getBody();
-    Map<String, String> props = result.getProps();
-    assertEquals(backupProps, props);
-
-    headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-
-    successResponse = new TestRestTemplate("lockss-u", "lockss-p").exchange(uri,
-	HttpMethod.DELETE, new HttpEntity<String>(null, headers),
-	ConfigExchange.class);
-
-    statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
-
-    result = successResponse.getBody();
-    assertTrue(result.getProps().keySet().isEmpty());
-
-    props = putAuConfig(uri, backupConfig, HttpStatus.OK).getProps();
-    assertEquals("2014", props.get("au_oai_date"));
-    assertEquals("biorisk", props.get("au_oai_set"));
+    // Bad credentials.
+    runTestDeleteAus(GOOD_AUID, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestDeleteAus(UNKNOWN_AUID, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     deleteAusCommonTest();
 
@@ -856,29 +997,192 @@ public class TestAusApiController extends SpringLockssTestCase {
   private void deleteAusCommonTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    String url = getTestUrlTemplate("/aus/fakeauid");
+    // No AUId.
+    runTestDeleteAus(null, GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
 
-    ResponseEntity<String> errorResponse = new TestRestTemplate("lockss-u",
-	"lockss-p").exchange(url, HttpMethod.DELETE, null, String.class);
+    // Empty AUId.
+    runTestDeleteAus(EMPTY_STRING, GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
 
-    HttpStatus statusCode = errorResponse.getStatusCode();
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, statusCode);
+    // Unknown AU.
+    ConfigExchange configOutput =
+	runTestDeleteAus(UNKNOWN_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
+    // Verify.
+    assertTrue(configOutput.getProps().keySet().isEmpty());
 
-    ResponseEntity<ConfigExchange> successResponse =
-	new TestRestTemplate("lockss-u", "lockss-p").exchange(url,
-	    HttpMethod.DELETE, new HttpEntity<String>(null, headers),
-	    ConfigExchange.class);
+    // Get the current configuration of the good AU.
+    ConfigExchange backupConfig =
+	runTestGetAuConfig(GOOD_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
-    statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
+    // Verify.
+    Map<String, String> backupProps = backupConfig.getProps();
+    verifyGoodAuConfig(backupProps);
 
-    ConfigExchange result = successResponse.getBody();
-    assertTrue(result.getProps().keySet().isEmpty());
+    // Delete the AU.
+    ConfigExchange result =
+	runTestDeleteAus(GOOD_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    Map<String, String> props = result.getProps();
+
+    // Verify.
+    assertEquals(backupProps, props);
+
+    // Restore the original configuration.
+    props = runTestPutAuConfig(backupConfig, GOOD_AUID,
+	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps();
+
+    // Verify.
+    assertEquals(backupProps, props);
+
+    // Verify independently.
+    Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
+	.getStoredAuConfiguration(GOOD_AUID);
+
+    assertEquals(config.keySet().size(), props.size());
+
+    for (String key : config.keySet()) {
+      assertEquals(config.get(key), props.get(key));
+    }
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
+  }
+
+  /**
+   * Performs a DELETE operation for an Archival Unit.
+   * 
+   * @param auId
+   *          A String with the identifier of the Archival Unit.
+   * @param user
+   *          A String with the request username.
+   * @param password
+   *          A String with the request password.
+   * @param expectedStatus
+   *          An HttpStatus with the HTTP status of the result.
+   * @return a ConfigExchange with the configuration of the Archival Unit that
+   *         was deleted.
+   */
+  private ConfigExchange runTestDeleteAus(String auId, String user,
+      String password, HttpStatus expectedStatus) {
+    if (logger.isDebugEnabled()) {
+      logger.debug("auId = " + auId);
+      logger.debug("user = " + user);
+      logger.debug("password = " + password);
+      logger.debug("expectedStatus = " + expectedStatus);
+    }
+
+    // Get the test URL template.
+    String template = getTestUrlTemplate("/aus/{auid}");
+
+    // Create the URI of the request to the REST service.
+    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
+	.build().expand(Collections.singletonMap("auid", auId));
+
+    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
+	.build().encode().toUri();
+    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
+
+    // Initialize the request to the REST service.
+    RestTemplate restTemplate = new RestTemplate();
+
+    HttpEntity<ConfigExchange> requestEntity = null;
+
+    // Check whether there are any custom headers to be specified in the
+    // request.
+    if (user != null || password != null) {
+
+      // Initialize the request headers.
+      HttpHeaders headers = new HttpHeaders();
+
+      // Set up the authentication credentials, if necessary.
+      setUpCredentials(user, password, headers);
+
+      if (logger.isDebugEnabled())
+	logger.debug("requestHeaders = " + headers.toSingleValueMap());
+
+      // Create the request entity.
+      requestEntity = new HttpEntity<ConfigExchange>(null, headers);
+    }
+
+    // Make the request and get the response. 
+    ResponseEntity<ConfigExchange> response =
+	new TestRestTemplate(restTemplate). exchange(uri, HttpMethod.DELETE,
+	    requestEntity, ConfigExchange.class);
+
+    // Get the response status.
+    HttpStatus statusCode = response.getStatusCode();
+    assertEquals(expectedStatus, statusCode);
+
+    if (isSuccess(statusCode)) {
+      // Verify independently.
+      Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
+	.getStoredAuConfiguration(auId);
+
+      assertTrue(config.keySet().isEmpty());
+    }
+
+    return response.getBody();
+  }
+
+  /**
+   * Verifies that the passed configuration matches that of the known good
+   * Archival Unit.
+   * 
+   * @param auConfig
+   *          A Map<String, String> with the configuration to be verified.
+   */
+  private void verifyGoodAuConfig(Map<String, String> auConfig) {
+    assertEquals(6, auConfig.size());
+    assertEquals("2014", auConfig.get("au_oai_date"));
+    assertEquals("biorisk", auConfig.get("au_oai_set"));
+    assertEquals("BioRisk Volume 2014", auConfig.get("reserved.displayName"));
+    assertEquals("false", auConfig.get("reserved.disabled"));
+    assertEquals("http://biorisk.pensoft.net/", auConfig.get("base_url"));
+    assertEquals("local:./cache", auConfig.get("reserved.repository"));
+
+    // Verify independently.
+    Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
+	.getStoredAuConfiguration(GOOD_AUID);
+
+    assertEquals(config.keySet().size(), auConfig.size());
+
+    for (String key : config.keySet()) {
+      assertEquals(config.get(key), auConfig.get(key));
+    }
+  }
+
+  /**
+   * Adds credentials to the HTTP headers, if necessary.
+   * 
+   * @param user
+   *          A String with the credentials username.
+   * @param password
+   *          A String with the credentials password.
+   * @param headers
+   *          An HttpHeaders with the HTTP headers.
+   */
+  private void setUpCredentials(String user, String password,
+      HttpHeaders headers) {
+    // Check whether there are credentials to be added.
+    if (user != null && password != null) {
+      // Yes: Set the authentication credentials.
+      String credentials = user + ":" + password;
+      String authHeaderValue = "Basic " + Base64.getEncoder()
+      .encodeToString(credentials.getBytes(Charset.forName("US-ASCII")));
+
+      headers.set("Authorization", authHeaderValue);
+    }
+  }
+
+  /**
+   * Provides an indication of whether a successful response has been obtained.
+   * 
+   * @param statusCode
+   *          An HttpStatus with the response status code.
+   * @return a boolean with <code>true</code> if a successful response has been
+   *         obtained, <code>false</code> otherwise.
+   */
+  private boolean isSuccess(HttpStatus statusCode) {
+    return statusCode.is2xxSuccessful();
   }
 
   /**

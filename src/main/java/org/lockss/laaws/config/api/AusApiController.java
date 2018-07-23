@@ -72,7 +72,7 @@ public class AusApiController implements AusApi {
    */
   @Override
   @RequestMapping(value = "/aus/{auid}",
-  produces = { "application/json" }, consumes = { "application/json" },
+  produces = { "application/json" },
   method = RequestMethod.DELETE)
   public ResponseEntity<ConfigExchange> deleteAuConfig(@PathVariable("auid")
   String auid) {

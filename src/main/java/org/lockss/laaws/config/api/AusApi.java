@@ -79,7 +79,7 @@ public interface AusApi  {
       message = "Some or all of the system is not available",
       response = ConfigExchange.class) })
   @RequestMapping(value = "/aus/{auid}",
-  produces = { "application/json" }, consumes = { "application/json" },
+  produces = { "application/json" },
   method = RequestMethod.DELETE)
   default ResponseEntity<ConfigExchange> deleteAuConfig(
       @ApiParam(value =
