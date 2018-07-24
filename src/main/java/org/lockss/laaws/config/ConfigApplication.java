@@ -27,10 +27,12 @@
  */
 package org.lockss.laaws.config;
 
+import static org.lockss.app.LockssApp.PARAM_START_PLUGINS;
 import static org.lockss.app.ManagerDescs.*;
 import org.lockss.app.LockssApp;
 import org.lockss.app.LockssApp.AppSpec;
 import org.lockss.app.LockssApp.ManagerDesc;
+import org.lockss.plugin.PluginManager;
 import org.lockss.app.LockssDaemon;
 import org.lockss.spring.base.BaseSpringBootApplication;
 import org.slf4j.Logger;
@@ -93,7 +95,9 @@ public class ConfigApplication extends BaseSpringBootApplication
 	.setName("Config Service")
 	.setArgs(args)
         .addAppConfig(org.lockss.jms.JMSManager.PARAM_START_BROKER, "true")
-	.setAppManagers(myManagerDescs);
+	.setAppManagers(myManagerDescs)
+        .addAppConfig(PARAM_START_PLUGINS, "true")
+        .addAppConfig(PluginManager.PARAM_START_ALL_AUS, "true");
       LockssApp.startStatic(LockssDaemon.class, spec);
     } else {
       // No: Do nothing. This happens when a test is started and before the
