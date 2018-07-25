@@ -95,9 +95,8 @@ public class ConfigApplication extends BaseSpringBootApplication
 	.setName("Config Service")
 	.setArgs(args)
         .addAppConfig(org.lockss.jms.JMSManager.PARAM_START_BROKER, "true")
-	.setAppManagers(myManagerDescs)
         .addAppConfig(PARAM_START_PLUGINS, "true")
-        .addAppConfig(PluginManager.PARAM_START_ALL_AUS, "true");
+	.setAppManagers(myManagerDescs);
       LockssApp.startStatic(LockssDaemon.class, spec);
     } else {
       // No: Do nothing. This happens when a test is started and before the
