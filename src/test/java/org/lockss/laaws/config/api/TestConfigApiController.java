@@ -92,7 +92,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class TestConfigApiController extends SpringLockssTestCase {
   private static final String UI_PORT_CONFIGURATION_TEMPLATE =
       "UiPortConfigTemplate.txt";
-  private static final String UI_PORT_CONFIGURATION_FILE = "UiPort.opt";
+  private static final String UI_PORT_CONFIGURATION_FILE = "UiPort.txt";
 
   private static final String EMPTY_STRING = "";
   private static final String ZERO = "0";
@@ -354,7 +354,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Specify the command line parameters to be used for the tests.
     List<String> cmdLineArgs = getCommandLineArguments();
     cmdLineArgs.add("-p");
-    cmdLineArgs.add("test/config/testAuthOff.opt");
+    cmdLineArgs.add("test/config/testAuthOff.txt");
 
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
@@ -382,7 +382,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Specify the command line parameters to be used for the tests.
     List<String> cmdLineArgs = getCommandLineArguments();
     cmdLineArgs.add("-p");
-    cmdLineArgs.add("test/config/testAuthOn.opt");
+    cmdLineArgs.add("test/config/testAuthOn.txt");
 
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
