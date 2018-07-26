@@ -34,7 +34,7 @@ APP_JAR=/opt/lockss/spring-app.jar
 # Inject JARs from provided classpath into a custom Spring Boot app JAR
 if [ -d BOOT-INF/lib ]; then
     cp /opt/lockss/spring-app.jar /opt/lockss/spring-app-custom.jar
-    find BOOT-INF/lib -iname "*.jar" | tee | xargs --no-run-if-empty jar uf /opt/lockss/spring-app-custom.jar
+    find BOOT-INF/lib -iname "*.jar" | xargs --no-run-if-empty jar uf /opt/lockss/spring-app-custom.jar
     APP_JAR=/opt/lockss/spring-app-custom.jar
 fi
 
