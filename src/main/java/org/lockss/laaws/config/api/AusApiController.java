@@ -95,7 +95,6 @@ public class AusApiController implements AusApi {
       if (log.isDebugEnabled()) log.debug("result = " + result);
 
       pluginManager.deleteAuConfiguration(auid);
-
       return new ResponseEntity<ConfigExchange>(result, HttpStatus.OK);
     } catch (MalformedParametersException mpe) {
       throw mpe;
@@ -158,7 +157,7 @@ public class AusApiController implements AusApi {
       }
 
       ConfigExchange result = convertConfig(LockssDaemon.getLockssDaemon()
-	  .getPluginManager().getCurrentAuConfiguration(auid));
+	  .getPluginManager().getStoredAuConfiguration(auid));
       if (log.isDebugEnabled()) log.debug("result = " + result);
       return new ResponseEntity<ConfigExchange>(result, HttpStatus.OK);
     } catch (MalformedParametersException mpe) {

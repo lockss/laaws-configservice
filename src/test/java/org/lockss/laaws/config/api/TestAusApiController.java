@@ -50,6 +50,7 @@ import org.lockss.config.Configuration;
 import org.lockss.laaws.config.model.ConfigExchange;
 import org.lockss.plugin.PluginManager;
 import org.lockss.test.SpringLockssTestCase;
+import org.lockss.util.StringUtil;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,14 +79,20 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class TestAusApiController extends SpringLockssTestCase {
   private static final String UI_PORT_CONFIGURATION_TEMPLATE =
       "UiPortConfigTemplate.txt";
-  private static final String UI_PORT_CONFIGURATION_FILE = "UiPort.opt";
+  private static final String UI_PORT_CONFIGURATION_FILE = "UiPort.txt";
 
   private static final String EMPTY_STRING = "";
 
   // The identifier of an AU that exists in the test system.
-  private static final String GOOD_AUID =
+  private static final String GOOD_AUID_1 =
       "org|lockss|plugin|pensoft|oai|PensoftOaiPlugin"
       + "&au_oai_date~2014&au_oai_set~biorisk"
+      + "&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F";
+
+  // The identifier of another AU that exists in the test system.
+  private static final String GOOD_AUID_2 =
+      "org|lockss|plugin|pensoft|oai|PensoftOaiPlugin"
+      + "&au_oai_date~2015&au_oai_set~biorisk"
       + "&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F";
 
   // The identifier of an AU that does not exist in the test system.
@@ -149,7 +156,7 @@ public class TestAusApiController extends SpringLockssTestCase {
     // Specify the command line parameters to be used for the tests.
     List<String> cmdLineArgs = getCommandLineArguments();
     cmdLineArgs.add("-p");
-    cmdLineArgs.add("test/config/testAuthOff.opt");
+    cmdLineArgs.add("test/config/testAuthOff.txt");
 
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
@@ -174,7 +181,7 @@ public class TestAusApiController extends SpringLockssTestCase {
     // Specify the command line parameters to be used for the tests.
     List<String> cmdLineArgs = getCommandLineArguments();
     cmdLineArgs.add("-p");
-    cmdLineArgs.add("test/config/testAuthOn.opt");
+    cmdLineArgs.add("test/config/testAuthOn.txt");
 
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
@@ -243,35 +250,46 @@ public class TestAusApiController extends SpringLockssTestCase {
    */
   private void putAuConfigUnAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
+    PluginManager pluginManager =
+	LockssDaemon.getLockssDaemon().getPluginManager();
 
-    // No AUId.
+    // No AUId: Spring reports it cannot find a match to an endpoint.
     runTestPutAuConfig(null, null, null, null, null, HttpStatus.NOT_FOUND);
 
-    // Empty AUId.
+    // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestPutAuConfig(null, EMPTY_STRING, null, null, null,
 	HttpStatus.NOT_FOUND);
 
     // No Content-Type header.
-    runTestPutAuConfig(null, GOOD_AUID, null, null, null,
+    runTestPutAuConfig(null, GOOD_AUID_1, null, null, null,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPutAuConfig(null, GOOD_AUID, null, BAD_USER, BAD_PWD,
+    runTestPutAuConfig(null, GOOD_AUID_2, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    // No payload.
-    runTestPutAuConfig(null, GOOD_AUID, MediaType.APPLICATION_JSON, null, null,
-	HttpStatus.INTERNAL_SERVER_ERROR);
+    // Missing payload (This should return HttpStatus.BAD_REQUEST, but Spring
+    // returns HttpStatus.INTERNAL_SERVER_ERROR).
+    runTestPutAuConfig(null, GOOD_AUID_2, MediaType.APPLICATION_JSON, null,
+	null, HttpStatus.INTERNAL_SERVER_ERROR);
 
-    runTestPutAuConfig(null, GOOD_AUID, MediaType.APPLICATION_JSON, BAD_USER,
+    runTestPutAuConfig(null, GOOD_AUID_1, MediaType.APPLICATION_JSON, BAD_USER,
 	BAD_PWD, HttpStatus.INTERNAL_SERVER_ERROR);
 
-    // Get the current configuration.
-    ConfigExchange backupConfig =
-	runTestGetAuConfig(GOOD_AUID, null, null, HttpStatus.OK);
+    // Get the current configuration of the first AU.
+    ConfigExchange backupConfig1 =
+	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK);
 
     // Verify.
-    Map<String, String> backupProps = backupConfig.getProps();
-    verifyGoodAuConfig(backupProps);
+    Map<String, String> backupProps1 = backupConfig1.getProps();
+    verifyGoodAu1Config(backupProps1, null);
+
+    // Get the current configuration of the second AU.
+    ConfigExchange backupConfig2 =
+	runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK);
+
+    // Verify.
+    Map<String, String> backupProps2 = backupConfig2.getProps();
+    verifyGoodAu2Config(backupProps2, null);
 
     // The payload to be sent.
     Map<String, String> props = new HashMap<String, String>();
@@ -281,30 +299,59 @@ public class TestAusApiController extends SpringLockssTestCase {
     ConfigExchange configInput = new ConfigExchange();
     configInput.setProps(props);
 
-    // Update the AU configuration.
-    Map<String, String> result = runTestPutAuConfig(configInput, GOOD_AUID,
+    // Update the configuration of the first AU.
+    Map<String, String> result = runTestPutAuConfig(configInput, GOOD_AUID_1,
 	MediaType.APPLICATION_JSON, null, null, HttpStatus.OK).getProps();
 
     // Verify.
     assertEquals(props, result);
 
     // Verify independently.
-    Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
-	.getStoredAuConfiguration(GOOD_AUID);
+    verifyConfigurationProperties(
+	pluginManager.getStoredAuConfiguration(GOOD_AUID_1), result);
 
-    assertEquals(config.keySet().size(), result.size());
+    // Verify that the second AU is unaffected.
+    verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, null, null,
+	HttpStatus.OK).getProps(), null);
 
-    for (String key : config.keySet()) {
-      assertEquals(config.get(key), result.get(key));
-    }
-
-    // Restore the original configuration.
-    result = runTestPutAuConfig(backupConfig, GOOD_AUID,
+    // Restore the original configuration of the first AU.
+    result = runTestPutAuConfig(backupConfig1, GOOD_AUID_1,
 	MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD, HttpStatus.OK)
 	.getProps();
 
     // Verify.
-    assertEquals(backupProps, result);
+    assertEquals(backupProps1, result);
+
+    // Verify that the second AU is unaffected.
+    verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, null, null,
+	HttpStatus.OK).getProps(), null);
+
+    // Update the configuration of the second AU.
+    result = runTestPutAuConfig(configInput, GOOD_AUID_2,
+	MediaType.APPLICATION_JSON, null, null, HttpStatus.OK).getProps();
+
+    // Verify.
+    assertEquals(props, result);
+
+    // Verify independently.
+    verifyConfigurationProperties(
+	pluginManager.getStoredAuConfiguration(GOOD_AUID_2), result);
+
+    // Verify that the first AU is unaffected.
+    verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, null, null,
+	HttpStatus.OK).getProps(), null);
+
+    // Restore the original configuration of the second AU.
+    result = runTestPutAuConfig(backupConfig2, GOOD_AUID_2,
+	MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD, HttpStatus.OK)
+	.getProps();
+
+    // Verify.
+    assertEquals(backupProps2, result);
+
+    // Verify that the first AU is unaffected.
+    verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, null, null,
+	HttpStatus.OK).getProps(), null);
 
     // Update the AU configuration of a non-existent AU with empty properties.
     result = runTestPutAuConfig(new ConfigExchange(), UNKNOWN_AUID,
@@ -314,10 +361,16 @@ public class TestAusApiController extends SpringLockssTestCase {
     assertTrue(result.keySet().isEmpty());
 
     // Verify independently.
-    config = LockssDaemon.getLockssDaemon().getPluginManager()
-	.getStoredAuConfiguration(UNKNOWN_AUID);
+    assertTrue(pluginManager.getStoredAuConfiguration(UNKNOWN_AUID).keySet()
+	.isEmpty());
 
-    assertTrue(config.keySet().isEmpty());
+    // Verify that the first AU is unaffected.
+    verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, null, null,
+	HttpStatus.OK).getProps(), null);
+
+    // Verify that the second AU is unaffected.
+    verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, null, null,
+	HttpStatus.OK).getProps(), null);
 
     // Update the AU configuration of a non-existent AU with a payload.
     result = runTestPutAuConfig(configInput, UNKNOWN_AUID,
@@ -328,18 +381,28 @@ public class TestAusApiController extends SpringLockssTestCase {
     assertEquals(props, result);
 
     // Verify independently.
-    config = LockssDaemon.getLockssDaemon().getPluginManager()
-	.getStoredAuConfiguration(UNKNOWN_AUID);
+    verifyConfigurationProperties(
+	pluginManager.getStoredAuConfiguration(UNKNOWN_AUID), result);
 
-    assertEquals(config.keySet().size(), result.size());
+    // Verify that the first AU is unaffected.
+    verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, null, null,
+	HttpStatus.OK).getProps(), null);
 
-    for (String key : config.keySet()) {
-      assertEquals(config.get(key), result.get(key));
-    }
+    // Verify that the second AU is unaffected.
+    verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, null, null,
+	HttpStatus.OK).getProps(), null);
 
     // Delete the configuration just added.
     assertEquals(props,
 	runTestDeleteAus(UNKNOWN_AUID, null, null, HttpStatus.OK).getProps());
+
+    // Verify that the first AU is unaffected.
+    verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, null, null,
+	HttpStatus.OK).getProps(), null);
+
+    // Verify that the second AU is unaffected.
+    verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, null, null,
+	HttpStatus.OK).getProps(), null);
 
     putAuConfigCommonTest();
 
@@ -360,17 +423,17 @@ public class TestAusApiController extends SpringLockssTestCase {
 	HttpStatus.UNAUTHORIZED);
 
     // No Content-Type header.
-    runTestPutAuConfig(null, GOOD_AUID, null, null, null,
+    runTestPutAuConfig(null, GOOD_AUID_1, null, null, null,
 	HttpStatus.UNAUTHORIZED);
 
-    runTestPutAuConfig(null, GOOD_AUID, null, BAD_USER, BAD_PWD,
+    runTestPutAuConfig(null, GOOD_AUID_2, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // No payload.
-    runTestPutAuConfig(null, GOOD_AUID, MediaType.APPLICATION_JSON, null, null,
-	HttpStatus.UNAUTHORIZED);
+    runTestPutAuConfig(null, GOOD_AUID_2, MediaType.APPLICATION_JSON, null,
+	null, HttpStatus.UNAUTHORIZED);
 
-    runTestPutAuConfig(null, GOOD_AUID, MediaType.APPLICATION_JSON, BAD_USER,
+    runTestPutAuConfig(null, GOOD_AUID_1, MediaType.APPLICATION_JSON, BAD_USER,
 	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // The payload to be sent.
@@ -382,11 +445,11 @@ public class TestAusApiController extends SpringLockssTestCase {
     configInput.setProps(props);
 
     // No credentials.
-    runTestPutAuConfig(configInput, GOOD_AUID, MediaType.APPLICATION_JSON, null,
-	null, HttpStatus.UNAUTHORIZED);
+    runTestPutAuConfig(configInput, GOOD_AUID_1, MediaType.APPLICATION_JSON,
+	null, null, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestPutAuConfig(configInput, GOOD_AUID, MediaType.APPLICATION_JSON,
+    runTestPutAuConfig(configInput, GOOD_AUID_2, MediaType.APPLICATION_JSON,
 	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     putAuConfigCommonTest();
@@ -399,30 +462,41 @@ public class TestAusApiController extends SpringLockssTestCase {
    */
   private void putAuConfigCommonTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
+    PluginManager pluginManager =
+	LockssDaemon.getLockssDaemon().getPluginManager();
 
-    // No AUId.
+    // No AUId: Spring reports it cannot find a match to an endpoint.
     runTestPutAuConfig(null, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
-    // Empty AUId.
+    // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestPutAuConfig(null, EMPTY_STRING, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
     // No Content-Type header.
-    runTestPutAuConfig(null, GOOD_AUID, null, GOOD_USER, GOOD_PWD,
+    runTestPutAuConfig(null, GOOD_AUID_1, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    // No payload.
-    runTestPutAuConfig(null, GOOD_AUID, MediaType.APPLICATION_JSON, GOOD_USER,
+    // Missing payload (This should return HttpStatus.BAD_REQUEST, but Spring
+    // returns HttpStatus.INTERNAL_SERVER_ERROR).
+    runTestPutAuConfig(null, GOOD_AUID_2, MediaType.APPLICATION_JSON, GOOD_USER,
 	GOOD_PWD, HttpStatus.INTERNAL_SERVER_ERROR);
 
-    // Get the current configuration.
-    ConfigExchange backupConfig =
-	runTestGetAuConfig(GOOD_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    // Get the current configuration of the first AU.
+    ConfigExchange backupConfig1 =
+	runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // Verify.
-    Map<String, String> backupProps = backupConfig.getProps();
-    verifyGoodAuConfig(backupProps);
+    Map<String, String> backupProps1 = backupConfig1.getProps();
+    verifyGoodAu1Config(backupProps1, null);
+
+    // Get the current configuration of the second AU.
+    ConfigExchange backupConfig2 =
+	runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+
+    // Verify.
+    Map<String, String> backupProps2 = backupConfig2.getProps();
+    verifyGoodAu2Config(backupProps2, null);
 
     // The payload to be sent.
     Map<String, String> props = new HashMap<String, String>();
@@ -432,8 +506,8 @@ public class TestAusApiController extends SpringLockssTestCase {
     ConfigExchange configInput = new ConfigExchange();
     configInput.setProps(props);
 
-    // Update the AU configuration.
-    Map<String, String> result = runTestPutAuConfig(configInput, GOOD_AUID,
+    // Update the configuration of the second AU.
+    Map<String, String> result = runTestPutAuConfig(configInput, GOOD_AUID_2,
 	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD, HttpStatus.OK)
 	.getProps();
 
@@ -441,22 +515,52 @@ public class TestAusApiController extends SpringLockssTestCase {
     assertEquals(props, result);
 
     // Verify independently.
-    Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
-	.getStoredAuConfiguration(GOOD_AUID);
+    verifyConfigurationProperties(
+	pluginManager.getStoredAuConfiguration(GOOD_AUID_2), result);
 
-    assertEquals(config.keySet().size(), result.size());
+    // Verify that the first AU is unaffected.
+    verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps(), null);
 
-    for (String key : config.keySet()) {
-      assertEquals(config.get(key), result.get(key));
-    }
-
-    // Restore the original configuration.
-    result = runTestPutAuConfig(backupConfig, GOOD_AUID,
+    // Restore the original configuration of the second AU.
+    result = runTestPutAuConfig(backupConfig2, GOOD_AUID_2,
 	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD, HttpStatus.OK)
 	.getProps();
 
     // Verify.
-    assertEquals(backupProps, result);
+    assertEquals(backupProps2, result);
+
+    // Verify that the first AU is unaffected.
+    verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps(), null);
+
+    // Update the configuration of the first AU.
+    result = runTestPutAuConfig(configInput, GOOD_AUID_1,
+	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD, HttpStatus.OK)
+	.getProps();
+
+    // Verify.
+    assertEquals(props, result);
+
+    // Verify independently.
+    verifyConfigurationProperties(
+	pluginManager.getStoredAuConfiguration(GOOD_AUID_1), result);
+
+    // Verify that the second AU is unaffected.
+    verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps(), null);
+
+    // Restore the original configuration of the first AU.
+    result = runTestPutAuConfig(backupConfig1, GOOD_AUID_1,
+	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD, HttpStatus.OK)
+	.getProps();
+
+    // Verify.
+    assertEquals(backupProps1, result);
+
+    // Verify that the second AU is unaffected.
+    verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps(), null);
 
     // Update the AU configuration of a non-existent AU with empty properties.
     result = runTestPutAuConfig(new ConfigExchange(), UNKNOWN_AUID,
@@ -467,10 +571,16 @@ public class TestAusApiController extends SpringLockssTestCase {
     assertTrue(result.keySet().isEmpty());
 
     // Verify independently.
-    config = LockssDaemon.getLockssDaemon().getPluginManager()
-	.getStoredAuConfiguration(UNKNOWN_AUID);
+    assertTrue(pluginManager.getStoredAuConfiguration(UNKNOWN_AUID).keySet()
+	.isEmpty());
 
-    assertTrue(config.keySet().isEmpty());
+    // Verify that the first AU is unaffected.
+    verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps(), null);
+
+    // Verify that the second AU is unaffected.
+    verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps(), null);
 
     // Update the AU configuration of a non-existent AU with a payload.
     result = runTestPutAuConfig(configInput, UNKNOWN_AUID,
@@ -481,18 +591,28 @@ public class TestAusApiController extends SpringLockssTestCase {
     assertEquals(props, result);
 
     // Verify independently.
-    config = LockssDaemon.getLockssDaemon().getPluginManager()
-	.getStoredAuConfiguration(UNKNOWN_AUID);
+    verifyConfigurationProperties(
+	pluginManager.getStoredAuConfiguration(UNKNOWN_AUID), result);
 
-    assertEquals(config.keySet().size(), result.size());
+    // Verify that the first AU is unaffected.
+    verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps(), null);
 
-    for (String key : config.keySet()) {
-      assertEquals(config.get(key), result.get(key));
-    }
+    // Verify that the second AU is unaffected.
+    verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps(), null);
 
     // Delete the configuration just added.
     assertEquals(props, runTestDeleteAus(UNKNOWN_AUID, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK).getProps());
+
+    // Verify that the first AU is unaffected.
+    verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps(), null);
+
+    // Verify that the second AU is unaffected.
+    verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps(), null);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -583,39 +703,47 @@ public class TestAusApiController extends SpringLockssTestCase {
    */
   private void getAuConfigUnAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
+    PluginManager pluginManager =
+	LockssDaemon.getLockssDaemon().getPluginManager();
 
-    // No AUId.
+    // No AUId: Spring reports it cannot find a match to an endpoint.
     runTestGetAuConfig(null, null, null, HttpStatus.NOT_FOUND);
 
-    // Empty AUId.
+    // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestGetAuConfig(EMPTY_STRING, null, null, HttpStatus.NOT_FOUND);
 
     // No credentials.
-    ConfigExchange configOutput =
-	runTestGetAuConfig(GOOD_AUID, null, null, HttpStatus.OK);
+    Map<String, String> result =
+	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK).getProps();
 
     // Verify.
-    Map<String, String> goodAuidProps = configOutput.getProps();
-    verifyGoodAuConfig(goodAuidProps);
-
-    // Bad credentials.
-    configOutput =
-	runTestGetAuConfig(GOOD_AUID, BAD_USER, BAD_PWD, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(goodAuidProps, configOutput.getProps());
-
-    // Non-existent AUId.
-    configOutput = runTestGetAuConfig(UNKNOWN_AUID, null, null, HttpStatus.OK);
-
-    // Verify.
-    assertTrue(configOutput.getProps().isEmpty());
+    verifyGoodAu1Config(result, null);
 
     // Verify independently.
-    Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
-	.getStoredAuConfiguration(UNKNOWN_AUID);
+    verifyConfigurationProperties(
+	pluginManager.getStoredAuConfiguration(GOOD_AUID_1), result);
 
-    assertTrue(config.keySet().isEmpty());
+    // Bad credentials.
+    result = runTestGetAuConfig(GOOD_AUID_2, BAD_USER, BAD_PWD, HttpStatus.OK)
+	.getProps();
+
+    // Verify.
+    verifyGoodAu2Config(result, null);
+
+    // Verify independently.
+    verifyConfigurationProperties(
+	pluginManager.getStoredAuConfiguration(GOOD_AUID_2), result);
+
+    // Non-existent AUId.
+    result =
+	runTestGetAuConfig(UNKNOWN_AUID, null, null, HttpStatus.OK).getProps();
+
+    // Verify.
+    assertTrue(result.isEmpty());
+
+    // Verify independently.
+    assertTrue(pluginManager.getStoredAuConfiguration(UNKNOWN_AUID).keySet()
+	.isEmpty());
 
     getAuConfigCommonTest();
 
@@ -635,11 +763,11 @@ public class TestAusApiController extends SpringLockssTestCase {
     runTestGetAuConfig(EMPTY_STRING, null, null, HttpStatus.UNAUTHORIZED);
 
     // No credentials.
-    runTestGetAuConfig(GOOD_AUID, null, null, HttpStatus.UNAUTHORIZED);
+    runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.UNAUTHORIZED);
     runTestGetAuConfig(UNKNOWN_AUID, null, null, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetAuConfig(GOOD_AUID, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestGetAuConfig(GOOD_AUID_1, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
     runTestGetAuConfig(UNKNOWN_AUID, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
@@ -653,32 +781,36 @@ public class TestAusApiController extends SpringLockssTestCase {
    */
   private void getAuConfigCommonTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
+    PluginManager pluginManager =
+	LockssDaemon.getLockssDaemon().getPluginManager();
 
-    // No AUId.
+    // No AUId: Spring reports it cannot find a match to an endpoint.
     runTestGetAuConfig(null, GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
 
-    // Empty AUId.
+    // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestGetAuConfig(EMPTY_STRING, GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
 
     // Good AUId.
-    ConfigExchange configOutput =
-	runTestGetAuConfig(GOOD_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    Map<String, String> result = runTestGetAuConfig(GOOD_AUID_1,
+	GOOD_USER, GOOD_PWD, HttpStatus.OK).getProps();
 
     // Verify.
-    verifyGoodAuConfig(configOutput.getProps());
-
-    // Non-existent AUId.
-    configOutput =
-	runTestGetAuConfig(UNKNOWN_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK);
-
-    // Verify.
-    assertTrue(configOutput.getProps().isEmpty());
+    verifyGoodAu1Config(result, null);
 
     // Verify independently.
-    Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
-	.getStoredAuConfiguration(UNKNOWN_AUID);
+    verifyConfigurationProperties(
+	pluginManager.getStoredAuConfiguration(GOOD_AUID_1), result);
 
-    assertTrue(config.keySet().isEmpty());
+    // Non-existent AUId.
+    result = runTestGetAuConfig(UNKNOWN_AUID, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps();
+
+    // Verify.
+    assertTrue(result.isEmpty());
+
+    // Verify independently.
+    assertTrue(pluginManager.getStoredAuConfiguration(UNKNOWN_AUID).keySet()
+	.isEmpty());
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -760,31 +892,17 @@ public class TestAusApiController extends SpringLockssTestCase {
     ConfigExchange configOutput =
 	runTestGetAllAuConfig(null, null, HttpStatus.OK);
 
-    // The configuration key for the good AU.
-    String configKey = PluginManager.configKeyFromAuId(GOOD_AUID);
-
     // Verify.
     Map<String, String> allAuProps = configOutput.getProps();
-    assertEquals(6, allAuProps.size());
-    assertEquals("2014", allAuProps.get(configKey + ".au_oai_date"));
-    assertEquals("biorisk", allAuProps.get(configKey + ".au_oai_set"));
-    assertEquals("BioRisk Volume 2014",
-	allAuProps.get(configKey + ".reserved.displayName"));
-    assertEquals("false", allAuProps.get(configKey + ".reserved.disabled"));
-    assertEquals("http://biorisk.pensoft.net/",
-	allAuProps.get(configKey + ".base_url"));
-    assertEquals("local:./cache",
-	allAuProps.get(configKey + ".reserved.repository"));
+    assertEquals(12, allAuProps.size());
+    verifyGoodAu1Config(allAuProps,
+	PluginManager.configKeyFromAuId(GOOD_AUID_1));
+    verifyGoodAu2Config(allAuProps,
+	PluginManager.configKeyFromAuId(GOOD_AUID_2));
 
     // Verify independently.
-    Configuration config = ConfigManager.getCurrentConfig()
-	  .getConfigTree(PluginManager.PARAM_AU_TREE);
-
-    assertEquals(config.keySet().size(), allAuProps.size());
-
-    for (String key : config.keySet()) {
-      assertEquals(config.get(key), allAuProps.get(key));
-    }
+    verifyConfigurationProperties(ConfigManager.getCurrentConfig()
+	.getConfigTree(PluginManager.PARAM_AU_TREE), allAuProps);
 
     // Bad credentials.
     configOutput = runTestGetAllAuConfig(BAD_USER, BAD_PWD, HttpStatus.OK);
@@ -793,14 +911,8 @@ public class TestAusApiController extends SpringLockssTestCase {
     assertEquals(allAuProps, configOutput.getProps());
 
     // Verify independently.
-    config = ConfigManager.getCurrentConfig()
-	  .getConfigTree(PluginManager.PARAM_AU_TREE);
-
-    assertEquals(config.keySet().size(), configOutput.getProps().size());
-
-    for (String key : config.keySet()) {
-      assertEquals(config.get(key), allAuProps.get(key));
-    }
+    verifyConfigurationProperties(ConfigManager.getCurrentConfig()
+	.getConfigTree(PluginManager.PARAM_AU_TREE), configOutput.getProps());
 
     getAllAuConfigCommonTest();
 
@@ -833,30 +945,17 @@ public class TestAusApiController extends SpringLockssTestCase {
     ConfigExchange configOutput =
 	runTestGetAllAuConfig(GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
-    String configKey = PluginManager.configKeyFromAuId(GOOD_AUID);
-
     // Verify.
     Map<String, String> allAuProps = configOutput.getProps();
-    assertEquals(6, allAuProps.size());
-    assertEquals("2014", allAuProps.get(configKey + ".au_oai_date"));
-    assertEquals("biorisk", allAuProps.get(configKey + ".au_oai_set"));
-    assertEquals("BioRisk Volume 2014",
-	allAuProps.get(configKey + ".reserved.displayName"));
-    assertEquals("false", allAuProps.get(configKey + ".reserved.disabled"));
-    assertEquals("http://biorisk.pensoft.net/",
-	allAuProps.get(configKey + ".base_url"));
-    assertEquals("local:./cache",
-	allAuProps.get(configKey + ".reserved.repository"));
+    assertEquals(12, allAuProps.size());
+    verifyGoodAu1Config(allAuProps,
+	PluginManager.configKeyFromAuId(GOOD_AUID_1));
+    verifyGoodAu2Config(allAuProps,
+	PluginManager.configKeyFromAuId(GOOD_AUID_2));
 
     // Verify independently.
-    Configuration config = ConfigManager.getCurrentConfig()
-	  .getConfigTree(PluginManager.PARAM_AU_TREE);
-
-    assertEquals(config.keySet().size(), allAuProps.size());
-
-    for (String key : config.keySet()) {
-      assertEquals(config.get(key), allAuProps.get(key));
-    }
+    verifyConfigurationProperties(ConfigManager.getCurrentConfig()
+	.getConfigTree(PluginManager.PARAM_AU_TREE), allAuProps);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -931,35 +1030,99 @@ public class TestAusApiController extends SpringLockssTestCase {
   private void deleteAusUnAuthenticatedTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    // Get the current configuration.
-    ConfigExchange backupConfig =
-	runTestGetAuConfig(GOOD_AUID, null, null, HttpStatus.OK);
+    // No AUId: Spring reports it cannot find a match to an endpoint.
+    runTestDeleteAus(null, null, null, HttpStatus.NOT_FOUND);
+
+    // Empty AUId: Spring reports it cannot find a match to an endpoint.
+    runTestDeleteAus(EMPTY_STRING, null, null, HttpStatus.NOT_FOUND);
+
+    // Get the current configuration of the second AU.
+    ConfigExchange backupConfig2 =
+	runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK);
 
     // Verify.
-    Map<String, String> backupProps = backupConfig.getProps();
-    verifyGoodAuConfig(backupProps);
+    Map<String, String> backupProps2 = backupConfig2.getProps();
+    verifyGoodAu2Config(backupProps2, null);
 
-    // No credentials.
-    ConfigExchange result =
-	runTestDeleteAus(GOOD_AUID, null, null, HttpStatus.OK);
-
-    // Verify.
-    Map<String, String> props = result.getProps();
-    assertEquals(backupProps, props);
-
-    // Bad credentials.
-    result = runTestDeleteAus(GOOD_AUID, BAD_USER, BAD_PWD, HttpStatus.OK);
+    // Get the current configuration of the first AU.
+    ConfigExchange backupConfig1 =
+	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK);
 
     // Verify.
-    assertTrue(result.getProps().keySet().isEmpty());
+    Map<String, String> backupProps1 = backupConfig1.getProps();
+    verifyGoodAu1Config(backupProps1, null);
 
-    // Restore the original configuration.
-    props = runTestPutAuConfig(backupConfig, GOOD_AUID,
+    // Delete the second AU with no credentials.
+    Map<String, String> props =
+	runTestDeleteAus(GOOD_AUID_2, null, null, HttpStatus.OK).getProps();
+
+    // Verify.
+    assertEquals(backupProps2, props);
+    assertTrue(runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK)
+	.getProps().keySet().isEmpty());
+
+    // Verify that the first AU is unaffected.
+    verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, null, null,
+	HttpStatus.OK).getProps(), null);
+
+    // Delete the second AU again with bad credentials.
+    props = runTestDeleteAus(GOOD_AUID_2, BAD_USER, BAD_PWD, HttpStatus.OK)
+	.getProps();
+
+    // Verify.
+    assertTrue(props.keySet().isEmpty());
+    assertTrue(runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK)
+	.getProps().keySet().isEmpty());
+
+    // Verify that the first AU is unaffected.
+    verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, null, null,
+	HttpStatus.OK).getProps(), null);
+
+    // Delete the first AU with bad credentials.
+    props = runTestDeleteAus(GOOD_AUID_1, BAD_USER, BAD_PWD, HttpStatus.OK)
+	.getProps();
+
+    // Verify.
+    assertEquals(backupProps1, props);
+    assertTrue(runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK)
+	.getProps().keySet().isEmpty());
+
+    // Verify that the second AU is unaffected.
+    assertTrue(runTestGetAuConfig(GOOD_AUID_2, BAD_USER, BAD_PWD, HttpStatus.OK)
+	.getProps().keySet().isEmpty());
+
+    // Delete the first AU again with no credentials.
+    props = runTestDeleteAus(GOOD_AUID_2, null, null, HttpStatus.OK).getProps();
+
+    // Verify.
+    assertTrue(props.keySet().isEmpty());
+
+    // Verify that the second AU is unaffected.
+    assertTrue(runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK)
+	.getProps().keySet().isEmpty());
+
+    // Restore the original configuration of the second AU.
+    props = runTestPutAuConfig(backupConfig2, GOOD_AUID_2,
+	MediaType.APPLICATION_JSON, null, null, HttpStatus.OK).getProps();
+
+    // Verify.
+    assertEquals(backupProps2, props);
+
+    // Verify that the first AU is unaffected.
+    assertTrue(runTestGetAuConfig(GOOD_AUID_1, BAD_USER, BAD_PWD, HttpStatus.OK)
+	.getProps().keySet().isEmpty());
+
+    // Restore the original configuration of the first AU.
+    props = runTestPutAuConfig(backupConfig1, GOOD_AUID_1,
 	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK).getProps();
 
     // Verify.
-    assertEquals(backupProps, props);
+    assertEquals(backupProps1, props);
+
+    // Verify that the second AU is unaffected.
+    verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, BAD_USER, BAD_PWD,
+	HttpStatus.OK).getProps(), null);
 
     deleteAusCommonTest();
 
@@ -979,11 +1142,11 @@ public class TestAusApiController extends SpringLockssTestCase {
     runTestDeleteAus(EMPTY_STRING, null, null, HttpStatus.UNAUTHORIZED);
 
     // No credentials.
-    runTestDeleteAus(GOOD_AUID, null, null, HttpStatus.UNAUTHORIZED);
+    runTestDeleteAus(GOOD_AUID_2, null, null, HttpStatus.UNAUTHORIZED);
     runTestDeleteAus(UNKNOWN_AUID, null, null, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestDeleteAus(GOOD_AUID, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestDeleteAus(GOOD_AUID_1, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
     runTestDeleteAus(UNKNOWN_AUID, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     deleteAusCommonTest();
@@ -996,11 +1159,13 @@ public class TestAusApiController extends SpringLockssTestCase {
    */
   private void deleteAusCommonTest() {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
+    PluginManager pluginManager =
+	LockssDaemon.getLockssDaemon().getPluginManager();
 
-    // No AUId.
+    // No AUId: Spring reports it cannot find a match to an endpoint.
     runTestDeleteAus(null, GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
 
-    // Empty AUId.
+    // No AUId: Spring reports it cannot find a match to an endpoint.
     runTestDeleteAus(EMPTY_STRING, GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
 
     // Unknown AU.
@@ -1010,39 +1175,71 @@ public class TestAusApiController extends SpringLockssTestCase {
     // Verify.
     assertTrue(configOutput.getProps().keySet().isEmpty());
 
-    // Get the current configuration of the good AU.
-    ConfigExchange backupConfig =
-	runTestGetAuConfig(GOOD_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    // Get the current configuration of the first good AU.
+    ConfigExchange backupConfig1 =
+	runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // Verify.
-    Map<String, String> backupProps = backupConfig.getProps();
-    verifyGoodAuConfig(backupProps);
+    Map<String, String> backupProps1 = backupConfig1.getProps();
+    verifyGoodAu1Config(backupProps1, null);
 
-    // Delete the AU.
-    ConfigExchange result =
-	runTestDeleteAus(GOOD_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK);
-    Map<String, String> props = result.getProps();
+    // Get the current configuration of the second good AU.
+    ConfigExchange backupConfig2 =
+	runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // Verify.
-    assertEquals(backupProps, props);
+    Map<String, String> backupProps2 = backupConfig2.getProps();
+    verifyGoodAu2Config(backupProps2, null);
 
-    // Restore the original configuration.
-    props = runTestPutAuConfig(backupConfig, GOOD_AUID,
+    // Delete the first AU.
+    Map<String, String> props = runTestDeleteAus(GOOD_AUID_1, GOOD_USER,
+	GOOD_PWD, HttpStatus.OK).getProps();
+
+    // Verify.
+    assertEquals(backupProps1, props);
+    assertTrue(runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps().keySet().isEmpty());
+
+    // Verify that the second AU is unaffected.
+    verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps(), null);
+
+    // Restore the original configuration of the first AU.
+    props = runTestPutAuConfig(backupConfig1, GOOD_AUID_1,
 	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK).getProps();
 
     // Verify.
-    assertEquals(backupProps, props);
+    assertEquals(backupProps1, props);
 
     // Verify independently.
-    Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
-	.getStoredAuConfiguration(GOOD_AUID);
+    verifyConfigurationProperties(
+	pluginManager.getStoredAuConfiguration(GOOD_AUID_1), props);
 
-    assertEquals(config.keySet().size(), props.size());
+    // Delete the second AU.
+    props = runTestDeleteAus(GOOD_AUID_2, GOOD_USER, GOOD_PWD, HttpStatus.OK)
+	.getProps();
 
-    for (String key : config.keySet()) {
-      assertEquals(config.get(key), props.get(key));
-    }
+    // Verify.
+    assertEquals(backupProps2, props);
+    assertTrue(runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps().keySet().isEmpty());
+
+    // Verify that the first AU is unaffected.
+    verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK).getProps(), null);
+
+    // Restore the original configuration of the second AU.
+    props = runTestPutAuConfig(backupConfig2, GOOD_AUID_2,
+	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD, HttpStatus.OK)
+	.getProps();
+
+    // Verify.
+    assertEquals(backupProps2, props);
+
+    // Verify independently.
+    verifyConfigurationProperties(
+	pluginManager.getStoredAuConfiguration(GOOD_AUID_2), props);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -1124,29 +1321,118 @@ public class TestAusApiController extends SpringLockssTestCase {
   }
 
   /**
-   * Verifies that the passed configuration matches that of the known good
+   * Verifies that the passed configuration matches that of the known first good
    * Archival Unit.
    * 
    * @param auConfig
    *          A Map<String, String> with the configuration to be verified.
+   * @param configKey
+   *          A String with the AU configuration key, if the map includes the
+   *          configurations of other Archival Units, or <code>null</code>
+   *          otherwise.
    */
-  private void verifyGoodAuConfig(Map<String, String> auConfig) {
-    assertEquals(6, auConfig.size());
-    assertEquals("2014", auConfig.get("au_oai_date"));
-    assertEquals("biorisk", auConfig.get("au_oai_set"));
-    assertEquals("BioRisk Volume 2014", auConfig.get("reserved.displayName"));
-    assertEquals("false", auConfig.get("reserved.disabled"));
-    assertEquals("http://biorisk.pensoft.net/", auConfig.get("base_url"));
-    assertEquals("local:./cache", auConfig.get("reserved.repository"));
+  private void verifyGoodAu1Config(Map<String, String> auConfig,
+      String configKey) {
+    if (logger.isDebugEnabled()) {
+      logger.debug("auConfig = " + auConfig);
+      logger.debug("configKey = " + configKey);
+    }
 
-    // Verify independently.
-    Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
-	.getStoredAuConfiguration(GOOD_AUID);
+    String keyPrefix = "";
 
-    assertEquals(config.keySet().size(), auConfig.size());
+    // Check whether the configuration to be verified is for a single Archival
+    // Unit.
+    if (StringUtil.isNullString(configKey)) {
+      // Yes.
+      assertEquals(6, auConfig.size());
+
+      // Verify independently.
+      Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
+	  .getStoredAuConfiguration(GOOD_AUID_1);
+
+      verifyConfigurationProperties(config, auConfig);
+    } else {
+      // No.
+      assertTrue(auConfig.size() >= 6);
+      keyPrefix = configKey + ".";
+    }
+
+    // Verify the passed properties.
+    assertEquals("2014", auConfig.get(keyPrefix + "au_oai_date"));
+    assertEquals("biorisk", auConfig.get(keyPrefix + "au_oai_set"));
+    assertEquals("BioRisk Volume 2014",
+	auConfig.get(keyPrefix + "reserved.displayName"));
+    assertEquals("false", auConfig.get(keyPrefix + "reserved.disabled"));
+    assertEquals("http://biorisk.pensoft.net/",
+	auConfig.get(keyPrefix + "base_url"));
+    assertEquals("local:./cache",
+	auConfig.get(keyPrefix + "reserved.repository"));
+  }
+
+  /**
+   * Verifies that the passed configuration matches that of the known second
+   * good Archival Unit.
+   * 
+   * @param auConfig
+   *          A Map<String, String> with the configuration to be verified.
+   * @param configKey
+   *          A String with the AU configuration key, if the map includes the
+   *          configurations of other Archival Units, or <code>null</code>
+   *          otherwise.
+   */
+  private void verifyGoodAu2Config(Map<String, String> auConfig,
+      String configKey) {
+    if (logger.isDebugEnabled()) {
+      logger.debug("auConfig = " + auConfig);
+      logger.debug("configKey = " + configKey);
+    }
+
+    String keyPrefix = "";
+
+    // Check whether the configuration to be verified is for a single Archival
+    // Unit.
+    if (StringUtil.isNullString(configKey)) {
+      // Yes.
+      assertEquals(6, auConfig.size());
+
+      // Verify independently.
+      Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
+	  .getStoredAuConfiguration(GOOD_AUID_2);
+
+      verifyConfigurationProperties(config, auConfig);
+    } else {
+      // No.
+      assertTrue(auConfig.size() >= 6);
+      keyPrefix = configKey + ".";
+    }
+
+    // Verify the passed properties.
+    assertEquals("2015", auConfig.get(keyPrefix + "au_oai_date"));
+    assertEquals("biorisk", auConfig.get(keyPrefix + "au_oai_set"));
+    assertEquals("BioRisk Volume 2015",
+	auConfig.get(keyPrefix + "reserved.displayName"));
+    assertEquals("false", auConfig.get(keyPrefix + "reserved.disabled"));
+    assertEquals("http://biorisk.pensoft.net/",
+	auConfig.get(keyPrefix + "base_url"));
+    assertEquals("local:./cache",
+	auConfig.get(keyPrefix + "reserved.repository"));
+  }
+
+  /**
+   * Verifies the properties of a configuration.
+   * 
+   * @param config
+   *          A Configuration to be verified.
+   * @param props
+   *          A Map<String, String> with all the properties the configuration
+   *          should have.
+   */
+  private void verifyConfigurationProperties(Configuration config,
+      Map<String, String> props) {
+    assertEquals(config.keySet().size(), props.size());
 
     for (String key : config.keySet()) {
-      assertEquals(config.get(key), auConfig.get(key));
+      assertEquals(config.get(key), props.get(key));
     }
   }
 

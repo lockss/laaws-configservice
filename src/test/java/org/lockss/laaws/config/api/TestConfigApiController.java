@@ -713,7 +713,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getConfigSectionCommonTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    // No section.
+    // No section: Spring reports it cannot find a match to an endpoint.
     runTestGetConfigSection(null, null, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
@@ -725,7 +725,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
       assertEquals("Invalid section name 'null'", iae.getMessage());
     }
 
-    // Empty section.
+    // Empty section: Spring reports it cannot find a match to an endpoint.
     runTestGetConfigSection(EMPTY_STRING, null, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
@@ -1349,17 +1349,17 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void getConfigUrlUnAuthenticatedTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    // No URL.
+    // No URL: Spring reports it cannot find a match to an endpoint.
     runTestGetConfigUrl(null, null, null, null, null, null,
 	HttpStatus.NOT_FOUND);
 
-    // Empty URL.
+    // Empty URL: Spring reports it cannot find a match to an endpoint.
     runTestGetConfigUrl(EMPTY_STRING, null, null, null, null, null,
 	HttpStatus.NOT_FOUND);
 
     String url = "http://something";
 
-    // Use defaults for all headers.
+    // Unsupported operation.
     runTestGetConfigUrl(url, null, null, null, null, null,
 	HttpStatus.BAD_REQUEST);
 
@@ -1375,7 +1375,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, ZERO, null, null,
 	HttpStatus.NOT_ACCEPTABLE);
 
-    // Good Accept header content type.
+    // Unsupported operation.
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
 	null, HttpStatus.BAD_REQUEST);
 
@@ -1395,7 +1395,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, ZERO, BAD_USER,
 	BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
-    // Good Accept header content type.
+    // Unsupported operation.
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null,
 	BAD_USER, BAD_PWD, HttpStatus.BAD_REQUEST);
 
@@ -1729,7 +1729,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     runTestGetConfigUrl(url, null, null, ZERO, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
-    // Not found.
+    // Unsupported operation.
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, ZERO,
 	GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
 
@@ -2152,11 +2152,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void putConfigUnAuthenticatedTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    // No section.
+    // No section: Spring reports it cannot find a match to an endpoint.
     runTestPutConfig(null, null, null, null, null, null, null,
 	HttpStatus.NOT_FOUND);
 
-    // Empty section.
+    // Empty section: Spring reports it cannot find a match to an endpoint.
     runTestPutConfig(null, EMPTY_STRING, null, null, null, null, null,
 	HttpStatus.NOT_FOUND);
 
@@ -2391,7 +2391,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private void putConfigCommonTest() throws Exception {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
-    // No section.
+    // No section: Spring reports it cannot find a match to an endpoint.
     runTestPutConfig(null, null, null, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
@@ -2404,7 +2404,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
       assertEquals("Invalid section name 'null'", iae.getMessage());
     }
 
-    // Empty section.
+    // Empty section: Spring reports it cannot find a match to an endpoint.
     runTestPutConfig(null, EMPTY_STRING, null, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
@@ -2455,7 +2455,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	MediaType.APPLICATION_JSON, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    // Missing payload.
+    // Missing payload (This should return HttpStatus.BAD_REQUEST, but Spring
+    // returns HttpStatus.INTERNAL_SERVER_ERROR).
     runTestPutConfig(null, ConfigApi.SECTION_NAME_EXPERT,
 	MediaType.MULTIPART_FORM_DATA, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.INTERNAL_SERVER_ERROR);
