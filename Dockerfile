@@ -1,13 +1,14 @@
-FROM openjdk:8-jre
+FROM openjdk:8-jdk
 
 MAINTAINER "LOCKSS Buildmaster" <buildmaster@lockss.org>
 
-ENTRYPOINT ["/usr/bin/java", "-jar", "/opt/lockss/spring-app.jar"]
-
-EXPOSE 54420
-
-ARG JAR_FILE
-
 WORKDIR /opt/lockss
 
+ARG SVC_PORT
+EXPOSE ${SVC_PORT}
+
+ARG JAR_FILE
 ADD ${JAR_FILE} /opt/lockss/spring-app.jar
+
+ENTRYPOINT ["/usr/bin/java", "-jar", "/opt/lockss/spring-app.jar"]
+
