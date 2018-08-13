@@ -1359,9 +1359,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     String url = "http://something";
 
-    // Unsupported operation.
+    // Nothing there.
     runTestGetConfigUrl(url, null, null, null, null, null,
-	HttpStatus.BAD_REQUEST);
+	HttpStatus.NOT_FOUND);
 
     // Bad Accept header content type.
     runTestGetConfigUrl(url, null, null, ZERO, null, null,
@@ -1375,9 +1375,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
     runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, ZERO, null, null,
 	HttpStatus.NOT_ACCEPTABLE);
 
-    // Unsupported operation.
+    // Nothing there.
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
-	null, HttpStatus.BAD_REQUEST);
+	null, HttpStatus.NOT_FOUND);
 
     // Bad Accept header content type.
     runTestGetConfigUrl(url, null, null, null, BAD_USER, BAD_PWD,
@@ -1395,9 +1395,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
     runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, ZERO, BAD_USER,
 	BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
-    // Unsupported operation.
+    // Nothing there.
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null,
-	BAD_USER, BAD_PWD, HttpStatus.BAD_REQUEST);
+	BAD_USER, BAD_PWD, HttpStatus.NOT_FOUND);
 
     url = "dyn:cluster.xml";
 
@@ -1729,9 +1729,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
     runTestGetConfigUrl(url, null, null, ZERO, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
-    // Unsupported operation.
+    // Nothing there.
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, ZERO,
-	GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
+	GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
 
     url = "dyn:cluster.xml";
 
