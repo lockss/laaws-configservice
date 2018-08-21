@@ -59,7 +59,7 @@ import org.lockss.test.SpringLockssTestCase;
 import org.lockss.util.AccessType;
 import org.lockss.util.ListUtil;
 import org.lockss.util.StringUtil;
-import org.lockss.util.TimeBase;
+import org.lockss.util.time.TimeBase;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
