@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration xmlns:xi="http://www.w3.org/2001/XInclude"
+	       status="WARN">
+  <Properties>
+    <Property name="root.level" value="ERROR"/>
+    <Property name="layout.console">CCC console: %d{ISO8601} %-5p %C.%M() [%t] %m%lex}%n</Property>
+  </Properties>
+
+<!--   <Appenders> -->
+<!--     <Console name="Console" target="SYSTEM_OUT"> -->
+<!--       <PatternLayout> -->
+<!-- 	<Pattern>$${sys:os.arch} XXXCONSOLE %d{ISO8601} %-5p %C.%M() [%t] %m%notEmpty{: %lex}%n</Pattern> -->
+<!--       </PatternLayout> -->
+<!--     </Console> -->
+<!--   </Appenders> -->
+
+<!-- 	<Pattern>$${sys:os.arch} XXXCONSOLE %d{ISO8601} %-5p %C{1}.%M() [%t] %m%notEmpty{: %ex}%n</Pattern> -->
+
+    <Logger name="org.lockss.rs.multipart.MultipartResponse" level="DEBUG"/>
+
+
+</Configuration>
