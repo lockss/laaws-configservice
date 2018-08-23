@@ -42,7 +42,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.logging.log4j.*;
+import org.lockss.log.L4JLogger;
 import org.lockss.alert.AlertManagerImpl;
 import org.lockss.app.LockssApp;
 import org.lockss.config.ConfigManager;
@@ -76,7 +76,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 public class ConfigApiController extends SpringLockssBaseApiController
 implements ConfigApi {
-  private static Logger log = LogManager.getLogger(ConfigApiController.class);
+  private static L4JLogger log = L4JLogger.getLogger();
 
   // The map of writable configuration file sections.
   @SuppressWarnings("serial")

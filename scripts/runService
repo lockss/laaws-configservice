@@ -47,4 +47,4 @@ DIR=`get_script_dir "${BASH_SOURCE[0]}"`
 cd $DIR/..
 
 # Run the service.
-mvn spring-boot:run -Drun.arguments="-l,config/common.xml,-x,tdbxml/prod,-p,config/lockss.txt,-p,config/lockss.opt"
+mvn spring-boot:run -Drun.arguments="-l,config/common.xml,-x,tdbxml/prod,-p,config/lockss.txt,-p,config/lockss.opt" -Dorg.springframework.boot.logging.LoggingSystem=none

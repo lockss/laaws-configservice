@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+  <Properties>
+    <Property name="root.level">DEBUG</Property>
+    <Property name="layout.console">
+      %d{ISO8601} [%t] %-5level %C{1}.%M() %m%lex%n
+    </Property>
+    <Property name="layout.console.lockss">
+      %d{ISO8601} [%t] %-5level %C{1}.%M() %m%lex%n
+    </Property>
+  </Properties>
+</Configuration>

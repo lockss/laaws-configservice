@@ -50,7 +50,7 @@ cd $DIR/..
 if [ -f target/current.jar ]
 then
   # Run the service.
-  java -Dorg.lockss.defaultLogLevel=debug -jar target/current.jar -l config/common.xml -x tdbxml/prod -p config/lockss.txt -p config/lockss.opt $@
+  java -Dorg.lockss.defaultLogLevel=debug -Dorg.springframework.boot.logging.LoggingSystem=none -jar target/current.jar -l config/common.xml -x tdbxml/prod -p config/lockss.txt -p config/lockss.opt $@
 else
   echo Not running service: JAR file does not exist.
 fi
