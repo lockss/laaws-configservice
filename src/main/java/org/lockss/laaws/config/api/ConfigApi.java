@@ -77,13 +77,17 @@ public interface ConfigApi extends SpringLockssBaseApi {
    * @param accept
    *          A String with the value of the "Accept" request header.
    * @param ifMatch
-   *          A List<String> with an asterisk or values equivalent to the
-   *          "If-Unmodified-Since" request header but with a granularity of 1
-   *          ms to be received in the If-Match header.
+   *          A List<String> with the "If-Match" request header, containing an
+   *          asterisk or values equivalent to the "If-Unmodified-Since" request
+   *          header but with a granularity of 1 ms.
+   * @param ifModifiedSince
+   *          A String with "If-Modified-Since" request header.
    * @param ifNoneMatch
-   *          A List<String> with an asterisk or values equivalent to the
-   *          "If-Modified-Since" request header but with a granularity of 1 ms
-   *          to be received in the If-None-Match header.
+   *          A List<String> with the "If-None-Match" request header, containing
+   *          an asterisk or values equivalent to the "If-Modified-Since"
+   *          request header but with a granularity of 1 ms.
+   * @param ifUnmodifiedSince
+   *          A String with the "If-Unmodified-Since" request header.
    * @return a {@code ResponseEntity<MultiValueMap<String, Object>>} with the
    *         section configuration file contents.
    */
@@ -119,8 +123,12 @@ public interface ConfigApi extends SpringLockssBaseApi {
       @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
       @RequestHeader(value=HttpHeaders.IF_MATCH, required=false)
       List<String> ifMatch,
+      @RequestHeader(value=HttpHeaders.IF_MODIFIED_SINCE, required=false)
+      String ifModifiedSince,
       @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
-      List<String> ifNoneMatch) {
+      List<String> ifNoneMatch,
+      @RequestHeader(value=HttpHeaders.IF_UNMODIFIED_SINCE, required=false)
+      String ifUnmodifiedSince) {
     return new ResponseEntity<MultiValueMap<String, Object>>(
 	HttpStatus.NOT_IMPLEMENTED);
   }
@@ -133,13 +141,17 @@ public interface ConfigApi extends SpringLockssBaseApi {
    * @param accept
    *          A String with the value of the "Accept" request header.
    * @param ifMatch
-   *          A List<String> with an asterisk or values equivalent to the
-   *          "If-Unmodified-Since" request header but with a granularity of 1
-   *          ms to be received in the If-Match header.
+   *          A List<String> with the "If-Match" request header, containing an
+   *          asterisk or values equivalent to the "If-Unmodified-Since" request
+   *          header but with a granularity of 1 ms.
+   * @param ifModifiedSince
+   *          A String with "If-Modified-Since" request header.
    * @param ifNoneMatch
-   *          A List<String> with an asterisk or values equivalent to the
-   *          "If-Modified-Since" request header but with a granularity of 1 ms
-   *          to be received in the If-None-Match header.
+   *          A List<String> with the "If-None-Match" request header, containing
+   *          an asterisk or values equivalent to the "If-Modified-Since"
+   *          request header but with a granularity of 1 ms.
+   * @param ifUnmodifiedSince
+   *          A String with the "If-Unmodified-Since" request header.
    * @return a {@code ResponseEntity<MultiValueMap<String, Object>>} with the
    *         section configuration file.
    */
@@ -175,8 +187,12 @@ public interface ConfigApi extends SpringLockssBaseApi {
       @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
       @RequestHeader(value=HttpHeaders.IF_MATCH, required=false)
       List<String> ifMatch,
+      @RequestHeader(value=HttpHeaders.IF_MODIFIED_SINCE, required=false)
+      String ifModifiedSince,
       @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
-      List<String> ifNoneMatch) {
+      List<String> ifNoneMatch,
+      @RequestHeader(value=HttpHeaders.IF_UNMODIFIED_SINCE, required=false)
+      String ifUnmodifiedSince) {
     return new ResponseEntity<MultiValueMap<String, Object>>(
 	HttpStatus.NOT_IMPLEMENTED);
   }
@@ -243,13 +259,17 @@ public interface ConfigApi extends SpringLockssBaseApi {
    * @param configFile
    *          A MultipartFile with the configuration file to be stored.
    * @param ifMatch
-   *          A List<String> with an asterisk or values equivalent to the
-   *          "If-Unmodified-Since" request header but with a granularity of 1
-   *          ms to be received in the If-Match header.
+   *          A List<String> with the "If-Match" request header, containing an
+   *          asterisk or values equivalent to the "If-Unmodified-Since" request
+   *          header but with a granularity of 1 ms.
+   * @param ifModifiedSince
+   *          A String with "If-Modified-Since" request header.
    * @param ifNoneMatch
-   *          A List<String> with an asterisk or values equivalent to the
-   *          "If-Modified-Since" request header but with a granularity of 1 ms
-   *          to be received in the If-None-Match header.
+   *          A List<String> with the "If-None-Match" request header, containing
+   *          an asterisk or values equivalent to the "If-Modified-Since"
+   *          request header but with a granularity of 1 ms.
+   * @param ifUnmodifiedSince
+   *          A String with the "If-Unmodified-Since" request header.
    * @return a {@code ResponseEntity<Void>}.
    */
   @ApiOperation(value = "Store the named configuration file",
@@ -284,8 +304,12 @@ public interface ConfigApi extends SpringLockssBaseApi {
       required=true) @RequestParam("file") MultipartFile configFile,
       @RequestHeader(value=HttpHeaders.IF_MATCH, required=false)
       List<String> ifMatch,
+      @RequestHeader(value=HttpHeaders.IF_MODIFIED_SINCE, required=false)
+      String ifModifiedSince,
       @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
-      List<String> ifNoneMatch) {
+      List<String> ifNoneMatch,
+      @RequestHeader(value=HttpHeaders.IF_UNMODIFIED_SINCE, required=false)
+      String ifUnmodifiedSince) {
     return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
   }
 

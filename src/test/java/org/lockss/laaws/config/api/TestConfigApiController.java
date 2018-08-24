@@ -27,8 +27,8 @@
  */
 package org.lockss.laaws.config.api;
 
+import static org.lockss.config.HttpRequestPreconditions.HTTP_WEAK_VALIDATOR_PREFIX;
 import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
-import static org.lockss.config.RestConfigClient.HTTP_WEAK_VALIDATOR_PREFIX;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
@@ -42,13 +42,16 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javax.mail.internet.MimeMultipart;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.lockss.config.ConfigManager;
+import org.lockss.config.HttpRequestPreconditions;
 import org.lockss.config.RestConfigClient;
 import org.lockss.config.RestConfigSection;
 import org.lockss.rs.multipart.MimeMultipartHttpMessageConverter;
@@ -59,7 +62,7 @@ import org.lockss.test.SpringLockssTestCase;
 import org.lockss.util.AccessType;
 import org.lockss.util.ListUtil;
 import org.lockss.util.StringUtil;
-import org.lockss.util.TimeBase;
+import org.lockss.util.time.TimeBase;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,13 +98,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
   private static final String UI_PORT_CONFIGURATION_FILE = "UiPort.txt";
 
   private static final String EMPTY_STRING = "";
-  private static final String ZERO = "0";
-  private static final String NUMBER = "9876543210";
-  private static final String TEXT = "text";
+  private static final String NUMBER = "1234567890";
 
   // Preconditions.
   private static final String EMPTY_PRECONDITION = "\"\"";
-  private static final String NUMERIC_PRECONDITION = "\"1234567890\"";
+  private static final String ZERO_PRECONDITION = "\"0\"";
+  private static final String NUMERIC_PRECONDITION = "\"" + NUMBER + "\"";
   private static final String ALPHA_PRECONDITION = "\"ABCD\"";
 
   private static final String WEAK_PRECONDITION =
@@ -480,45 +482,43 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     // No section.
-    runTestGetConfigSection(null, null, null, null, null, null,
+    runTestGetConfigSection(null, null, null, null, null,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Empty section.
-    runTestGetConfigSection(EMPTY_STRING, null, null, null, null, null,
+    runTestGetConfigSection(EMPTY_STRING, null, null, null, null,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Use defaults for all headers.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, null,
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null,
 	null, null, HttpStatus.NOT_FOUND);
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, null, null, null, null,
+	MediaType.APPLICATION_JSON, null, null, null,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Good Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, null, null, null,
-	HttpStatus.NOT_FOUND);
+	MediaType.MULTIPART_FORM_DATA, null, null, null, HttpStatus.NOT_FOUND);
 
     // Bad Accept header content type.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, null,
-	BAD_USER, BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, BAD_USER,
+	BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, null, null, BAD_USER, BAD_PWD,
+	MediaType.APPLICATION_JSON, null, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Good Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, null, BAD_USER, BAD_PWD,
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_FOUND);
 
     // Use defaults for all headers.
     MultipartResponse configOutput = runTestGetConfigSection(
-	ConfigApi.SECTION_NAME_CLUSTER, null, null, null, null, null,
-	HttpStatus.OK);
+	ConfigApi.SECTION_NAME_CLUSTER, null, null, null, null, HttpStatus.OK);
 
     List<String> expectedPayloads = ListUtil.list(
 	"<lockss-config>",
@@ -538,86 +538,98 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.APPLICATION_JSON, null, null, null, null,
+	MediaType.APPLICATION_JSON, null, null, null,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Good Accept header content type.
     configOutput = runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, null, null, null, HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, null, null, null, HttpStatus.OK);
 
     String etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
     assertEquals(etag, etag2);
 
     // Bad Accept header content type.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, null, etag,
-	null, null, HttpStatus.NOT_ACCEPTABLE);
+    List<String> ifNoneMatch = ListUtil.list("\"" + etag + "\"");
+    HttpRequestPreconditions hrp =
+	new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, hrp, null,
+	null, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.APPLICATION_JSON, null, etag, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
+	MediaType.APPLICATION_JSON, hrp, null, null, HttpStatus.NOT_ACCEPTABLE);
 
     // Not modified since last read.
+    ifNoneMatch = ListUtil.list("\"" + etag2 + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, etag2, null, null,
+	MediaType.MULTIPART_FORM_DATA, hrp, null, null,
 	HttpStatus.NOT_MODIFIED);
 
     // Bad Accept header content type.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, null, null,
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, null,
 	BAD_USER, BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.APPLICATION_JSON, null, null, BAD_USER, BAD_PWD,
+	MediaType.APPLICATION_JSON, null, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Good Accept header content type.
     configOutput = runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, null, BAD_USER, BAD_PWD,
-	HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD, HttpStatus.OK);
 
     etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
     assertEquals(etag, etag2);
 
     // Bad Accept header content type.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, null, etag,
-	BAD_USER, BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
+    ifNoneMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER, null, hrp, BAD_USER,
+	BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.APPLICATION_JSON, null, etag, BAD_USER, BAD_PWD,
+	MediaType.APPLICATION_JSON, hrp, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Not modified since last read.
+    ifNoneMatch = ListUtil.list("\"" + etag2 + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, etag2, BAD_USER, BAD_PWD,
+	MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_MODIFIED);
 
     // Not modified since last read using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null, etag2,
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
     configOutput = runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER,
-	null, null, HttpStatus.OK, null);
+	null, HttpStatus.OK, null);
 
     etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
     assertTrue(Long.parseLong(etag) <= TimeBase.nowMs());
 
     // Not modified since last read using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null, etag,
+    ifNoneMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
     // Not modified since last read.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, etag, null, null,
+	MediaType.MULTIPART_FORM_DATA, hrp, null, null,
 	HttpStatus.NOT_MODIFIED);
 
     // File already exists.
+    ifNoneMatch = ListUtil.list(ASTERISK_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, ASTERISK_PRECONDITION, null, null,
+	MediaType.MULTIPART_FORM_DATA, hrp, null, null,
 	HttpStatus.NOT_MODIFIED);
 
     getConfigSectionCommonTest();
@@ -635,68 +647,69 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     // No section: Spring checks the Accept header before credentials.
-    runTestGetConfigSection(null, null, null, null, null, null,
+    runTestGetConfigSection(null, null, null, null, null,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Empty section: Spring checks the Accept header before credentials.
-    runTestGetConfigSection(EMPTY_STRING, null, null, null, null, null,
+    runTestGetConfigSection(EMPTY_STRING, null, null, null, null,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Missing Accept header: Spring checks the Accept header before
     // credentials.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, null,
-	null, null, HttpStatus.NOT_ACCEPTABLE);
+	null, HttpStatus.NOT_ACCEPTABLE);
 
     // Missing credentials.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, null, null, null, null,
+	MediaType.APPLICATION_JSON, null, null, null, HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, null, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, null, null, null,
-	HttpStatus.UNAUTHORIZED);
-
-    // Missing credentials.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, ZERO,
-	null, null, HttpStatus.UNAUTHORIZED);
-
-    // Missing credentials.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, null, ZERO, null, null,
+    List<String> ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
+    HttpRequestPreconditions hrp =
+	new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, hrp, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, ZERO, null, null,
+	MediaType.APPLICATION_JSON, hrp, null, null, HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, hrp, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, ZERO,
-	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, hrp, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, null, ZERO, BAD_USER, BAD_PWD,
-	HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, ZERO, BAD_USER, BAD_PWD,
-	HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, null,
-	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, null, null, BAD_USER, BAD_PWD,
+	MediaType.APPLICATION_JSON, hrp, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, null, BAD_USER, BAD_PWD,
+	MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER, BAD_PWD,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.APPLICATION_JSON, null, BAD_USER, BAD_PWD,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     getConfigSectionCommonTest();
@@ -714,23 +727,23 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     // No section: Spring reports it cannot find a match to an endpoint.
-    runTestGetConfigSection(null, null, null, null, GOOD_USER, GOOD_PWD,
+    runTestGetConfigSection(null, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
     // Bad section name using the REST service client.
     try {
-      runTestGetConfigSectionClient(null, null, null, null, null);
+      runTestGetConfigSectionClient(null, null, null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid section name 'null'", iae.getMessage());
     }
 
     // Empty section: Spring reports it cannot find a match to an endpoint.
-    runTestGetConfigSection(EMPTY_STRING, null, null, null, GOOD_USER, GOOD_PWD,
+    runTestGetConfigSection(EMPTY_STRING, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
     try {
-      runTestGetConfigSectionClient(EMPTY_STRING, null, null, null, null);
+      runTestGetConfigSectionClient(EMPTY_STRING, null, null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid section name ''", iae.getMessage());
@@ -738,8 +751,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Bad preconditions using the REST service client.
     try {
-      runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, null,
-	  WEAK_PRECONDITION, null, null);
+      List<String> ifNoneMatch = ListUtil.list(WEAK_PRECONDITION);
+      HttpRequestPreconditions hrp =
+  	new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+      runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, hrp, null,
+	  null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid If-None-Match entity tag '" + WEAK_PRECONDITION
@@ -747,130 +763,165 @@ public class TestConfigApiController extends SpringLockssTestCase {
     }
 
     try {
-      runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, null,
-	  ASTERISK_PRECONDITION + "," + NUMBER, null, null);
+      List<String> ifNoneMatch = ListUtil.list(ASTERISK_PRECONDITION, NUMBER);
+      HttpRequestPreconditions hrp =
+  	new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+      runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, hrp, null,
+	  null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid If-None-Match entity tag mix", iae.getMessage());
     }
 
     try {
-      runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, null,
-	  ASTERISK_PRECONDITION + "," + ASTERISK_PRECONDITION, null, null);
+      List<String> ifNoneMatch =
+	  ListUtil.list(ASTERISK_PRECONDITION, ASTERISK_PRECONDITION);
+      HttpRequestPreconditions hrp =
+  	new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+      runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, hrp, null,
+	  null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid If-None-Match entity tag mix", iae.getMessage());
     }
 
     // Bad Accept header content type.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, null,
-	GOOD_USER, GOOD_PWD, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, GOOD_USER,
+	GOOD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, null, null, GOOD_USER, GOOD_PWD,
+	MediaType.APPLICATION_JSON, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
+    List<String> ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
+    HttpRequestPreconditions hrp =
+	new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.APPLICATION_JSON, null, ZERO, GOOD_USER, GOOD_PWD,
+	MediaType.APPLICATION_JSON, hrp, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, null, ZERO,
-	GOOD_USER, GOOD_PWD, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT, null, hrp, GOOD_USER,
+	GOOD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Not found.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, null, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
     // Not found using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, null, null,
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, null,
 	HttpStatus.NOT_FOUND, HttpStatus.NOT_FOUND.toString());
 
     // Not found.
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, ZERO, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
     // Not found using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, null, ZERO,
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, hrp,
 	HttpStatus.NOT_FOUND, HttpStatus.NOT_FOUND.toString());
 
     // Not found.
+    ifNoneMatch = ListUtil.list(ALPHA_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, TEXT, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
     // Not found using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, null, TEXT,
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_ALERT, hrp,
 	HttpStatus.NOT_FOUND, HttpStatus.NOT_FOUND.toString());
 
+    ifNoneMatch = ListUtil.list(ZERO_PRECONDITION, NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, ZERO + "," + NUMBER, GOOD_USER,
-	GOOD_PWD, HttpStatus.NOT_FOUND);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
 
+    ifNoneMatch = ListUtil.list(ZERO_PRECONDITION, ALPHA_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, ZERO + "," + TEXT, GOOD_USER,
-	GOOD_PWD, HttpStatus.NOT_FOUND);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
 
+    ifNoneMatch = ListUtil.list(ZERO_PRECONDITION, ALPHA_PRECONDITION,
+	NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, ZERO + "," + TEXT + "," + NUMBER,
-	GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
 
+    ifNoneMatch = ListUtil.list(NUMERIC_PRECONDITION, ZERO_PRECONDITION,
+	ALPHA_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, NUMBER + "," + ZERO + "," + TEXT,
-	GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
 
+    ifNoneMatch = ListUtil.list(ALPHA_PRECONDITION, ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, TEXT + "," + ZERO, GOOD_USER,
-	GOOD_PWD, HttpStatus.NOT_FOUND);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
 
+    ifNoneMatch = ListUtil.list(NUMERIC_PRECONDITION, ALPHA_PRECONDITION,
+	ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, NUMBER + "," + TEXT + "," + ZERO,
-	GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
 
+    ifNoneMatch = ListUtil.list(NUMERIC_PRECONDITION, ALPHA_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, NUMBER + "," + TEXT, GOOD_USER,
-	GOOD_PWD, HttpStatus.NOT_FOUND);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
 
+    ifNoneMatch = ListUtil.list(ALPHA_PRECONDITION, NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_ALERT,
-	MediaType.MULTIPART_FORM_DATA, null, TEXT + "," + NUMBER, GOOD_USER,
-	GOOD_PWD, HttpStatus.NOT_FOUND);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_FOUND);
 
     // Bad section name.
-    runTestGetConfigSection(BAD_SN, null, null, null, GOOD_USER, GOOD_PWD,
+    runTestGetConfigSection(BAD_SN, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.BAD_REQUEST);
 
     // Bad section name using the REST service client.
-    runTestGetConfigSectionClient(BAD_SN, null, null, HttpStatus.BAD_REQUEST,
-	HttpStatus.BAD_REQUEST.toString());
-
-    // Bad section name.
-    runTestGetConfigSection(BAD_SN, MediaType.MULTIPART_FORM_DATA, null, null,
-	GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
-
-    // Bad section name.
-    runTestGetConfigSection(BAD_SN, MediaType.MULTIPART_FORM_DATA, null, ZERO,
-	GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
-
-    // Bad section name using the REST service client.
-    runTestGetConfigSectionClient(BAD_SN, null, ZERO, HttpStatus.BAD_REQUEST,
+    runTestGetConfigSectionClient(BAD_SN, null, HttpStatus.BAD_REQUEST,
 	HttpStatus.BAD_REQUEST.toString());
 
     // Bad section name.
     runTestGetConfigSection(BAD_SN, MediaType.MULTIPART_FORM_DATA, null,
-	ZERO + "," + NUMBER, GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
+	GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
+
+    // Bad section name.
+    ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigSection(BAD_SN, MediaType.MULTIPART_FORM_DATA, hrp,
+	GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
 
     // Bad section name using the REST service client.
-    runTestGetConfigSectionClient(BAD_SN, null, ZERO + "," + NUMBER,
-	HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.toString());
+    runTestGetConfigSectionClient(BAD_SN, hrp, HttpStatus.BAD_REQUEST,
+	HttpStatus.BAD_REQUEST.toString());
+
+    // Bad section name.
+    ifNoneMatch = ListUtil.list(ZERO_PRECONDITION, NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigSection(BAD_SN, MediaType.MULTIPART_FORM_DATA, hrp,
+	GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
+
+    // Bad section name using the REST service client.
+    runTestGetConfigSectionClient(BAD_SN, hrp, HttpStatus.BAD_REQUEST,
+	HttpStatus.BAD_REQUEST.toString());
 
     // Cluster.
     MultipartResponse configOutput = runTestGetConfigSection(
 	ConfigApi.SECTION_NAME_CLUSTER, MediaType.MULTIPART_FORM_DATA, null,
-	null, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     List<String> expectedPayloads = ListUtil.list(
 	"<lockss-config>",
@@ -890,13 +941,13 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Independent verification.
     assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
-	.conditionallyReadCacheConfigFile("dyn:cluster.xml", null, null)
+	.conditionallyReadCacheConfigFile("dyn:cluster.xml", null)
 	.getInputStream()).indexOf(StringUtil
 	    .separatedString(expectedPayloads, "\n")) > 0);
 
     // Successful using the REST service client.
     configOutput = runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER,
-	null, null, HttpStatus.OK, null);
+	null, HttpStatus.OK, null);
 
     etag = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
@@ -904,56 +955,68 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Independent verification.
     assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
-	.conditionallyReadCacheConfigFile("dyn:cluster.xml", null, null)
+	.conditionallyReadCacheConfigFile("dyn:cluster.xml", null)
 	.getInputStream()).indexOf(StringUtil
 	    .separatedString(expectedPayloads, "\n")) > 0);
 
     // Not modified since last read.
+    ifNoneMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, etag, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_MODIFIED);
 
+    ifNoneMatch = ListUtil.list(ZERO_PRECONDITION, "\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, ZERO + "," + etag, GOOD_USER,
-	GOOD_PWD, HttpStatus.NOT_MODIFIED);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_MODIFIED);
 
+    ifNoneMatch = ListUtil.list(ALPHA_PRECONDITION, "\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, TEXT + "," + etag, GOOD_USER,
-	GOOD_PWD, HttpStatus.NOT_MODIFIED);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_MODIFIED);
 
     // Not modified since last read, using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null, etag,
+    ifNoneMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null,
-	ZERO + "," + etag, HttpStatus.NOT_MODIFIED,
-	HttpStatus.NOT_MODIFIED.toString());
+    ifNoneMatch = ListUtil.list(ZERO_PRECONDITION, "\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
+	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null,
-	TEXT + "," + etag, HttpStatus.NOT_MODIFIED,
-	HttpStatus.NOT_MODIFIED.toString());
+    ifNoneMatch = ListUtil.list(ALPHA_PRECONDITION, "\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
+	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
     // Not modified since creation.
+    ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, ZERO, GOOD_USER, GOOD_PWD,
-	HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // Not modified since creation, using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null, ZERO,
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
 	HttpStatus.OK, null);
 
     // Successful.
+    ifNoneMatch = ListUtil.list(ZERO_PRECONDITION, ALPHA_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, ZERO + "," + TEXT, GOOD_USER,
-	GOOD_PWD, HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // Successful using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null,
-	ZERO + "," + TEXT, HttpStatus.OK, null);
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
+	HttpStatus.OK, null);
 
     // No If-None-Match header.
     configOutput = runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, null, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
     String etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
@@ -962,85 +1025,96 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // No If-None-Match header using the REST service client.
     configOutput = runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER,
-	null, null, HttpStatus.OK, null);
+	null, HttpStatus.OK, null);
 
     etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
     assertEquals(etag, etag2);
 
     // Not modified since last read.
+    ifNoneMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, etag, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_MODIFIED);
 
     // Not modified since last read, using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null, etag,
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
 	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
     // Not modified since last read.
+    ifNoneMatch = ListUtil.list("\"" + etag + "\"", NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, etag + "," + NUMBER, GOOD_USER,
-	GOOD_PWD, HttpStatus.NOT_MODIFIED);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_MODIFIED);
 
     // Not modified since last read, using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null,
-	etag + "," + NUMBER, HttpStatus.NOT_MODIFIED,
-	HttpStatus.NOT_MODIFIED.toString());
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
+	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
     // Not modified since last read.
+    ifNoneMatch = ListUtil.list("\"" + etag + "\"", ALPHA_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, etag + "," + TEXT, GOOD_USER,
-	GOOD_PWD, HttpStatus.NOT_MODIFIED);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_MODIFIED);
 
     // Not modified since last read, using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null,
-	etag + "," + TEXT, HttpStatus.NOT_MODIFIED,
-	HttpStatus.NOT_MODIFIED.toString());
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
+	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
     // No match.
+    ifNoneMatch = ListUtil.list(NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, NUMBER, GOOD_USER, GOOD_PWD,
-	HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // No match using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null, NUMBER,
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
 	HttpStatus.OK, null);
 
     // No match.
+    ifNoneMatch = ListUtil.list(NUMERIC_PRECONDITION, ALPHA_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, NUMBER + "," + TEXT, GOOD_USER,
-	GOOD_PWD, HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // No match using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null,
-	NUMBER + "," + TEXT, HttpStatus.OK, null);
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
+	HttpStatus.OK, null);
 
     // File already exists.
+    ifNoneMatch = ListUtil.list(ASTERISK_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, null, ASTERISK_PRECONDITION, GOOD_USER,
-	GOOD_PWD, HttpStatus.NOT_MODIFIED);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.NOT_MODIFIED);
 
     // File already exists, using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, null,
-	ASTERISK_PRECONDITION, HttpStatus.NOT_MODIFIED,
-	HttpStatus.NOT_MODIFIED.toString());
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
+	HttpStatus.NOT_MODIFIED, HttpStatus.NOT_MODIFIED.toString());
 
     // Match of the If-Match precondition.
+    List<String> ifMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, etag, null, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
     // Match of the If-Match precondition, using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, etag, null,
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
 	HttpStatus.OK, null);
 
     // Mismatch of the If-Match precondition.
+    ifMatch = ListUtil.list(NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
     runTestGetConfigSection(ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, NUMBER, null, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
 	HttpStatus.PRECONDITION_FAILED);
 
     // Mismatch of the If-Match precondition, using the REST service client.
-    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, NUMBER, null,
+    runTestGetConfigSectionClient(ConfigApi.SECTION_NAME_CLUSTER, hrp,
 	HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
@@ -1055,12 +1129,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * @param acceptContentType
    *          A MediaType with the content type to be added to the request
    *          "Accept" header.
-   * @param ifMatch
-   *          A String with the timestamps to be specified in the request
-   *          If-Match header.
-   * @param ifNoneMatch
-   *          A String with the timestamps to be specified in the request
-   *          If-None-Match header.
+   * @param preconditions
+   *          An HttpRequestPreconditions with the request preconditions to be
+   *          met.
    * @param user
    *          A String with the request username.
    * @param password
@@ -1072,14 +1143,13 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *           if there are problems.
    */
   private MultipartResponse runTestGetConfigSection(String snId,
-      MediaType acceptContentType, String ifMatch, String ifNoneMatch,
+      MediaType acceptContentType, HttpRequestPreconditions preconditions,
       String user, String password, HttpStatus expectedStatus)
 	  throws Exception {
     if (logger.isDebugEnabled()) {
       logger.debug("snId = " + snId);
       logger.debug("acceptContentType = " + acceptContentType);
-      logger.debug("ifMatch = " + ifMatch);
-      logger.debug("ifNoneMatch = " + ifNoneMatch);
+      logger.debug("preconditions = " + preconditions);
       logger.debug("user = " + user);
       logger.debug("password = " + password);
       logger.debug("expectedStatus = " + expectedStatus);
@@ -1106,9 +1176,25 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     HttpEntity<String> requestEntity = null;
 
+    // Get the individual preconditions.
+    List<String> ifMatch = null;
+    String ifModifiedSince = null;
+    List<String> ifNoneMatch = null;
+    String ifUnmodifiedSince = null;
+
+    if (preconditions != null) {
+      ifMatch = preconditions.getIfMatch();
+      ifModifiedSince = preconditions.getIfModifiedSince();
+      ifNoneMatch = preconditions.getIfNoneMatch();
+      ifUnmodifiedSince = preconditions.getIfUnmodifiedSince();
+    }
+
     // Check whether there are any custom headers to be specified in the
     // request.
-    if (acceptContentType != null || ifMatch != null || ifNoneMatch != null
+    if (acceptContentType != null || (ifMatch != null && !ifMatch.isEmpty())
+	|| (ifModifiedSince != null && !ifModifiedSince.isEmpty())
+	|| (ifNoneMatch != null && !ifNoneMatch.isEmpty())
+	|| (ifUnmodifiedSince != null && !ifUnmodifiedSince.isEmpty())
 	|| user != null || password != null) {
       // Yes: Initialize the request headers.
       HttpHeaders headers = new HttpHeaders();
@@ -1126,13 +1212,25 @@ public class TestConfigApiController extends SpringLockssTestCase {
       // Check whether there is a custom If-Match header.
       if (ifMatch != null) {
 	// Yes: Set the If-Match header.
-	headers.setIfMatch(makeIfMatchNoneMatchHeaderList(ifMatch));
+	headers.setIfMatch(ifMatch);
+      }
+
+      // Check whether there is a custom If-Modified-Since header.
+      if (ifModifiedSince != null) {
+	// Yes: Set the If-Modified-Since header.
+	headers.setIfModifiedSince(Long.parseLong(ifModifiedSince));
       }
 
       // Check whether there is a custom If-None-Match header.
       if (ifNoneMatch != null) {
 	// Yes: Set the If-None-Match header.
-	headers.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(ifNoneMatch));
+	headers.setIfNoneMatch(ifNoneMatch);
+      }
+
+      // Check whether there is a custom If-Unmodified-Since header.
+      if (ifUnmodifiedSince != null) {
+	// Yes: Set the If-Unmodified-Since header.
+	headers.setIfUnmodifiedSince(Long.parseLong(ifUnmodifiedSince));
       }
 
       // Set up  the authentication credentials, if necessary.
@@ -1168,40 +1266,6 @@ public class TestConfigApiController extends SpringLockssTestCase {
   }
 
   /**
-   * Converts into a list a comma-separated text string representing either an
-   * If-Match or an If-None_match header.
-   * 
-   * @param headerString
-   *          A String with the comma-separated text string.
-   * @return a List<String> with the header entries.
-   */
-  private List<String> makeIfMatchNoneMatchHeaderList(String headerString) {
-    if (logger.isDebugEnabled()) logger.debug("headerString = " + headerString);
-
-    if (headerString == null) {
-      return null;
-    }
-
-    List<String> headerList = new ArrayList<>();
-
-    // Loop through all the comma-separated entries in the text string.
-    for (String item : StringUtil.breakAt(headerString, ",")) {
-      // Check whether it is an asterisk or a weak validator tag.
-      if (ASTERISK_PRECONDITION.equals(item.trim())
-	  || item.trim().startsWith(HTTP_WEAK_VALIDATOR_PREFIX)) {
-	// Yes: Use it as-is.
-	headerList.add(item.trim());
-      } else {
-	// No: Surround it with double quotes.
-	headerList.add("\"" + item.trim() + "\"");
-      }
-    }
-
-    if (logger.isDebugEnabled()) logger.debug("headerList = " + headerList);
-    return headerList;
-  }
-
-  /**
    * Provides an indication of whether a successful response has been obtained.
    * 
    * @param statusCode
@@ -1219,12 +1283,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * 
    * @param snId
    *          A String with the configuration section name.
-   * @param ifMatch
-   *          A String with the timestamps to be specified in the request
-   *          If-Match header.
-   * @param ifNoneMatch
-   *          A String with the timestamps to be specified in the request
-   *          If-None-Match header.
+   * @param preconditions
+   *          An HttpRequestPreconditions with the request preconditions to be
+   *          met.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @param expectedErrorMessagePrefix
@@ -1232,12 +1293,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * @return a MultipartResponse with the multipart response.
    */
   private MultipartResponse runTestGetConfigSectionClient(String snId,
-      String ifMatch, String ifNoneMatch, HttpStatus expectedStatus,
+      HttpRequestPreconditions preconditions, HttpStatus expectedStatus,
       String expectedErrorMessagePrefix) {
     if (logger.isDebugEnabled()) {
       logger.debug("snId = " + snId);
-      logger.debug("ifMatch = " + ifMatch);
-      logger.debug("ifNoneMatch = " + ifNoneMatch);
+      logger.debug("preconditions = " + preconditions);
       logger.debug("expectedStatus = " + expectedStatus);
       logger.debug("expectedErrorMessagePrefix = "
 	  + expectedErrorMessagePrefix);
@@ -1245,14 +1305,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     RestConfigSection input = new RestConfigSection();
     input.setSectionName(snId);
-
-    if (ifMatch != null && !ifMatch.isEmpty()) {
-      input.setIfMatch(makeIfMatchNoneMatchHeaderList(ifMatch));
-    }
-
-    if (ifNoneMatch != null && !ifNoneMatch.isEmpty()) {
-      input.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(ifNoneMatch));
-    }
+    input.setHttpRequestPreconditions(preconditions);
 
     // Make the request and get the result.
     RestConfigSection output = getRestConfigClient().getConfigSection(input);
@@ -1334,10 +1387,30 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Get the part last modification timestamp.
     assertTrue(partHeaders.containsKey(HttpHeaders.ETAG));
-    String etag = part.getEtag();
-
+    String etag = parseEtag(part.getEtag());
     if (logger.isDebugEnabled()) logger.debug("etag = " + etag);
     return etag;
+  }
+
+  /**
+   * Parses an incoming ETag.
+   * 
+   * @param eTag
+   *          A String with the incoming ETag.
+   * @return a String with the parsed ETag.
+   */
+  private String parseEtag(String eTag) {
+    if (logger.isDebugEnabled()) logger.debug("eTag = " + eTag);
+
+    // Check whether the raw eTag has content and it is surrounded by double
+    // quotes.
+    if (eTag != null && eTag.startsWith("\"") && eTag.endsWith("\"")) {
+      // Yes: Remove the surrounding double quotes left by Spring.
+      eTag = eTag.substring(1, eTag.length()-1);
+      if (logger.isDebugEnabled()) logger.debug("eTag = " + eTag);
+    }
+
+    return eTag;
   }
 
   /**
@@ -1350,61 +1423,161 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     // No URL: Spring reports it cannot find a match to an endpoint.
-    runTestGetConfigUrl(null, null, null, null, null, null,
-	HttpStatus.NOT_FOUND);
+    runTestGetConfigUrl(null, null, null, null, null, HttpStatus.NOT_FOUND);
 
     // Empty URL: Spring reports it cannot find a match to an endpoint.
-    runTestGetConfigUrl(EMPTY_STRING, null, null, null, null, null,
+    runTestGetConfigUrl(EMPTY_STRING, null, null, null, null,
 	HttpStatus.NOT_FOUND);
 
     String url = "http://something";
 
-    // Unsupported operation.
-    runTestGetConfigUrl(url, null, null, null, null, null,
+    // Nothing there.
+    runTestGetConfigUrl(url, null, null, null, null, HttpStatus.NOT_FOUND);
+
+    // Bad Accept header content type.
+    List<String> ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
+    HttpRequestPreconditions hrp =
+	new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, null, hrp, null, null, HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Nothing there.
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
 	HttpStatus.NOT_FOUND);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, null, null, ZERO, null, null,
+    runTestGetConfigUrl(url, null, null, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null, null,
+    runTestGetConfigUrl(url, null, hrp, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, ZERO, null, null,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, BAD_USER,
+	BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
-    // Unsupported operation.
+    // Nothing there.
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, BAD_USER,
+	BAD_PWD, HttpStatus.NOT_FOUND);
+
+    url = "http://localhost:12345";
+
+    // Nothing there.
+    runTestGetConfigUrl(url, null, null, null, null, HttpStatus.NOT_FOUND);
+
+    // Bad Accept header content type.
+    runTestGetConfigUrl(url, null, hrp, null, null, HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Nothing there.
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
-	null, HttpStatus.NOT_FOUND);
+	HttpStatus.NOT_FOUND);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, null, null, null, BAD_USER, BAD_PWD,
+    runTestGetConfigUrl(url, null, null, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, null, null, ZERO, BAD_USER, BAD_PWD,
+    runTestGetConfigUrl(url, null, hrp, BAD_USER, BAD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, BAD_USER,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, BAD_USER,
 	BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, ZERO, BAD_USER,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, BAD_USER, BAD_PWD,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Nothing there.
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, BAD_USER,
+	BAD_PWD, HttpStatus.NOT_FOUND);
+
+    url = "http://example.com";
+
+    // Success.
+    MultipartResponse configOutput =
+	runTestGetConfigUrl(url, null, null, null, null, HttpStatus.OK);
+
+    List<String> expectedPayloads =
+	ListUtil.list("<title>Example Domain</title>");
+
+    Set<String> remoteEtags = new HashSet<>();
+    remoteEtags.add("\"" + verifyMultipartResponse(configOutput,
+	MediaType.TEXT_HTML, expectedPayloads) + "\"");
+
+    // Bad Accept header content type.
+    runTestGetConfigUrl(url, null, hrp, null, null, HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, null, null,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Success.
+    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
+	null, null, HttpStatus.OK);
+
+    remoteEtags.add("\"" + verifyMultipartResponse(configOutput,
+	MediaType.TEXT_HTML, expectedPayloads) + "\"");
+
+    // Bad Accept header content type.
+    runTestGetConfigUrl(url, null, null, BAD_USER, BAD_PWD,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    runTestGetConfigUrl(url, null, hrp, BAD_USER, BAD_PWD,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Bad Accept header content type.
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, BAD_USER,
 	BAD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
-    // Unsupported operation.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null,
-	BAD_USER, BAD_PWD, HttpStatus.NOT_FOUND);
+    // Bad Accept header content type.
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, BAD_USER, BAD_PWD,
+	HttpStatus.NOT_ACCEPTABLE);
+
+    // Success.
+    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
+	null, null, HttpStatus.OK);
+
+    remoteEtags.add("\"" + verifyMultipartResponse(configOutput,
+	MediaType.TEXT_HTML, expectedPayloads) + "\"");
+
+    // Not modified.
+    ifNoneMatch = new ArrayList(remoteEtags);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, BAD_USER,
+	BAD_PWD, HttpStatus.OK);
 
     url = "dyn:cluster.xml";
 
-    MultipartResponse configOutput = runTestGetConfigUrl(url,
-	MediaType.MULTIPART_FORM_DATA, null, null, null, null, HttpStatus.OK);
+    configOutput = runTestGetConfigUrl(url,
+	MediaType.MULTIPART_FORM_DATA, null, null, null, HttpStatus.OK);
 
-    List<String> expectedPayloads = ListUtil.list(
+    expectedPayloads = ListUtil.list(
 	"<lockss-config>",
 	"  <property name=\"org.lockss.auxPropUrls\">",
 	"    <list append=\"false\">",
@@ -1421,68 +1594,86 @@ public class TestConfigApiController extends SpringLockssTestCase {
     assertTrue(Long.parseLong(etag) <= TimeBase.nowMs());
 
     // Not modified since last read.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, etag, null,
-	null, HttpStatus.NOT_MODIFIED);
+    ifNoneMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, null, null,
+	HttpStatus.NOT_MODIFIED);
 
-    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
-	ZERO, null, null, HttpStatus.OK);
+    ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp,
+	null, null, HttpStatus.OK);
 
     String etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
     assertEquals(etag, etag2);
     assertTrue(Long.parseLong(etag2) <= TimeBase.nowMs());
 
-    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
-	NUMBER, null, null, HttpStatus.OK);
+    ifNoneMatch = ListUtil.list(NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp,
+	null, null, HttpStatus.OK);
 
     etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
     assertEquals(etag, etag2);
     assertTrue(Long.parseLong(etag2) <= TimeBase.nowMs());
 
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
-	ASTERISK_PRECONDITION, null, null, HttpStatus.NOT_MODIFIED);
+    ifNoneMatch = ListUtil.list(ASTERISK_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, null, null,
+	HttpStatus.NOT_MODIFIED);
 
     configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
-	null, BAD_USER, BAD_PWD, HttpStatus.OK);
-
-    etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
-	expectedPayloads);
-    assertEquals(etag, etag2);
-    assertTrue(Long.parseLong(etag2) <= TimeBase.nowMs());
-
-    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
-	ZERO, BAD_USER, BAD_PWD, HttpStatus.OK);
-
-    etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
-	expectedPayloads);
-    assertEquals(etag, etag2);
-    assertTrue(Long.parseLong(etag2) <= TimeBase.nowMs());
-
-    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
-	NUMBER, BAD_USER, BAD_PWD, HttpStatus.OK);
-
-    etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
-	expectedPayloads);
-    assertEquals(etag, etag2);
-    assertTrue(Long.parseLong(etag2) <= TimeBase.nowMs());
-
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
-	ASTERISK_PRECONDITION, BAD_USER, BAD_PWD, HttpStatus.NOT_MODIFIED);
-
-    // Match of the If-Match precondition.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, etag, null, null,
-	null, HttpStatus.OK);
-
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, etag, null,
 	BAD_USER, BAD_PWD, HttpStatus.OK);
 
-    // Mismatch of the If-Match precondition.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, NUMBER, null, null,
-	null, HttpStatus.PRECONDITION_FAILED);
+    etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
+	expectedPayloads);
+    assertEquals(etag, etag2);
+    assertTrue(Long.parseLong(etag2) <= TimeBase.nowMs());
 
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, NUMBER, null,
-	BAD_USER, BAD_PWD, HttpStatus.PRECONDITION_FAILED);
+    ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp,
+	BAD_USER, BAD_PWD, HttpStatus.OK);
+
+    etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
+	expectedPayloads);
+    assertEquals(etag, etag2);
+    assertTrue(Long.parseLong(etag2) <= TimeBase.nowMs());
+
+    ifNoneMatch = ListUtil.list(NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp,
+	BAD_USER, BAD_PWD, HttpStatus.OK);
+
+    etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
+	expectedPayloads);
+    assertEquals(etag, etag2);
+    assertTrue(Long.parseLong(etag2) <= TimeBase.nowMs());
+
+    ifNoneMatch = ListUtil.list(ASTERISK_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER,
+	BAD_PWD, HttpStatus.NOT_MODIFIED);
+
+    // Match of the If-Match precondition.
+    List<String> ifMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, null, null,
+	HttpStatus.OK);
+
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER,
+	BAD_PWD, HttpStatus.OK);
+
+    // Mismatch of the If-Match precondition.
+    ifMatch = ListUtil.list(NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, null, null,
+	HttpStatus.PRECONDITION_FAILED);
+
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER,
+	BAD_PWD, HttpStatus.PRECONDITION_FAILED);
 
     getConfigUrlCommonTest();
 
@@ -1499,195 +1690,205 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     // No URL: Spring checks the Accept header before credentials.
-    runTestGetConfigUrl(null, null, null, null, null, null,
+    runTestGetConfigUrl(null, null, null, null, null,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Empty URL: Spring checks the Accept header before credentials.
-    runTestGetConfigUrl(EMPTY_STRING, null, null, null, null, null,
+    runTestGetConfigUrl(EMPTY_STRING, null, null, null, null,
 	HttpStatus.NOT_ACCEPTABLE);
 
     String url = "http://something";
 
     // Missing Accept header: Spring checks the Accept header
     // before credentials.
-    runTestGetConfigUrl(url, null, null, null, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, null, null, null, null, HttpStatus.NOT_ACCEPTABLE);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null, null,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
-	null, HttpStatus.UNAUTHORIZED);
-
-    // Missing credentials.
-    runTestGetConfigUrl(url, null, null, ZERO, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, ZERO, null, null,
+    List<String> ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
+    HttpRequestPreconditions hrp =
+	new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, null, hrp, null, null, HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, ZERO, null,
-	null, HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    runTestGetConfigUrl(url, null, null, null, BAD_USER, BAD_PWD,
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, null, null, ZERO, BAD_USER, BAD_PWD,
+    runTestGetConfigUrl(url, null, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, BAD_USER,
+    runTestGetConfigUrl(url, null, hrp, BAD_USER, BAD_PWD,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, BAD_USER,
 	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, ZERO, BAD_USER,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, BAD_USER, BAD_PWD,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, BAD_USER,
 	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null,
-	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, ZERO,
-	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     url = "http://localhost:12345";
 
     // Missing Accept header for UNAUTHORIZED response.
-    runTestGetConfigUrl(url, null, null, null, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, null, null, null, null, HttpStatus.NOT_ACCEPTABLE);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null, null,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    runTestGetConfigUrl(url, null, hrp, null, null, HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    // Missing credentials.
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, null,
 	null, HttpStatus.UNAUTHORIZED);
 
-    // Missing credentials.
-    runTestGetConfigUrl(url, null, null, ZERO, null, null,
-	HttpStatus.UNAUTHORIZED);
-
-    // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, ZERO, null, null,
-	HttpStatus.UNAUTHORIZED);
-
-    // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, ZERO, null,
-	null, HttpStatus.UNAUTHORIZED);
-
     // Bad credentials.
-    runTestGetConfigUrl(url, null, null, null, BAD_USER, BAD_PWD,
+    runTestGetConfigUrl(url, null, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, null, null, ZERO, BAD_USER, BAD_PWD,
+    runTestGetConfigUrl(url, null, hrp, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, BAD_USER,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, BAD_USER,
 	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, ZERO, BAD_USER,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, BAD_USER, BAD_PWD,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, BAD_USER,
 	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null,
-	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, ZERO,
-	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     url = "http://example.com";
 
     // Missing Accept header for UNAUTHORIZED response.
-    runTestGetConfigUrl(url, null, null, null, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, null, null, null, null, HttpStatus.NOT_ACCEPTABLE);
 
     // Missing credentials.
     runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, null,
-	null, HttpStatus.UNAUTHORIZED);
+	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
-	null, HttpStatus.UNAUTHORIZED);
-
-    // Missing credentials.
-    runTestGetConfigUrl(url, null, null, ZERO, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, ZERO, null, null, null,
+    runTestGetConfigUrl(url, null, hrp, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, ZERO, null,
-	null, HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, null, null,
+	HttpStatus.UNAUTHORIZED);
 
-    // Bad credentials.
-    runTestGetConfigUrl(url, null, null, null, BAD_USER, BAD_PWD,
+    // Missing credentials.
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, null, null, ZERO, BAD_USER, BAD_PWD,
+    runTestGetConfigUrl(url, null, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, BAD_USER,
+    runTestGetConfigUrl(url, null, hrp, BAD_USER, BAD_PWD,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, BAD_USER,
 	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, ZERO, BAD_USER,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, BAD_USER, BAD_PWD,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, BAD_USER,
 	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null,
-	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
-
-    // Bad credentials.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, ZERO,
-	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     url = "dyn:cluster.xml";
 
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null, null,
-	null, HttpStatus.UNAUTHORIZED);
+	HttpStatus.UNAUTHORIZED);
 
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, ZERO, null,
-	null, HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, null, null,
+	HttpStatus.UNAUTHORIZED);
 
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, NUMBER, null,
-	null, HttpStatus.UNAUTHORIZED);
+    ifNoneMatch = ListUtil.list(NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, null, null,
+	HttpStatus.UNAUTHORIZED);
 
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
-	ASTERISK_PRECONDITION, null, null, HttpStatus.UNAUTHORIZED);
+    ifNoneMatch = ListUtil.list(ASTERISK_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, null, null,
+	HttpStatus.UNAUTHORIZED);
 
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, null,
-	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, ZERO,
-	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, NUMBER,
-	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    ifNoneMatch = ListUtil.list(NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
-	ASTERISK_PRECONDITION, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    ifNoneMatch = ListUtil.list(ASTERISK_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, NUMBER, null, null,
-	null, HttpStatus.UNAUTHORIZED);
+    List<String> ifMatch = ListUtil.list(NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, null, null,
+	HttpStatus.UNAUTHORIZED);
 
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, NUMBER, null,
-	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     getConfigUrlCommonTest();
 
@@ -1704,39 +1905,42 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     // No URL.
-    runTestGetConfigUrl(null, null, null, null, GOOD_USER, GOOD_PWD,
+    runTestGetConfigUrl(null, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Empty URL.
-    runTestGetConfigUrl(EMPTY_STRING, null, null, null, GOOD_USER, GOOD_PWD,
+    runTestGetConfigUrl(EMPTY_STRING, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     String url = "http://something";
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, null, null, null, GOOD_USER, GOOD_PWD,
+    runTestGetConfigUrl(url, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null, GOOD_USER,
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, GOOD_USER,
 	GOOD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, ZERO, GOOD_USER,
+    List<String> ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
+    HttpRequestPreconditions hrp =
+	new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, GOOD_USER,
 	GOOD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-    runTestGetConfigUrl(url, null, null, ZERO, GOOD_USER, GOOD_PWD,
+    runTestGetConfigUrl(url, null, hrp, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_ACCEPTABLE);
 
-    // Unsupported operation.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, ZERO,
-	GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
+    // Nothing there.
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER,
+	GOOD_PWD, HttpStatus.NOT_FOUND);
 
     url = "dyn:cluster.xml";
 
     MultipartResponse configOutput = runTestGetConfigUrl(url,
-	MediaType.MULTIPART_FORM_DATA, null, null, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
     List<String> expectedPayloads = ListUtil.list(
@@ -1757,39 +1961,51 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Independent verification.
     assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
-	.conditionallyReadCacheConfigFile(url, null, null).getInputStream())
+	.conditionallyReadCacheConfigFile(url, null).getInputStream())
 	.indexOf(StringUtil.separatedString(expectedPayloads, "\n")) > 0);
 
     // Not modified since last read.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null, etag,
-	GOOD_USER, GOOD_PWD, HttpStatus.NOT_MODIFIED);
+    ifNoneMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER,
+	GOOD_PWD, HttpStatus.NOT_MODIFIED);
 
-    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
-	ZERO, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp,
+	GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     String etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
     assertEquals(etag, etag2);
     assertTrue(Long.parseLong(etag2) <= TimeBase.nowMs());
 
-    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
-	NUMBER, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    ifNoneMatch = ListUtil.list(NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp,
+	GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     etag2 = verifyMultipartResponse(configOutput, MediaType.TEXT_XML,
 	expectedPayloads);
     assertEquals(etag, etag2);
     assertTrue(Long.parseLong(etag2) <= TimeBase.nowMs());
 
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
-	ASTERISK_PRECONDITION, GOOD_USER, GOOD_PWD, HttpStatus.NOT_MODIFIED);
+    ifNoneMatch = ListUtil.list(ASTERISK_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER,
+	GOOD_PWD, HttpStatus.NOT_MODIFIED);
 
     // Match of the If-Match precondition.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, etag, null,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    List<String> ifMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER,
+	GOOD_PWD, HttpStatus.OK);
 
     // Mismatch of the If-Match precondition.
-    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, NUMBER, null,
-	GOOD_USER, GOOD_PWD, HttpStatus.PRECONDITION_FAILED);
+    ifMatch = ListUtil.list(NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER,
+	GOOD_PWD, HttpStatus.PRECONDITION_FAILED);
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -1802,12 +2018,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
    * @param acceptContentType
    *          A MediaType with the content type to be added to the request
    *          "Accept" header.
-   * @param ifMatch
-   *          A String with the timestamps to be specified in the request
-   *          If-Match header.
-   * @param ifNoneMatch
-   *          A String with the timestamps to be specified in the request
-   *          If-None-Match header.
+   * @param preconditions
+   *          An HttpRequestPreconditions with the request preconditions to be
+   *          met.
    * @param user
    *          A String with the request username.
    * @param password
@@ -1819,14 +2032,13 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *           if there are problems.
    */
   private MultipartResponse runTestGetConfigUrl(String url,
-      MediaType acceptContentType, String ifMatch, String ifNoneMatch,
+      MediaType acceptContentType, HttpRequestPreconditions preconditions,
       String user, String password, HttpStatus expectedStatus)
 	  throws Exception {
     if (logger.isDebugEnabled()) {
       logger.debug("url = " + url);
       logger.debug("acceptContentType = " + acceptContentType);
-      logger.debug("ifMatch = " + ifMatch);
-      logger.debug("ifNoneMatch = " + ifNoneMatch);
+      logger.debug("preconditions = " + preconditions);
       logger.debug("user = " + user);
       logger.debug("password = " + password);
       logger.debug("expectedStatus = " + expectedStatus);
@@ -1850,9 +2062,25 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     HttpEntity<String> requestEntity = null;
 
+    // Get the individual preconditions.
+    List<String> ifMatch = null;
+    String ifModifiedSince = null;
+    List<String> ifNoneMatch = null;
+    String ifUnmodifiedSince = null;
+
+    if (preconditions != null) {
+      ifMatch = preconditions.getIfMatch();
+      ifModifiedSince = preconditions.getIfModifiedSince();
+      ifNoneMatch = preconditions.getIfNoneMatch();
+      ifUnmodifiedSince = preconditions.getIfUnmodifiedSince();
+    }
+
     // Check whether there are any custom headers to be specified in the
     // request.
-    if (acceptContentType != null || ifMatch != null || ifNoneMatch != null
+    if (acceptContentType != null || (ifMatch != null && !ifMatch.isEmpty())
+	|| (ifModifiedSince != null && !ifModifiedSince.isEmpty())
+	|| (ifNoneMatch != null && !ifNoneMatch.isEmpty())
+	|| (ifUnmodifiedSince != null && !ifUnmodifiedSince.isEmpty())
 	|| user != null || password != null) {
       // Yes: Initialize the request headers.
       HttpHeaders headers = new HttpHeaders();
@@ -1870,13 +2098,25 @@ public class TestConfigApiController extends SpringLockssTestCase {
       // Check whether there is a custom If-Match header.
       if (ifMatch != null) {
 	// Yes: Set the If-Match header.
-	headers.setIfMatch(makeIfMatchNoneMatchHeaderList(ifMatch));
+	headers.setIfMatch(ifMatch);
+      }
+
+      // Check whether there is a custom If-Modified-Since header.
+      if (ifModifiedSince != null) {
+	// Yes: Set the If-Modified-Since header.
+	headers.setIfModifiedSince(Long.parseLong(ifModifiedSince));
       }
 
       // Check whether there is a custom If-None-Match header.
       if (ifNoneMatch != null) {
 	// Yes: Set the If-None-Match header.
-	headers.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(ifNoneMatch));
+	headers.setIfNoneMatch(ifNoneMatch);
+      }
+
+      // Check whether there is a custom If-Unmodified-Since header.
+      if (ifUnmodifiedSince != null) {
+	// Yes: Set the If-Unmodified-Since header.
+	headers.setIfUnmodifiedSince(Long.parseLong(ifUnmodifiedSince));
       }
 
       // Set up  the authentication credentials, if necessary.
@@ -2153,51 +2393,49 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     // No section: Spring reports it cannot find a match to an endpoint.
-    runTestPutConfig(null, null, null, null, null, null, null,
-	HttpStatus.NOT_FOUND);
+    runTestPutConfig(null, null, null, null, null, null, HttpStatus.NOT_FOUND);
 
     // Empty section: Spring reports it cannot find a match to an endpoint.
-    runTestPutConfig(null, EMPTY_STRING, null, null, null, null, null,
+    runTestPutConfig(null, EMPTY_STRING, null, null, null, null,
 	HttpStatus.NOT_FOUND);
 
     // Missing Content-Type header.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null, null,
-	null, null, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+	null, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Missing Content-Type header.
-    runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null, null,
-	BAD_USER, BAD_PWD, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Bad Content-Type header.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.APPLICATION_JSON, null, null, null, null,
+	MediaType.APPLICATION_JSON, null, null, null,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Missing payload (This should return HttpStatus.BAD_REQUEST, but Spring
     // returns HttpStatus.INTERNAL_SERVER_ERROR).
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, null, null, null, null,
+	MediaType.MULTIPART_FORM_DATA, null, null, null,
 	HttpStatus.INTERNAL_SERVER_ERROR);
 
     // Missing payload (This should return HttpStatus.BAD_REQUEST, but Spring
     // returns HttpStatus.INTERNAL_SERVER_ERROR).
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, null, null, BAD_USER, BAD_PWD,
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD,
 	HttpStatus.INTERNAL_SERVER_ERROR);
 
     // Missing precondition.
     runTestPutConfig("a1=b1", ConfigApi.SECTION_NAME_PLUGIN, null, null, null,
-	null, null, HttpStatus.OK);
+	null, HttpStatus.OK);
 
     // Missing eTag.
-    runTestPutConfig("a1=b2", ConfigApi.SECTION_NAME_PLUGIN, null, null, null,
+    runTestPutConfig("a1=b2", ConfigApi.SECTION_NAME_PLUGIN, null, null,
 	BAD_USER, BAD_PWD, HttpStatus.OK);
 
     // Bad Content-Type header.
     try {
       runTestPutConfig("a1=b3", ConfigApi.SECTION_NAME_PLUGIN,
-	  MediaType.APPLICATION_JSON, null, null, null, null,
-	  HttpStatus.BAD_REQUEST);
+	  MediaType.APPLICATION_JSON, null, null, null, HttpStatus.BAD_REQUEST);
       fail("Should have thrown HttpMessageNotWritableException");
     } catch (HttpMessageNotWritableException hmnwe) {
       assertTrue(hmnwe.getMessage().startsWith("Could not write JSON: "
@@ -2206,29 +2444,37 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Missing If-Match header.
     runTestPutConfig("a1=b3", ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, null, null, null, null, HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, null, null, null, HttpStatus.OK);
 
     // Time before write.
     long beforeWrite = TimeBase.nowMs();
 
     // Missing If-Match header.
     runTestPutConfig("a1=b4", ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, null, null, BAD_USER, BAD_PWD,
-	HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD, HttpStatus.OK);
 
-    runTestPutConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null, ZERO, null,
-	null, null, HttpStatus.PRECONDITION_FAILED);
+    List<String> ifMatch = ListUtil.list(ZERO_PRECONDITION);
+    HttpRequestPreconditions hrp =
+	new HttpRequestPreconditions(ifMatch, null, null, null);
+    runTestPutConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null, hrp, null,
+	null, HttpStatus.PRECONDITION_FAILED);
 
-    runTestPutConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null,
-	ZERO + "," + NUMBER, null, null, null, HttpStatus.PRECONDITION_FAILED);
+    ifMatch = ListUtil.list(ZERO_PRECONDITION, NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
+    runTestPutConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null, hrp, null,
+	null, HttpStatus.PRECONDITION_FAILED);
 
-    runTestPutConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null,
-	ZERO + "," + NUMBER + "," + TEXT, null, null, null,
-	HttpStatus.PRECONDITION_FAILED);
+    ifMatch = ListUtil.list(ZERO_PRECONDITION, NUMERIC_PRECONDITION,
+	ALPHA_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
+    runTestPutConfig("a1=b5", ConfigApi.SECTION_NAME_PLUGIN, null, hrp, null,
+	null, HttpStatus.PRECONDITION_FAILED);
 
+    List<String> ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     MultipartResponse configOutput = runTestGetConfigSection(
-	ConfigApi.SECTION_NAME_PLUGIN, MediaType.MULTIPART_FORM_DATA, null,
-	ZERO, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	ConfigApi.SECTION_NAME_PLUGIN, MediaType.MULTIPART_FORM_DATA, hrp,
+	GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // Time after write.
     long afterWrite = TimeBase.nowMs();
@@ -2241,18 +2487,23 @@ public class TestConfigApiController extends SpringLockssTestCase {
     assertTrue(afterWrite >= writeTime);
 
     // Modified since passed timestamp.
-    runTestPutConfig("a2=b2", ConfigApi.SECTION_NAME_PLUGIN, null, ZERO, null,
+    ifMatch = ListUtil.list(ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
+    runTestPutConfig("a2=b2", ConfigApi.SECTION_NAME_PLUGIN, null, hrp,
 	BAD_USER, BAD_PWD, HttpStatus.PRECONDITION_FAILED);
 
     // Time before write.
     beforeWrite = TimeBase.nowMs();
 
-    runTestPutConfig("a2=b2", ConfigApi.SECTION_NAME_PLUGIN, null, etag, null,
+    ifMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
+    runTestPutConfig("a2=b2", ConfigApi.SECTION_NAME_PLUGIN, null, hrp,
 	BAD_USER, BAD_PWD, HttpStatus.OK);
 
+    ifNoneMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     configOutput = runTestGetConfigSection(ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, null, etag, GOOD_USER, GOOD_PWD,
-	HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // Time after write.
     afterWrite = TimeBase.nowMs();
@@ -2266,9 +2517,10 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Bad Content-Type header.
     try {
+      ifMatch = ListUtil.list(ZERO_PRECONDITION);
+      hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
       runTestPutConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN,
-	  MediaType.APPLICATION_JSON, ZERO, null, null, null,
-	  HttpStatus.BAD_REQUEST);
+	  MediaType.APPLICATION_JSON, hrp, null, null, HttpStatus.BAD_REQUEST);
       fail("Should have thrown HttpMessageNotWritableException");
     } catch (HttpMessageNotWritableException hmnwe) {
       assertTrue(hmnwe.getMessage().startsWith("Could not write JSON: "
@@ -2276,22 +2528,27 @@ public class TestConfigApiController extends SpringLockssTestCase {
     }
 
     // Modified since creation time.
+    ifMatch = ListUtil.list(ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
     runTestPutConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, ZERO, null, null, null,
+	MediaType.MULTIPART_FORM_DATA, hrp, null, null,
 	HttpStatus.PRECONDITION_FAILED);
 
     // Modified since creation time.
     runTestPutConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, ZERO, null, BAD_USER, BAD_PWD,
+	MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER, BAD_PWD,
 	HttpStatus.PRECONDITION_FAILED);
 
-    runTestPutConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN, null,
-	etag + "," + NUMBER, null, BAD_USER, BAD_PWD, HttpStatus.OK);
+    ifMatch = ListUtil.list("\"" + etag + "\"", NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
+    runTestPutConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN, null, hrp,
+	BAD_USER, BAD_PWD, HttpStatus.OK);
 
     // The file exists.
+    ifMatch = ListUtil.list(ASTERISK_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
     runTestPutConfig("a3=b3", ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, ASTERISK_PRECONDITION, null, BAD_USER,
-	BAD_PWD, HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, hrp, BAD_USER, BAD_PWD, HttpStatus.OK);
 
     putConfigCommonTest();
 
@@ -2305,53 +2562,52 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     // No section.
-    runTestPutConfig(null, null, null, null, null, null, null,
+    runTestPutConfig(null, null, null, null, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Empty section.
-    runTestPutConfig(null, EMPTY_STRING, null, null, null, null, null,
+    runTestPutConfig(null, EMPTY_STRING, null, null, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
-    runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null, null,
+    runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null,
 	null, null, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null, null,
+    runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN, null, null,
 	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.APPLICATION_JSON, null, null, null, null,
-	HttpStatus.UNAUTHORIZED);
+	MediaType.APPLICATION_JSON, null, null, null, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.APPLICATION_JSON, null, null, BAD_USER, BAD_PWD,
+	MediaType.APPLICATION_JSON, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, null, null, null, null,
+	MediaType.MULTIPART_FORM_DATA, null, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, null, null, BAD_USER, BAD_PWD,
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestPutConfig("a=b", ConfigApi.SECTION_NAME_PLUGIN, null, null, null,
-	null, null, HttpStatus.UNAUTHORIZED);
+	null, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestPutConfig("a=b", ConfigApi.SECTION_NAME_PLUGIN, null, null, null,
-	BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestPutConfig("a=b", ConfigApi.SECTION_NAME_PLUGIN, null, null, BAD_USER,
+	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
     // Bad Content-Type header.
     try {
       runTestPutConfig("a=b", ConfigApi.SECTION_NAME_PLUGIN,
-	  MediaType.APPLICATION_JSON, null, null, null, null,
+	  MediaType.APPLICATION_JSON, null, null, null,
 	  HttpStatus.UNAUTHORIZED);
       fail("Should have thrown HttpMessageNotWritableException");
     } catch (HttpMessageNotWritableException hmnwe) {
@@ -2362,7 +2618,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Bad Content-Type header.
     try {
       runTestPutConfig("a=b", ConfigApi.SECTION_NAME_PLUGIN,
-	  MediaType.APPLICATION_JSON, null, null, BAD_USER, BAD_PWD,
+	  MediaType.APPLICATION_JSON, null, BAD_USER, BAD_PWD,
 	  HttpStatus.UNAUTHORIZED);
       fail("Should have thrown HttpMessageNotWritableException");
     } catch (HttpMessageNotWritableException hmnwe) {
@@ -2372,12 +2628,12 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Missing credentials.
     runTestPutConfig("a=b", ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, null, null, null, null,
+	MediaType.MULTIPART_FORM_DATA, null, null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
     runTestPutConfig("a=b", ConfigApi.SECTION_NAME_PLUGIN,
-	MediaType.MULTIPART_FORM_DATA, null, null, BAD_USER, BAD_PWD,
+	MediaType.MULTIPART_FORM_DATA, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNAUTHORIZED);
 
     putConfigCommonTest();
@@ -2392,26 +2648,26 @@ public class TestConfigApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("Invoked.");
 
     // No section: Spring reports it cannot find a match to an endpoint.
-    runTestPutConfig(null, null, null, null, null, GOOD_USER, GOOD_PWD,
+    runTestPutConfig(null, null, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
     // No section name using the REST service client.
     try {
       runTestPutConfigSectionClient("testKey=testValue", null, null, null,
-	  null, null);
+	  null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid section name 'null'", iae.getMessage());
     }
 
     // Empty section: Spring reports it cannot find a match to an endpoint.
-    runTestPutConfig(null, EMPTY_STRING, null, null, null, GOOD_USER, GOOD_PWD,
+    runTestPutConfig(null, EMPTY_STRING, null, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.NOT_FOUND);
 
     // Empty section name using the REST service client.
     try {
       runTestPutConfigSectionClient("testKey=testValue", EMPTY_STRING, null,
-	  null, null, null);
+	  null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid section name ''", iae.getMessage());
@@ -2419,8 +2675,11 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Bad preconditions using the REST service client.
     try {
+      List<String> ifMatch = ListUtil.list(WEAK_PRECONDITION);
+      HttpRequestPreconditions hrp =
+	  new HttpRequestPreconditions(ifMatch, null, null, null);
       runTestPutConfigSectionClient("testKey=testValue",
-	  ConfigApi.SECTION_NAME_EXPERT, WEAK_PRECONDITION, null, null, null);
+	  ConfigApi.SECTION_NAME_EXPERT, hrp, null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid If-Match entity tag '" + WEAK_PRECONDITION + "'",
@@ -2428,43 +2687,51 @@ public class TestConfigApiController extends SpringLockssTestCase {
     }
 
     try {
+      List<String> ifMatch =
+	  ListUtil.list(ASTERISK_PRECONDITION, NUMERIC_PRECONDITION);
+      HttpRequestPreconditions hrp =
+	  new HttpRequestPreconditions(ifMatch, null, null, null);
       runTestPutConfigSectionClient("testKey=testValue",
-	  ConfigApi.SECTION_NAME_EXPERT, ASTERISK_PRECONDITION + "," + NUMBER,
-	  null, null, null);
+	  ConfigApi.SECTION_NAME_EXPERT, hrp, null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid If-Match entity tag mix", iae.getMessage());
     }
 
     try {
+      List<String> ifMatch =
+	  ListUtil.list(ASTERISK_PRECONDITION, ASTERISK_PRECONDITION);
+      HttpRequestPreconditions hrp =
+	  new HttpRequestPreconditions(ifMatch, null, null, null);
       runTestPutConfigSectionClient("testKey=testValue",
-	  ConfigApi.SECTION_NAME_EXPERT,
-	  ASTERISK_PRECONDITION + "," + ASTERISK_PRECONDITION, null, null,
-	  null);
+	  ConfigApi.SECTION_NAME_EXPERT,hrp, null, null);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {
       assertEquals("Invalid If-Match entity tag mix", iae.getMessage());
     }
 
     // Missing Content-Type header.
-    runTestPutConfig(null, ConfigApi.SECTION_NAME_EXPERT, null, null, null,
-	GOOD_USER, GOOD_PWD, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    runTestPutConfig(null, ConfigApi.SECTION_NAME_EXPERT, null, null, GOOD_USER,
+	GOOD_PWD, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Bad Content-Type header.
     runTestPutConfig(null, ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.APPLICATION_JSON, null, null, GOOD_USER, GOOD_PWD,
+	MediaType.APPLICATION_JSON, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Missing payload (This should return HttpStatus.BAD_REQUEST, but Spring
     // returns HttpStatus.INTERNAL_SERVER_ERROR).
     runTestPutConfig(null, ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.MULTIPART_FORM_DATA, null, null, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.INTERNAL_SERVER_ERROR);
 
     // Missing payload using the REST service client.
     try {
-      runTestPutConfigSectionClient(null, ConfigApi.SECTION_NAME_EXPERT, NUMBER,
-	  null, null, "Configuration input stream is null");
+      List<String> ifMatch = ListUtil.list(NUMERIC_PRECONDITION);
+      HttpRequestPreconditions hrp =
+	  new HttpRequestPreconditions(ifMatch, null, null, null);
+      runTestPutConfigSectionClient(null, ConfigApi.SECTION_NAME_EXPERT, hrp,
+	  null, "Configuration input stream is null");
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iae) {}
 
@@ -2473,58 +2740,64 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Missing If-Match header.
     runTestPutConfig("testKey=testValue", ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.MULTIPART_FORM_DATA, null, null, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
     // Missing If-Match header using the REST service client.
     runTestPutConfigSectionClient("testKey=testValue",
-	ConfigApi.SECTION_NAME_EXPERT, null, null, HttpStatus.OK,
+	ConfigApi.SECTION_NAME_EXPERT, null, HttpStatus.OK,
 	HttpStatus.OK.toString());
 
     // Modified at different time than passed timestamp.
+    List<String> ifMatch = ListUtil.list(NUMERIC_PRECONDITION);
+    HttpRequestPreconditions hrp =
+	  new HttpRequestPreconditions(ifMatch, null, null, null);
     runTestPutConfig("testKey1=testValue1", ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.MULTIPART_FORM_DATA, NUMBER, null, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
 	HttpStatus.PRECONDITION_FAILED);
 
     // Modified at different time than passed timestamp, using the REST service
     // client.
     runTestPutConfigSectionClient("testKey1=testValue1",
-	ConfigApi.SECTION_NAME_EXPERT, NUMBER, null,
-	HttpStatus.PRECONDITION_FAILED,
+	ConfigApi.SECTION_NAME_EXPERT, hrp, HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
     // Modified at different time than passed timestamps.
+    ifMatch = ListUtil.list(NUMERIC_PRECONDITION, ALPHA_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
     runTestPutConfig("testKey1=testValue1", ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.MULTIPART_FORM_DATA, NUMBER + "," + TEXT, null, GOOD_USER,
-	GOOD_PWD, HttpStatus.PRECONDITION_FAILED);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.PRECONDITION_FAILED);
 
     // Modified at different time than passed timestamps, using the REST service
     // client.
     runTestPutConfigSectionClient("testKey1=testValue1",
-	ConfigApi.SECTION_NAME_EXPERT, NUMBER + "," + TEXT, null,
-	HttpStatus.PRECONDITION_FAILED,
+	ConfigApi.SECTION_NAME_EXPERT, hrp, HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
     // Modified at different time than passed timestamp.
+    ifMatch = ListUtil.list(ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
     runTestPutConfig("testKey1=testValue1", ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.MULTIPART_FORM_DATA, ZERO, null, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
 	HttpStatus.PRECONDITION_FAILED);
 
     // Modified at different time than passed timestamp, using the REST service
     // client.
     runTestPutConfigSectionClient("testKey1=testValue1",
-	ConfigApi.SECTION_NAME_EXPERT, ZERO, null,
-	HttpStatus.PRECONDITION_FAILED,
+	ConfigApi.SECTION_NAME_EXPERT, hrp, HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
     // Bad Accept header content type.
-    runTestGetConfigSection(ConfigApi.SECTION_NAME_EXPERT, null, null, ZERO,
-	GOOD_USER, GOOD_PWD, HttpStatus.NOT_ACCEPTABLE);
+    List<String> ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
+    runTestGetConfigSection(ConfigApi.SECTION_NAME_EXPERT, null, hrp, GOOD_USER,
+	GOOD_PWD, HttpStatus.NOT_ACCEPTABLE);
 
     // Get the file written earlier..
     MultipartResponse configOutput = runTestGetConfigSection(
-	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, null,
-	ZERO, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, hrp,
+	GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // Time after subsequent read.
     long afterRead = TimeBase.nowMs();
@@ -2541,46 +2814,50 @@ public class TestConfigApiController extends SpringLockssTestCase {
 	getTempDirPath() + "/cache/config/" + ConfigManager.CONFIG_FILE_EXPERT;
 
     assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
-	.conditionallyReadCacheConfigFile(filePath, null, null)
+	.conditionallyReadCacheConfigFile(filePath, null)
 	.getInputStream()).indexOf("testKey=testValue") == 0);
 
     // Modified at different time than passed timestamp.
+    ifMatch = ListUtil.list(ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
     runTestPutConfig("testKey1=testValue1\ntestKey2=testValue2",
-	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, ZERO,
-	null, GOOD_USER, GOOD_PWD, HttpStatus.PRECONDITION_FAILED);
+	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, hrp,
+	GOOD_USER, GOOD_PWD, HttpStatus.PRECONDITION_FAILED);
 
     // Modified at different time than passed timestamp, using the REST service
     // client.
     runTestPutConfigSectionClient("testKey1=testValue1\ntestKey2=testValue2",
-	ConfigApi.SECTION_NAME_EXPERT, ZERO, null,
-	HttpStatus.PRECONDITION_FAILED,
+	ConfigApi.SECTION_NAME_EXPERT, hrp, HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
     // Modified at different time than passed timestamps.
+    ifMatch = ListUtil.list(ZERO_PRECONDITION, NUMERIC_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
     runTestPutConfig("testKey1=testValue1\ntestKey2=testValue2",
-	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA,
-	ZERO + "," + NUMBER, null, GOOD_USER, GOOD_PWD,
-	HttpStatus.PRECONDITION_FAILED);
+	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, hrp,
+	GOOD_USER, GOOD_PWD, HttpStatus.PRECONDITION_FAILED);
 
     // Modified at different time than passed timestamps, using the REST service
     // client.
     runTestPutConfigSectionClient("testKey1=testValue1\ntestKey2=testValue2",
-	ConfigApi.SECTION_NAME_EXPERT, ZERO + "," + NUMBER, null,
-	HttpStatus.PRECONDITION_FAILED,
+	ConfigApi.SECTION_NAME_EXPERT, hrp, HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
     // Time before write.
     beforeWrite = TimeBase.nowMs();
 
     // Modified at the passed timestamp.
+    ifMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
     runTestPutConfig("testKey1=testValue1\ntestKey2=testValue2",
-	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, etag,
-	null, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	ConfigApi.SECTION_NAME_EXPERT, MediaType.MULTIPART_FORM_DATA, hrp,
+	GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // Read file with the old timestamp.
+    ifNoneMatch = ListUtil.list("\"" + etag + "\"");
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     configOutput = runTestGetConfigSection(ConfigApi.SECTION_NAME_EXPERT,
-	MediaType.MULTIPART_FORM_DATA, null, etag, GOOD_USER, GOOD_PWD,
-	HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // Time after subsequent read.
     afterRead = TimeBase.nowMs();
@@ -2594,8 +2871,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Independent verification.
     assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
-	.conditionallyReadCacheConfigFile(filePath, null, null)
-	.getInputStream())
+	.conditionallyReadCacheConfigFile(filePath, null).getInputStream())
 	.indexOf("testKey1=testValue1\ntestKey2=testValue2") == 0);
 
     // Read file with no timestamp using the REST service client.
@@ -2606,16 +2882,19 @@ public class TestConfigApiController extends SpringLockssTestCase {
     RestConfigSection output = restConfigClient.getConfigSection(input);
 
     // ETags should match.
-    long writeTime2 = Long.parseLong(output.getEtag());
+    long writeTime2 = Long.parseLong(parseEtag(output.getEtag()));
     assertEquals(writeTime, writeTime2);
 
     // Time before write.
     beforeWrite = TimeBase.nowMs();
     assertTrue(beforeWrite >= writeTime2);
 
+    HttpRequestPreconditions preconditions = new HttpRequestPreconditions();
+    output.setHttpRequestPreconditions(preconditions);
+
     // Write file with matching timestamp using the REST service client.
-    output.setIfMatch(makeIfMatchNoneMatchHeaderList(output.getEtag() + ","
-	+ ZERO));
+    preconditions.setIfMatch(ListUtil.list(
+	output.getEtag(), ZERO_PRECONDITION));
 
     String content = "testKey3=testValue3";
     output.setInputStream(new ByteArrayInputStream(content.getBytes("UTF-8")));
@@ -2623,65 +2902,72 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     RestConfigSection output2 = restConfigClient.putConfigSection(output);
     assertEquals(HttpStatus.OK, output2.getStatusCode());
-    writeTime = Long.parseLong(output2.getEtag());
+    writeTime = Long.parseLong(parseEtag(parseEtag(output2.getEtag())));
     assertTrue(writeTime >= beforeWrite);
-
+    //if (true) throw new RuntimeException("FGL");
     // Time after write.
     long afterWrite = TimeBase.nowMs();
     assertTrue(afterWrite >= writeTime);
 
     // Independent verification.
     assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
-	.conditionallyReadCacheConfigFile(filePath, null, null)
+	.conditionallyReadCacheConfigFile(filePath, null)
 	.getInputStream()).indexOf("testKey3=testValue3") == 0);
 
+    preconditions = new HttpRequestPreconditions();
+    output2.setHttpRequestPreconditions(preconditions);
+
     // Read file with matching timestamp using the REST service client.
-    output2.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(output2.getEtag()
-	+ "," + TEXT));
+    preconditions.setIfNoneMatch(ListUtil.list(
+	output2.getEtag(), ALPHA_PRECONDITION));
 
     RestConfigSection output3 = restConfigClient.getConfigSection(output2);
     assertEquals(HttpStatus.NOT_MODIFIED, output3.getStatusCode());
 
     // Cannot modify virtual sections.
+    ifMatch = ListUtil.list(ZERO_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
     runTestPutConfig("testKey=testValue", ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, ZERO, null, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
 	HttpStatus.BAD_REQUEST);
 
     // Cannot modify virtual sections, using the REST service client.
     runTestPutConfigSectionClient("testKey=testValue",
-	ConfigApi.SECTION_NAME_CLUSTER, ZERO, null, HttpStatus.BAD_REQUEST,
+	ConfigApi.SECTION_NAME_CLUSTER, hrp, HttpStatus.BAD_REQUEST,
 	HttpStatus.BAD_REQUEST.toString());
 
     // Bad section name.
     runTestPutConfig("testKey=testValue", BAD_SN, MediaType.MULTIPART_FORM_DATA,
-	ZERO, null, GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
+	hrp, GOOD_USER, GOOD_PWD, HttpStatus.BAD_REQUEST);
 
     // Bad section name using the REST service client.
-    runTestPutConfigSectionClient("testKey=testValue", BAD_SN, ZERO, null,
+    runTestPutConfigSectionClient("testKey=testValue", BAD_SN, hrp,
 	HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.toString());
 
     // Missing file.
+    ifMatch = ListUtil.list(ASTERISK_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
     runTestPutConfig("testKey=testValue", ConfigApi.SECTION_NAME_ICP_SERVER,
-	MediaType.MULTIPART_FORM_DATA, ASTERISK_PRECONDITION, null, GOOD_USER,
-	GOOD_PWD, HttpStatus.PRECONDITION_FAILED);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.PRECONDITION_FAILED);
 
     // Missing file using the REST service client.
     runTestPutConfigSectionClient("testKey=testValue",
-	ConfigApi.SECTION_NAME_ICP_SERVER, ASTERISK_PRECONDITION, null,
-	HttpStatus.PRECONDITION_FAILED,
+	ConfigApi.SECTION_NAME_ICP_SERVER, hrp, HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
     // Time before write.
     beforeWrite = TimeBase.nowMs();
 
     // Write non-existent file.
+    ifNoneMatch = ListUtil.list(ASTERISK_PRECONDITION);
+    hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
     runTestPutConfig("testKey4=testValue4", ConfigApi.SECTION_NAME_ICP_SERVER,
-	MediaType.MULTIPART_FORM_DATA, null, ASTERISK_PRECONDITION, GOOD_USER,
-	GOOD_PWD, HttpStatus.OK);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // Read file with the old timestamp.
     configOutput = runTestGetConfigSection(ConfigApi.SECTION_NAME_ICP_SERVER,
-	MediaType.MULTIPART_FORM_DATA, null, null, GOOD_USER, GOOD_PWD,
+	MediaType.MULTIPART_FORM_DATA, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK);
 
     // Time after subsequent read.
@@ -2690,14 +2976,14 @@ public class TestConfigApiController extends SpringLockssTestCase {
     etag = verifyMultipartResponse(configOutput, MediaType.TEXT_PLAIN,
 	ListUtil.list("testKey4=testValue4"));
 
-    writeTime = Long.parseLong(etag);
+    writeTime = Long.parseLong(parseEtag(etag));
     assertTrue(beforeWrite <= writeTime);
     assertTrue(afterRead >= writeTime);
 
     // Write again the now-existing file.
     runTestPutConfig("testKey4a=testValue4a", ConfigApi.SECTION_NAME_ICP_SERVER,
-	MediaType.MULTIPART_FORM_DATA, null, ASTERISK_PRECONDITION, GOOD_USER,
-	GOOD_PWD, HttpStatus.PRECONDITION_FAILED);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.PRECONDITION_FAILED);
 
     // Time before write.
     beforeWrite = TimeBase.nowMs();
@@ -2705,26 +2991,30 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Write non-existent file using the REST service client.
     RestConfigSection output4 =
 	runTestPutConfigSectionClient("testKey5=testValue5",
-	ConfigApi.SECTION_NAME_ACCESS_GROUPS, null, ASTERISK_PRECONDITION,
-	HttpStatus.OK, HttpStatus.OK.toString());
+	ConfigApi.SECTION_NAME_ACCESS_GROUPS, hrp, HttpStatus.OK,
+	HttpStatus.OK.toString());
 
     assertEquals(HttpStatus.OK, output4.getStatusCode());
-    writeTime = Long.parseLong(output4.getEtag());
+    writeTime = Long.parseLong(parseEtag(output4.getEtag()));
     assertTrue(writeTime >= beforeWrite);
 
     // Time after write.
     afterWrite = TimeBase.nowMs();
     assertTrue(afterWrite >= writeTime);
 
+    preconditions = new HttpRequestPreconditions();
+    output4.setHttpRequestPreconditions(preconditions);
+
     // Read file with matching timestamp using the REST service client.
-    output4.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(output4.getEtag()
-	+ "," + NUMBER));
+    preconditions.setIfNoneMatch(ListUtil.list(
+	output4.getEtag(), NUMERIC_PRECONDITION));
 
     RestConfigSection output5 = restConfigClient.getConfigSection(output4);
     assertEquals(HttpStatus.NOT_MODIFIED, output5.getStatusCode());
 
     // Read file with non-matching timestamp using the REST service client.
-    output4.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(TEXT + "," + NUMBER));
+    preconditions.setIfNoneMatch(ListUtil.list(
+	ALPHA_PRECONDITION, NUMERIC_PRECONDITION));
 
     output5 = restConfigClient.getConfigSection(output4);
     assertEquals(HttpStatus.OK, output5.getStatusCode());
@@ -2735,19 +3025,21 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     // Write again the now-existing file using the REST service client.
     runTestPutConfigSectionClient("testKey5a=testValue5a",
-	ConfigApi.SECTION_NAME_ACCESS_GROUPS, null, ASTERISK_PRECONDITION,
+	ConfigApi.SECTION_NAME_ACCESS_GROUPS, hrp,
 	HttpStatus.PRECONDITION_FAILED,
 	HttpStatus.PRECONDITION_FAILED.toString());
 
     // Cannot modify virtual sections.
+    ifMatch = ListUtil.list(ASTERISK_PRECONDITION);
+    hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
     runTestPutConfig("testKey=testValue", ConfigApi.SECTION_NAME_CLUSTER,
-	MediaType.MULTIPART_FORM_DATA, ASTERISK_PRECONDITION, null, GOOD_USER,
-	GOOD_PWD, HttpStatus.BAD_REQUEST);
+	MediaType.MULTIPART_FORM_DATA, hrp, GOOD_USER, GOOD_PWD,
+	HttpStatus.BAD_REQUEST);
 
     // Cannot modify virtual sections, using the REST service client.
     runTestPutConfigSectionClient("testKey=testValue",
-	ConfigApi.SECTION_NAME_CLUSTER, ASTERISK_PRECONDITION, null,
-	HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.toString());
+	ConfigApi.SECTION_NAME_CLUSTER, hrp, HttpStatus.BAD_REQUEST,
+	HttpStatus.BAD_REQUEST.toString());
 
     if (logger.isDebugEnabled()) logger.debug("Done.");
   }
@@ -2761,12 +3053,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *          A String with the configuration section name.
    * @param contentType
    *          A MediaType with the content type of the request.
-   * @param ifMatch
-   *          A String with the timestamp to be specified in the request
-   *          If-Match header.
-   * @param ifNoneMatch
-   *          A String with the timestamp to be specified in the request
-   *          If-None-Match header.
+   * @param preconditions
+   *          An HttpRequestPreconditions with the request preconditions to be
+   *          met.
    * @param user
    *          A String with the request username.
    * @param password
@@ -2775,14 +3064,13 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *          An HttpStatus with the HTTP status of the result.
    */
   private void runTestPutConfig(String config, String snId,
-      MediaType contentType, String ifMatch, String ifNoneMatch, String user,
-      String password, HttpStatus expectedStatus) {
+      MediaType contentType, HttpRequestPreconditions preconditions,
+      String user, String password, HttpStatus expectedStatus) {
     if (logger.isDebugEnabled()) {
       logger.debug("config = " + config);
       logger.debug("snId = " + snId);
       logger.debug("contentType = " + contentType);
-      logger.debug("ifMatch = " + ifMatch);
-      logger.debug("ifNoneMatch = " + ifNoneMatch);
+      logger.debug("preconditions = " + preconditions);
       logger.debug("user = " + user);
       logger.debug("password = " + password);
       logger.debug("expectedStatus = " + expectedStatus);
@@ -2804,10 +3092,27 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     HttpEntity<MultiValueMap<String, Object>> requestEntity = null;
 
+    // Get the individual preconditions.
+    List<String> ifMatch = null;
+    String ifModifiedSince = null;
+    List<String> ifNoneMatch = null;
+    String ifUnmodifiedSince = null;
+
+    if (preconditions != null) {
+      ifMatch = preconditions.getIfMatch();
+      ifModifiedSince = preconditions.getIfModifiedSince();
+      ifNoneMatch = preconditions.getIfNoneMatch();
+      ifUnmodifiedSince = preconditions.getIfUnmodifiedSince();
+    }
+
     // Check whether there are any custom headers to be specified in the
     // request.
-    if (config != null || contentType != null || ifMatch != null
-	|| ifNoneMatch != null || user != null || password != null) {
+    if (config != null || contentType != null
+	|| (ifMatch != null && !ifMatch.isEmpty())
+	|| (ifModifiedSince != null && !ifModifiedSince.isEmpty())
+	|| (ifNoneMatch != null && !ifNoneMatch.isEmpty())
+	|| (ifUnmodifiedSince != null && !ifUnmodifiedSince.isEmpty())
+	|| user != null || password != null) {
       // Yes.
       MultiValueMap<String, Object> parts = null;
 
@@ -2841,13 +3146,25 @@ public class TestConfigApiController extends SpringLockssTestCase {
       // Check whether there is a custom If-Match header.
       if (ifMatch != null) {
 	// Yes: Set the If-Match header.
-	headers.setIfMatch(makeIfMatchNoneMatchHeaderList(ifMatch));
+	headers.setIfMatch(ifMatch);
+      }
+
+      // Check whether there is a custom If-Modified-Since header.
+      if (ifModifiedSince != null) {
+	// Yes: Set the If-Modified-Since header.
+	headers.setIfModifiedSince(Long.parseLong(ifModifiedSince));
       }
 
       // Check whether there is a custom If-None-Match header.
       if (ifNoneMatch != null) {
 	// Yes: Set the If-None-Match header.
-	headers.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(ifNoneMatch));
+	headers.setIfNoneMatch(ifNoneMatch);
+      }
+
+      // Check whether there is a custom If-Unmodified-Since header.
+      if (ifUnmodifiedSince != null) {
+	// Yes: Set the If-Unmodified-Since header.
+	headers.setIfUnmodifiedSince(Long.parseLong(ifUnmodifiedSince));
       }
 
       // Set up  the authentication credentials, if necessary.
@@ -2878,12 +3195,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *          A String with the configuration to be written.
    * @param snId
    *          A String with the configuration section name.
-   * @param ifMatch
-   *          A String with the timestamp to be specified in the request
-   *          If-Match header.
-   * @param ifNoneMatch
-   *          A String with the timestamp to be specified in the request
-   *          If-None-Match header.
+   * @param preconditions
+   *          An HttpRequestPreconditions with the request preconditions to be
+   *          met.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @param expectedErrorMessagePrefix
@@ -2893,14 +3207,13 @@ public class TestConfigApiController extends SpringLockssTestCase {
    *           if there are problems.
    */
   private RestConfigSection runTestPutConfigSectionClient(String config,
-      String snId, String ifMatch, String ifNoneMatch,
+      String snId, HttpRequestPreconditions preconditions,
       HttpStatus expectedStatus, String expectedErrorMessagePrefix)
 	  throws Exception {
     if (logger.isDebugEnabled()) {
       logger.debug("config = " + config);
       logger.debug("snId = " + snId);
-      logger.debug("ifMatch = " + ifMatch);
-      logger.debug("ifNoneMatch = " + ifNoneMatch);
+      logger.debug("preconditions = " + preconditions);
       logger.debug("expectedStatus = " + expectedStatus);
       logger.debug("expectedErrorMessagePrefix = "
 	  + expectedErrorMessagePrefix);
@@ -2908,14 +3221,7 @@ public class TestConfigApiController extends SpringLockssTestCase {
 
     RestConfigSection input = new RestConfigSection();
     input.setSectionName(snId);
-
-    if (ifMatch != null && !ifMatch.isEmpty()) {
-      input.setIfMatch(makeIfMatchNoneMatchHeaderList(ifMatch));
-    }
-
-    if (ifNoneMatch != null && !ifNoneMatch.isEmpty()) {
-      input.setIfNoneMatch(makeIfMatchNoneMatchHeaderList(ifNoneMatch));
-    }
+    input.setHttpRequestPreconditions(preconditions);
 
     if (config != null) {
       input.setInputStream(
@@ -2942,8 +3248,9 @@ public class TestConfigApiController extends SpringLockssTestCase {
     }
 
     // Check the response etag.
-    if (ifMatch != null && !ASTERISK_PRECONDITION.equals(ifMatch)) {
-      assertNotEquals(ifMatch, output.getEtag());
+    if (preconditions != null && preconditions.getIfMatch() != null
+	&& !ASTERISK_PRECONDITION.equals(preconditions.getIfMatch().get(0))) {
+      assertFalse(preconditions.getIfMatch().contains(output.getEtag()));
     }
 
     return output;
