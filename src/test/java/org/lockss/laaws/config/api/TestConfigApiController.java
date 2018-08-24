@@ -60,6 +60,7 @@ import org.lockss.rs.multipart.MultipartResponse;
 import org.lockss.rs.multipart.MultipartResponse.Part;
 import org.lockss.test.SpringLockssTestCase;
 import org.lockss.util.AccessType;
+import org.lockss.util.HeaderUtil;
 import org.lockss.util.ListUtil;
 import org.lockss.util.StringUtil;
 import org.lockss.util.time.TimeBase;
@@ -1365,8 +1366,8 @@ public class TestConfigApiController extends SpringLockssTestCase {
     // Validate the part content type.
     Map<String, String> partHeaders = part.getHeaders();
     assertTrue(partHeaders.containsKey(HttpHeaders.CONTENT_TYPE));
-    assertEquals(expectedContentType.toString(),
-	partHeaders.get(HttpHeaders.CONTENT_TYPE));
+    assertEquals(HeaderUtil.getMimeTypeFromContentType(partHeaders.get(HttpHeaders.CONTENT_TYPE)),
+		 expectedContentType.toString());	
 
     // Get the part payload content length.
     assertTrue(partHeaders.containsKey(HttpHeaders.CONTENT_LENGTH));
