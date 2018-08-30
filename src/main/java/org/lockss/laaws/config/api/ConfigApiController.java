@@ -28,7 +28,6 @@
 package org.lockss.laaws.config.api;
 
 import static org.lockss.config.ConfigManager.*;
-import static org.lockss.config.HttpRequestPreconditions.HTTP_WEAK_VALIDATOR_PREFIX;
 import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
 import io.swagger.annotations.ApiParam;
 import java.io.File;
@@ -42,7 +41,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.lockss.log.L4JLogger;
 import org.lockss.alert.AlertManagerImpl;
 import org.lockss.app.LockssApp;
 import org.lockss.config.ConfigManager;
@@ -53,6 +51,7 @@ import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
 import org.lockss.laaws.rs.util.NamedInputStreamResource;
 import org.lockss.laaws.status.model.ApiStatus;
+import org.lockss.log.L4JLogger;
 import org.lockss.spring.status.SpringLockssBaseApiController;
 import org.lockss.util.AccessType;
 import org.springframework.core.io.Resource;
@@ -139,36 +138,33 @@ implements ConfigApi {
       List<String> ifNoneMatch,
       @RequestHeader(value=HttpHeaders.IF_UNMODIFIED_SINCE, required=false)
       String ifUnmodifiedSince) {
-    if (log.isDebugEnabled()) {
-      log.debug("sectionName = " + sectionName);
-      log.debug("accept = " + accept);
-      log.debug("ifMatch = " + ifMatch);
-      log.debug("ifModifiedSince = " + ifModifiedSince);
-      log.debug("ifNoneMatch = " + ifNoneMatch);
-      log.debug("ifUnmodifiedSince = " + ifUnmodifiedSince);
-    }
+    log.debug2("sectionName = {}", () -> sectionName);
+    log.debug2("accept = {}", () -> accept);
+    log.debug2("ifMatch = {}", () -> ifMatch);
+    log.debug2("ifModifiedSince = {}", () -> ifModifiedSince);
+    log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
+    log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
     try {
-      HttpRequestPreconditions preconditions = null;
+      HttpRequestPreconditions preconditions;
 
       // Validate the precondition headers.
       try {
 	preconditions = new HttpRequestPreconditions(ifMatch, ifModifiedSince,
 	    ifNoneMatch, ifUnmodifiedSince);
-	if (log.isDebugEnabled()) log.debug("preconditions = " + preconditions);
+	log.trace("preconditions = {}", () -> preconditions);
       } catch (IllegalArgumentException iae) {
 	return new ResponseEntity<String>(iae.getMessage(),
 	    HttpStatus.BAD_REQUEST);
       }
 
       // Validate the name of the section to be obtained.
-      String canonicalSectionName = null;
+      String canonicalSectionName;
 
       try {
 	canonicalSectionName =
 	    validateSectionName(sectionName, AccessType.READ);
-	if (log.isDebugEnabled())
-	  log.debug("canonicalSectionName = " + canonicalSectionName);
+	log.trace("canonicalSectionName = {}", () -> canonicalSectionName);
       } catch (MalformedParametersException mpe) {
 	return new ResponseEntity<String>(mpe.getMessage(),
 	    HttpStatus.BAD_REQUEST);
@@ -189,7 +185,8 @@ implements ConfigApi {
       // Try to get the name of the read-only configuration file to be returned.
       String sectionUrl =
 	  getConfigReadOnlySectionMap().get(canonicalSectionName);
-      if (log.isDebugEnabled()) log.debug("sectionUrl = " + sectionUrl);
+      if (log.isTraceEnabled())
+	log.trace("Read-Only sectionUrl = {}", sectionUrl);
 
       // Check whether no read-only configuration file was found.
       if (sectionUrl == null) {
@@ -197,7 +194,8 @@ implements ConfigApi {
 	// returned.
 	sectionUrl = new File(configManager.getCacheConfigDir(),
 	    configWritableSectionMap.get(canonicalSectionName)).toString();
-	if (log.isDebugEnabled()) log.debug("sectionUrl = " + sectionUrl);
+	if (log.isTraceEnabled())
+	  log.trace("Writable sectionUrl = {}", sectionUrl);
       }
 
       try {
@@ -261,23 +259,21 @@ implements ConfigApi {
       List<String> ifNoneMatch,
       @RequestHeader(value=HttpHeaders.IF_UNMODIFIED_SINCE, required=false)
       String ifUnmodifiedSince) {
-    if (log.isDebugEnabled()) {
-      log.debug("url = " + url);
-      log.debug("accept = " + accept);
-      log.debug("ifMatch = " + ifMatch);
-      log.debug("ifModifiedSince = " + ifModifiedSince);
-      log.debug("ifNoneMatch = " + ifNoneMatch);
-      log.debug("ifUnmodifiedSince = " + ifUnmodifiedSince);
-    }
+    log.debug2("url = {}", () -> url);
+    log.debug2("accept = {}", () -> accept);
+    log.debug2("ifMatch = {}", () -> ifMatch);
+    log.debug2("ifModifiedSince = {}", () -> ifModifiedSince);
+    log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
+    log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
     try {
-      HttpRequestPreconditions preconditions = null;
+      HttpRequestPreconditions preconditions;
 
       // Validate the precondition headers.
       try {
 	preconditions = new HttpRequestPreconditions(ifMatch, ifModifiedSince,
 	    ifNoneMatch, ifUnmodifiedSince);
-	if (log.isDebugEnabled()) log.debug("preconditions = " + preconditions);
+	log.trace("preconditions = {}", () -> preconditions);
       } catch (IllegalArgumentException iae) {
 	return new ResponseEntity<String>(iae.getMessage(),
 	    HttpStatus.BAD_REQUEST);
@@ -335,14 +331,14 @@ implements ConfigApi {
   @RequestMapping(value = "/config/lastupdatetime",
   produces = { "application/json" }, method = RequestMethod.GET)
   public ResponseEntity<?> getLastUpdateTime() {
-    if (log.isDebugEnabled()) log.debug("Invoked");
+    log.debug2("Invoked");
 
     try {
       long millis = getConfigManager().getLastUpdateTime();
-      if (log.isDebugEnabled()) log.debug("millis = " + millis);
+      log.trace("millis = {}", () -> millis);
 
       Date result = new Date(millis);
-      if (log.isDebugEnabled()) log.debug("result = " + result);
+      log.debug2("result = {}", () -> result);
       return new ResponseEntity<Date>(result, HttpStatus.OK);
     } catch (Exception e) {
       String message = "Cannot getLastUpdateTime()";
@@ -361,12 +357,12 @@ implements ConfigApi {
   @RequestMapping(value = "/config/loadedurls",
   produces = { "application/json" }, method = RequestMethod.GET)
   public ResponseEntity<?> getLoadedUrlList() {
-    if (log.isDebugEnabled()) log.debug("Invoked");
+    log.debug2("Invoked");
 
     try {
       @SuppressWarnings("unchecked")
       List<String> result = (List<String>)getConfigManager().getLoadedUrlList();
-      if (log.isDebugEnabled()) log.debug("result = " + result);
+      log.debug2("result = {}", () -> result);
       return new ResponseEntity<List<String>>(result, HttpStatus.OK);
     } catch (Exception e) {
       String message = "Cannot getLoadedUrlList()";
@@ -413,14 +409,12 @@ implements ConfigApi {
       List<String> ifNoneMatch,
       @RequestHeader(value=HttpHeaders.IF_UNMODIFIED_SINCE, required=false)
       String ifUnmodifiedSince) {
-    if (log.isDebugEnabled()) {
-      log.debug("sectionName = " + sectionName);
-      log.debug("configFile = " + configFile);
-      log.debug("ifMatch = " + ifMatch);
-      log.debug("ifModifiedSince = " + ifModifiedSince);
-      log.debug("ifNoneMatch = " + ifNoneMatch);
-      log.debug("ifUnmodifiedSince = " + ifUnmodifiedSince);
-    }
+    log.debug2("sectionName = {}", () -> sectionName);
+    log.debug2("configFile = {}", () -> configFile);
+    log.debug2("ifMatch = {}", () -> ifMatch);
+    log.debug2("ifModifiedSince = {}", () -> ifModifiedSince);
+    log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
+    log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
     // Check authorization.
     try {
@@ -430,16 +424,16 @@ implements ConfigApi {
       return new ResponseEntity<String>(ace.getMessage(), HttpStatus.FORBIDDEN);
     }
 
-    HttpRequestPreconditions preconditions = null;
+    HttpRequestPreconditions preconditions;
 
     // Validate the precondition headers.
     try {
-	preconditions = new HttpRequestPreconditions(ifMatch, ifModifiedSince,
-	    ifNoneMatch, ifUnmodifiedSince);
-	if (log.isDebugEnabled()) log.debug("preconditions = " + preconditions);
+      preconditions = new HttpRequestPreconditions(ifMatch, ifModifiedSince,
+	  ifNoneMatch, ifUnmodifiedSince);
+      log.trace("preconditions = {}", () -> preconditions);
     } catch (IllegalArgumentException iae) {
-	return new ResponseEntity<String>(iae.getMessage(),
-	    HttpStatus.BAD_REQUEST);
+      return new ResponseEntity<String>(iae.getMessage(),
+	  HttpStatus.BAD_REQUEST);
     }
 
     if (configFile == null) {
@@ -449,12 +443,11 @@ implements ConfigApi {
     }
 
     // Validate the name of the section to be obtained.
-    String canonicalSectionName = null;
+    String canonicalSectionName;
 
     try {
       canonicalSectionName = validateSectionName(sectionName, AccessType.WRITE);
-      if (log.isDebugEnabled())
-	log.debug("canonicalSectionName = " + canonicalSectionName);
+      log.trace("canonicalSectionName = {}", () -> canonicalSectionName);
     } catch (MalformedParametersException mpe) {
       return new ResponseEntity<String>(mpe.getMessage(),
 	  HttpStatus.BAD_REQUEST);
@@ -465,11 +458,11 @@ implements ConfigApi {
 
       // Get the name of the file to be stored.
       String sectionUrl = configWritableSectionMap.get(canonicalSectionName);
-      if (log.isDebugEnabled()) log.debug("sectionUrl = " + sectionUrl);
+      log.trace("sectionUrl = {}", () -> sectionUrl);
 
       String filename =
 	  new File(configManager.getCacheConfigDir(), sectionUrl).toString();
-      if (log.isDebugEnabled()) log.debug("filename = " + filename);
+      log.trace("filename = {}", () -> filename);
 
       // Write the file.
       ConfigFileReadWriteResult writeResult = configManager
@@ -483,14 +476,17 @@ implements ConfigApi {
 	    HttpStatus.PRECONDITION_FAILED);
       }
 
+      String lastModified = writeResult.getLastModified();
+      log.trace("lastModified = {}", () -> lastModified);
+
       String etag = writeResult.getEtag();
-      if (log.isDebugEnabled()) log.debug("etag = " + etag);
+      log.trace("etag = {}", () -> etag);
 
       // Return the new file entity tag in the response.
       HttpHeaders responseHeaders = new HttpHeaders();
+      responseHeaders.set(HttpHeaders.LAST_MODIFIED, lastModified);
       responseHeaders.setETag(etag);
-      if (log.isDebugEnabled())
-	log.debug("responseHeaders = " + responseHeaders);
+      log.trace("responseHeaders = {}", () -> responseHeaders);
 
       return new ResponseEntity<Void>(null, responseHeaders, HttpStatus.OK);
     } catch (Exception e) {
@@ -511,7 +507,7 @@ implements ConfigApi {
   @RequestMapping(value = "/config/reload", produces = { "application/json" },
   method = RequestMethod.PUT)
   public ResponseEntity<?> putConfigReload() {
-    if (log.isDebugEnabled()) log.debug("Invoked");
+    log.debug2("Invoked");
 
     // Check authorization.
     try {
@@ -523,6 +519,7 @@ implements ConfigApi {
 
     try {
       getConfigManager().requestReload();
+      log.debug2("Done");
       return new ResponseEntity<Void>(HttpStatus.OK);
     } catch (Exception e) {
       String message = "Cannot requestReload()";
@@ -547,102 +544,6 @@ implements ConfigApi {
   }
 
   /**
-   * Validates the If-Match and If-None-Match headers.
-   * 
-   * @param ifMatch
-   *          A List<String> with an asterisk or values equivalent to the
-   *          "If-Unmodified-Since" request header but with a granularity of 1
-   *          ms to be received in the If-Match header.
-   * @param ifNoneMatch
-   *          A List<String> with an asterisk or values equivalent to the
-   *          "If-Modified-Since" request header but with a granularity of 1 ms
-   *          to be received in the If-None-Match header.
-   * @throws MalformedParametersException
-   *           if validation fails.
-   */
-  protected void validateIfMatchIfNoneMatchHeaders(List<String> ifMatch,
-      List<String> ifNoneMatch) {
-    if (log.isDebugEnabled()) {
-      log.debug("ifMatch = " + ifMatch);
-      log.debug("ifNoneMatch = " + ifNoneMatch);
-    }
-
-    boolean ifMatchExists = ifMatch != null && !ifMatch.isEmpty();
-    if (log.isDebugEnabled()) log.debug("ifMatchExists = " + ifMatchExists);
-
-    boolean ifNoneMatchExists = ifNoneMatch != null && !ifNoneMatch.isEmpty();
-    if (log.isDebugEnabled())
-      log.debug("ifNoneMatchExists = " + ifNoneMatchExists);
-
-    // Check whether both the If-Match and If-None-Match headers have tags.
-    if (ifMatchExists && ifNoneMatchExists) {
-      // Yes: Report the problem.
-      String message =
-	  "Invalid presence of both If-Match and If-None-Match headers";
-      log.warn(message);
-      throw new MalformedParametersException(message);
-    }
-
-    if (ifMatchExists) {
-      // Loop through the If-Match header tags.
-      for (String tag : ifMatch) {
-	if (log.isDebugEnabled()) log.debug("tag = " + tag);
-
-	// Check whether it is a weak validator tag.
-	if (tag.toUpperCase().startsWith(HTTP_WEAK_VALIDATOR_PREFIX)) {
-	  // Yes: Report the problem.
-	  String message = "Invalid If-Match entity tag '" + tag + "'";
-	  log.warn(message);
-	  throw new MalformedParametersException(message);
-	  // No: Check whether it is an asterisk.
-	} else if ("*".equals(tag)) {
-	  // Yes: Check whether the asterisk does not appear just by itself.
-	  if (ifMatch.size() > 1) {
-	    // Yes: Report the problem.
-	    String message = "Invalid If-Match entity tag mix";
-	    log.warn(message);
-	    throw new MalformedParametersException(message);
-	  }
-	  // No: Check whether a normal tag is not delimited by double quotes.
-	} else if (!tag.startsWith("\"") || !tag.endsWith("\"")) {
-	  // Yes: Report the problem.
-	  String message = "Invalid If-Match entity tag '" + tag + "'";
-	  log.warn(message);
-	  throw new MalformedParametersException(message);
-	}
-      }
-    } else if (ifNoneMatchExists) {
-      // Loop through the If-None-Match header tags.
-      for (String tag : ifNoneMatch) {
-	if (log.isDebugEnabled()) log.debug("tag = " + tag);
-
-	// Check whether it is a weak validator tag.
-	if (tag.toUpperCase().startsWith(HTTP_WEAK_VALIDATOR_PREFIX)) {
-	  // Yes: Report the problem.
-	  String message = "Invalid If-None-Match entity tag '" + tag + "'";
-	  log.warn(message);
-	  throw new MalformedParametersException(message);
-	  // No: Check whether the asterisk does not appear just by itself.
-	} else if ("*".equals(tag)) {
-	  // Yes: Check whether the asterisk does not appear just by itself.
-	  if (ifNoneMatch.size() > 1) {
-	    // Yes: Report the problem.
-	    String message = "Invalid If-None-Match entity tag mix";
-	    log.warn(message);
-	    throw new MalformedParametersException(message);
-	  }
-	  // No: Check whether a normal tag is not delimited by double quotes.
-	} else if (!tag.startsWith("\"") || !tag.endsWith("\"")) {
-	  // Yes: Report the problem.
-	  String message = "Invalid If-None-Match entity tag '" + tag + "'";
-	  log.warn(message);
-	  throw new MalformedParametersException(message);
-	}
-      }
-    }
-  }
-
-  /**
    * Provides a validated canonical version of the passed section name.
    * 
    * @param sectionName
@@ -656,10 +557,8 @@ implements ConfigApi {
    */
   protected String validateSectionName(String sectionName, AccessType access)
       throws MalformedParametersException {
-    if (log.isDebugEnabled()) {
-      log.debug("sectionName = " + sectionName);
-      log.debug("access = " + access);
-    }
+    log.debug2("sectionName = {}", () -> sectionName);
+    log.debug2("access = {}", () -> access);
 
     // Verify that some section name has been passed.
     if (sectionName == null || sectionName.isEmpty()) {
@@ -669,8 +568,7 @@ implements ConfigApi {
     }
 
     String canonicalVersion = sectionName.toLowerCase();
-    if (log.isDebugEnabled())
-      log.debug("canonicalVersion = " + canonicalVersion);
+    log.trace("canonicalVersion = {}", () -> canonicalVersion);
 
     // Verify that the passed section name is known.
     if (!configWritableSectionMap.containsKey(canonicalVersion)
@@ -705,8 +603,8 @@ implements ConfigApi {
 
       configReadOnlySectionMap.put(SECTION_NAME_CLUSTER, "dyn:cluster.xml");
 
-      if (log.isDebugEnabled())
-	log.debug("configReadOnlySectionMap = " + configReadOnlySectionMap);
+      log.trace("configReadOnlySectionMap = {}",
+	  () -> configReadOnlySectionMap);
     }
 
     return configReadOnlySectionMap;
@@ -726,10 +624,9 @@ implements ConfigApi {
    * 
    * @param url
    *          A String with the URL where to get the content.
-   * @param ifNoneMatch
-   *          A List<String> with an asterisk or values equivalent to the
-   *          "If-Modified-Since" request header but with a granularity of 1 ms
-   *          to be received in the If-None-Match header.
+   * @param preconditions
+   *          An HttpRequestPreconditions with the request preconditions to be
+   *          met.
    * @param readResult
    *          A ConfigFileReadWriteResult with an indication of whether the
    *          preconditions are met and the input stream, entity tag and content
@@ -740,37 +637,43 @@ implements ConfigApi {
   private ResponseEntity<?> buildGetUrlResponse(String url,
       HttpRequestPreconditions preconditions,
       ConfigFileReadWriteResult readResult) {
-    if (log.isDebugEnabled()) {
-      log.debug("url = " + url);
-      log.debug("preconditions = " + preconditions);
-      log.debug("readResult = " + readResult);
-    }
+    log.debug2("url = {}", () -> url);
+    log.debug2("preconditions = {}", () -> preconditions);
+    log.debug2("readResult = {}", () -> readResult);
 
-    HttpStatus status = null;
+    HttpStatus status;
+
+    // Get the last modification token of the file.
+    String lastModified = readResult.getLastModified();
+    log.trace("lastModified = {}", () -> lastModified);
 
     // Get the entity tag of the file.
     String etag = readResult.getEtag();
-    if (log.isDebugEnabled()) log.debug("etag = " + etag);
+    log.trace("etag = {}", () -> etag);
 
     // Check whether the preconditions have not been met.
     if (!readResult.isPreconditionsMet()) {
-      // Yes: Check whether an If-None-Match header was passed.
-      if (preconditions.getIfNoneMatch() != null
-	  && !preconditions.getIfNoneMatch().isEmpty()) {
+      // Yes: Check whether an If-Modified-Since header or an If-None-Match
+      // header were passed.
+      if ((preconditions.getIfModifiedSince() != null
+	  && !preconditions.getIfModifiedSince().isEmpty())
+	  ||
+	  (preconditions.getIfNoneMatch() != null
+	  && !preconditions.getIfNoneMatch().isEmpty())) {
 	// Yes: Return no content, just a Not-Modified status.
 	HttpHeaders responseHeaders = new HttpHeaders();
+	responseHeaders.set(HttpHeaders.LAST_MODIFIED, lastModified);
 	responseHeaders.setETag(etag);
-	if (log.isDebugEnabled())
-	  log.debug("responseHeaders = " + responseHeaders);
+	log.trace("responseHeaders = {}", () -> responseHeaders);
 
 	status = HttpStatus.NOT_MODIFIED;
-	if (log.isDebugEnabled()) log.debug("status = " + status);
+	log.trace("status = {}", () -> status);
 
 	return new ResponseEntity<String>(null, responseHeaders, status);
       } else {
 	// No: Return no content, just a Precondition-Failed status.
 	status = HttpStatus.PRECONDITION_FAILED;
-	if (log.isDebugEnabled()) log.debug("status = " + status);
+	log.trace("status = {}", () -> status);
 
 	return new ResponseEntity<String>(null, null, status);
       }
@@ -779,20 +682,21 @@ implements ConfigApi {
     // Save the version unique identifier header in the part of the response.
     HttpHeaders partHeaders = new HttpHeaders();
     partHeaders.setETag(etag);
+    partHeaders.set(HttpHeaders.LAST_MODIFIED, lastModified);
 
     // Save the content type header in the part of the response.
     MediaType contentType = readResult.getContentType();
-    if (log.isDebugEnabled()) log.debug("contentType = " + contentType);
+    log.trace("contentType = {}", () -> contentType);
     partHeaders.setContentType(contentType);
 
     // This must be set or else AbstractResource#contentLength will read the
     // entire InputStream to determine the content length, which will exhaust
     // the InputStream.
     long contentLength = readResult.getContentLength();
-    if (log.isDebugEnabled()) log.debug("contentLength = " + contentLength);
+    log.trace("contentLength = {}", () -> contentLength);
     partHeaders.setContentLength(contentLength);
 
-    if (log.isDebugEnabled()) log.debug("partHeaders = " + partHeaders);
+    log.trace("partHeaders = {}", () -> partHeaders);
 
     // Build the response entity.
     MultiValueMap<String, Object> parts =
@@ -801,15 +705,15 @@ implements ConfigApi {
     Resource resource = new NamedInputStreamResource(CONFIG_PART_NAME,
 	readResult.getInputStream());
     parts.add(CONFIG_PART_NAME, new HttpEntity<>(resource, partHeaders));
-    if (log.isDebugEnabled()) log.debug("parts = " + parts);
+    log.trace("parts = {}", () -> parts);
 
     // Specify the response content type.
     HttpHeaders responseHeaders = new HttpHeaders();
     responseHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
-    if (log.isDebugEnabled()) log.debug("responseHeaders = " + responseHeaders);
+    log.trace("responseHeaders = {}", () -> responseHeaders);
 
     status = HttpStatus.OK;
-    if (log.isDebugEnabled()) log.debug("status = " + status);
+    log.trace("status = {}", () -> status);
 
     return new ResponseEntity<MultiValueMap<String, Object>>(parts,
 	  responseHeaders, status);
