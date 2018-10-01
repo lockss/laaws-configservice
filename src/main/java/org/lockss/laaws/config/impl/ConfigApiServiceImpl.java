@@ -1,35 +1,38 @@
 /*
 
- Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
- all rights reserved.
+Copyright (c) 2000-2018 Board of Trustees of Leland Stanford Jr. University,
+all rights reserved.
 
- Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights
- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- copies of the Software, and to permit persons to whom the Software is
- furnished to do so, subject to the following conditions:
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+1. Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
 
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
- STANFORD UNIVERSITY BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
- IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
 
- Except as contained in this notice, the name of Stanford University shall not
- be used in advertising or otherwise to promote the sale, use or other dealings
- in this Software without prior written authorization from Stanford University.
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
  */
-package org.lockss.laaws.config.api;
+package org.lockss.laaws.config.impl;
 
 import static org.lockss.config.ConfigManager.*;
 import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
-import io.swagger.annotations.ApiParam;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -37,6 +40,10 @@ import java.lang.reflect.MalformedParametersException;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
 import java.security.AccessControlException;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -49,33 +56,46 @@ import org.lockss.config.ConfigFileReadWriteResult;
 import org.lockss.daemon.Cron;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
+import org.lockss.laaws.config.api.ConfigApiDelegate;
 import org.lockss.laaws.rs.util.NamedInputStreamResource;
 import org.lockss.laaws.status.model.ApiStatus;
 import org.lockss.log.L4JLogger;
 import org.lockss.spring.status.SpringLockssBaseApiController;
 import org.lockss.util.AccessType;
+import org.lockss.util.StringUtil;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Controller for access to the system configuration.
+ * Service for accessing the system configuration.
  */
-@RestController
-public class ConfigApiController extends SpringLockssBaseApiController
-implements ConfigApi {
+@Service
+public class ConfigApiServiceImpl extends SpringLockssBaseApiController
+    implements ConfigApiDelegate {
+  public static final String SECTION_NAME_CLUSTER = "cluster";
+  public static final String SECTION_NAME_PROPSLOCKSS = "props_lockss";
+  public static final String SECTION_NAME_UI_IP_ACCESS = "ui_ip_access";
+  public static final String SECTION_NAME_PROXY_IP_ACCESS = "proxy_ip_access";
+  public static final String SECTION_NAME_PLUGIN = "plugin";
+  public static final String SECTION_NAME_AU = "au";
+  public static final String SECTION_NAME_TITLE_DB = "titledb";
+  public static final String SECTION_NAME_ICP_SERVER = "icp_server";
+  public static final String SECTION_NAME_AUDIT_PROXY = "audit_proxy";
+  public static final String SECTION_NAME_CONTENT_SERVERS = "content_servers";
+  public static final String SECTION_NAME_ACCESS_GROUPS = "access_groups";
+  public static final String SECTION_NAME_CRAWL_PROXY = "crawl_proxy";
+  public static final String SECTION_NAME_EXPERT = "expert";
+  public static final String SECTION_NAME_ALERT = "alert";
+  public static final String SECTION_NAME_CRONSTATE = "cronstate";
+
   private static L4JLogger log = L4JLogger.getLogger();
 
   // The map of writable configuration file sections.
@@ -124,19 +144,8 @@ implements ConfigApi {
    *         section configuration file contents.
    */
   @Override
-  @RequestMapping(value = "/config/file/{sectionName}",
-  produces = { "multipart/form-data", "application/json" },
-  method = RequestMethod.GET)
-  public ResponseEntity<?> getSectionConfig(
-      @PathVariable("sectionName") String sectionName,
-      @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
-      @RequestHeader(value=HttpHeaders.IF_MATCH, required=false) List<String>
-      ifMatch,
-      @RequestHeader(value=HttpHeaders.IF_MODIFIED_SINCE, required=false) String
-      ifModifiedSince,
-      @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
-      List<String> ifNoneMatch,
-      @RequestHeader(value=HttpHeaders.IF_UNMODIFIED_SINCE, required=false)
+  public ResponseEntity getSectionConfig(String sectionName, String accept,
+      String ifMatch, String ifModifiedSince, String ifNoneMatch,
       String ifUnmodifiedSince) {
     log.debug2("sectionName = {}", () -> sectionName);
     log.debug2("accept = {}", () -> accept);
@@ -150,8 +159,9 @@ implements ConfigApi {
 
       // Validate the precondition headers.
       try {
-	preconditions = new HttpRequestPreconditions(ifMatch, ifModifiedSince,
-	    ifNoneMatch, ifUnmodifiedSince);
+	preconditions = new HttpRequestPreconditions(
+	    StringUtil.breakAt(ifMatch, ",", true), ifModifiedSince,
+	    StringUtil.breakAt(ifNoneMatch, ",", true), ifUnmodifiedSince);
 	log.trace("preconditions = {}", () -> preconditions);
       } catch (IllegalArgumentException iae) {
 	return new ResponseEntity<String>(iae.getMessage(),
@@ -245,19 +255,8 @@ implements ConfigApi {
    *         section configuration file.
    */
   @Override
-  @RequestMapping(value = "/config/url",
-  produces = { "multipart/form-data", "application/json" },
-  method = RequestMethod.GET)
-  public ResponseEntity<?> getUrlConfig(
-      @RequestParam("url") String url,
-      @RequestHeader(value=HttpHeaders.ACCEPT, required=true) String accept,
-      @RequestHeader(value=HttpHeaders.IF_MATCH, required=false) List<String>
-      ifMatch,
-      @RequestHeader(value=HttpHeaders.IF_MODIFIED_SINCE, required=false) String
-      ifModifiedSince,
-      @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
-      List<String> ifNoneMatch,
-      @RequestHeader(value=HttpHeaders.IF_UNMODIFIED_SINCE, required=false)
+  public ResponseEntity getUrlConfig(String url, String accept,
+      String ifMatch, String ifModifiedSince, String ifNoneMatch,
       String ifUnmodifiedSince) {
     log.debug2("url = {}", () -> url);
     log.debug2("accept = {}", () -> accept);
@@ -271,8 +270,9 @@ implements ConfigApi {
 
       // Validate the precondition headers.
       try {
-	preconditions = new HttpRequestPreconditions(ifMatch, ifModifiedSince,
-	    ifNoneMatch, ifUnmodifiedSince);
+	preconditions = new HttpRequestPreconditions(
+	    StringUtil.breakAt(ifMatch, ",", true), ifModifiedSince,
+	    StringUtil.breakAt(ifNoneMatch, ",", true), ifUnmodifiedSince);
 	log.trace("preconditions = {}", () -> preconditions);
       } catch (IllegalArgumentException iae) {
 	return new ResponseEntity<String>(iae.getMessage(),
@@ -328,9 +328,7 @@ implements ConfigApi {
    * @return a {@code ResponseEntity<Date>} with the timestamp.
    */
   @Override
-  @RequestMapping(value = "/config/lastupdatetime",
-  produces = { "application/json" }, method = RequestMethod.GET)
-  public ResponseEntity<?> getLastUpdateTime() {
+  public ResponseEntity<OffsetDateTime> getLastUpdateTime() {
     log.debug2("Invoked");
 
     try {
@@ -339,12 +337,13 @@ implements ConfigApi {
 
       Date result = new Date(millis);
       log.debug2("result = {}", () -> result);
-      return new ResponseEntity<Date>(result, HttpStatus.OK);
+      return new ResponseEntity<OffsetDateTime>(OffsetDateTime.ofInstant(
+	  Instant.ofEpochMilli(millis), ZoneId.systemDefault()), HttpStatus.OK);
     } catch (Exception e) {
       String message = "Cannot getLastUpdateTime()";
       log.error(message, e);
-      return new ResponseEntity<String>(message,
-	  HttpStatus.INTERNAL_SERVER_ERROR);
+      return new ResponseEntity<OffsetDateTime>(OffsetDateTime.ofInstant(null,
+	  null), HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -354,9 +353,7 @@ implements ConfigApi {
    * @return a {@code ResponseEntity<List<String>>} with the URLs.
    */
   @Override
-  @RequestMapping(value = "/config/loadedurls",
-  produces = { "application/json" }, method = RequestMethod.GET)
-  public ResponseEntity<?> getLoadedUrlList() {
+  public ResponseEntity<List<String>> getLoadedUrlList() {
     log.debug2("Invoked");
 
     try {
@@ -367,7 +364,7 @@ implements ConfigApi {
     } catch (Exception e) {
       String message = "Cannot getLoadedUrlList()";
       log.error(message, e);
-      return new ResponseEntity<String>(message,
+      return new ResponseEntity<List<String>>(new ArrayList<String>(),
 	  HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -394,21 +391,9 @@ implements ConfigApi {
    * @return a {@code ResponseEntity<Void>}.
    */
   @Override
-  @RequestMapping(value = "/config/file/{sectionName}",
-  consumes = { "multipart/form-data" }, produces = { "application/json" },
-  method = RequestMethod.PUT)
-  public ResponseEntity<?> putConfig(
-      @PathVariable("sectionName") String sectionName,
-      @ApiParam(required=true) @RequestParam("config-data") MultipartFile
-      configFile,
-      @RequestHeader(value=HttpHeaders.IF_MATCH, required=false) List<String>
-      ifMatch,
-      @RequestHeader(value=HttpHeaders.IF_MODIFIED_SINCE, required=false) String
-      ifModifiedSince,
-      @RequestHeader(value=HttpHeaders.IF_NONE_MATCH, required=false)
-      List<String> ifNoneMatch,
-      @RequestHeader(value=HttpHeaders.IF_UNMODIFIED_SINCE, required=false)
-      String ifUnmodifiedSince) {
+  public ResponseEntity<Void> putConfig(String sectionName,
+      MultipartFile configFile, String ifMatch, String ifModifiedSince,
+      String ifNoneMatch, String ifUnmodifiedSince) {
     log.debug2("sectionName = {}", () -> sectionName);
     log.debug2("configFile = {}", () -> configFile);
     log.debug2("ifMatch = {}", () -> ifMatch);
@@ -421,25 +406,25 @@ implements ConfigApi {
       SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_USER_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
-      return new ResponseEntity<String>(ace.getMessage(), HttpStatus.FORBIDDEN);
+      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
     }
 
     HttpRequestPreconditions preconditions;
 
     // Validate the precondition headers.
     try {
-      preconditions = new HttpRequestPreconditions(ifMatch, ifModifiedSince,
-	  ifNoneMatch, ifUnmodifiedSince);
+	preconditions = new HttpRequestPreconditions(
+	    StringUtil.breakAt(ifMatch, ",", true), ifModifiedSince,
+	    StringUtil.breakAt(ifNoneMatch, ",", true), ifUnmodifiedSince);
       log.trace("preconditions = {}", () -> preconditions);
     } catch (IllegalArgumentException iae) {
-      return new ResponseEntity<String>(iae.getMessage(),
-	  HttpStatus.BAD_REQUEST);
+      return new ResponseEntity<Void>(HttpStatus.BAD_REQUEST);
     }
 
     if (configFile == null) {
       String message = "Invalid metadata modification specification: null";
       log.warn(message);
-      return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
+      return new ResponseEntity<Void>(HttpStatus.BAD_REQUEST);
     }
 
     // Validate the name of the section to be obtained.
@@ -449,8 +434,7 @@ implements ConfigApi {
       canonicalSectionName = validateSectionName(sectionName, AccessType.WRITE);
       log.trace("canonicalSectionName = {}", () -> canonicalSectionName);
     } catch (MalformedParametersException mpe) {
-      return new ResponseEntity<String>(mpe.getMessage(),
-	  HttpStatus.BAD_REQUEST);
+      return new ResponseEntity<Void>(HttpStatus.BAD_REQUEST);
     }
 
     try {
@@ -472,8 +456,7 @@ implements ConfigApi {
       // Check whether the preconditions have not been met.
       if (!writeResult.isPreconditionsMet()) {
 	// Yes: Return no content, just a Precondition-Failed status.
-	return new ResponseEntity<MultiValueMap<String, Object>>(null, null,
-	    HttpStatus.PRECONDITION_FAILED);
+	return new ResponseEntity<Void>(HttpStatus.PRECONDITION_FAILED);
       }
 
       String lastModified = writeResult.getLastModified();
@@ -493,8 +476,7 @@ implements ConfigApi {
       String message = "Cannot putConfig() for sectionName = '" + sectionName
 	  + "', configFile = '" + configFile + "'";
       log.error(message, e);
-      return new ResponseEntity<String>(message,
-	  HttpStatus.INTERNAL_SERVER_ERROR);
+      return new ResponseEntity<Void>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -504,9 +486,7 @@ implements ConfigApi {
    * @return a {@code ResponseEntity<Void>} with the status.
    */
   @Override
-  @RequestMapping(value = "/config/reload", produces = { "application/json" },
-  method = RequestMethod.PUT)
-  public ResponseEntity<?> putConfigReload() {
+  public ResponseEntity<Void> putConfigReload() {
     log.debug2("Invoked");
 
     // Check authorization.
@@ -514,7 +494,7 @@ implements ConfigApi {
       SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_USER_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
-      return new ResponseEntity<String>(ace.getMessage(), HttpStatus.FORBIDDEN);
+      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
     }
 
     try {
@@ -524,8 +504,7 @@ implements ConfigApi {
     } catch (Exception e) {
       String message = "Cannot requestReload()";
       log.error(message, e);
-      return new ResponseEntity<String>(message,
-	  HttpStatus.INTERNAL_SERVER_ERROR);
+      return new ResponseEntity<Void>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,23 +25,19 @@
  in this Software without prior written authorization from Stanford University.
 
  */
-package org.lockss.laaws.config.api;
+package org.lockss.laaws.config.impl;
 
-import java.io.IOException;
-import javax.servlet.*;
-import javax.servlet.http.HttpServletResponse;
+/**
+ * Error response definition for JSON conversion.
+ */
+public class ErrorResponse {
+  private String message;
 
-public class ApiOriginFilter implements javax.servlet.Filter {
-    public void doFilter(ServletRequest request, ServletResponse response,
-            FilterChain chain) throws IOException, ServletException {
-        HttpServletResponse res = (HttpServletResponse) response;
-        res.addHeader("Access-Control-Allow-Origin", "*");
-        res.addHeader("Access-Control-Allow-Methods", "GET, DELETE, PUT");
-        res.addHeader("Access-Control-Allow-Headers", "Content-Type");
-        chain.doFilter(request, response);
-    }
+  public ErrorResponse(String message) {
+    this.message = message;
+  }
 
-    public void destroy() {}
-
-    public void init(FilterConfig filterConfig) throws ServletException {}
+  public String getMessage() {
+    return message;
+  }
 }

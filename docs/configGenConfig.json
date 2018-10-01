@@ -1,6 +1,6 @@
 {
   "CopyrightNotice":[
-  "Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,",
+  "Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,",
   "all rights reserved.",
   "",
   "Permission is hereby granted, free of charge, to any person obtaining a copy",
@@ -27,6 +27,8 @@
   "groupId":"org.lockss.laaws",
   "artifactId":"config",
   "artifactVersion":"1.0.0",
+  "basePackage":"org.lockss.laaws.config",
+  "configPackage":"org.lockss.laaws.config.config",
   "modelPackage":"org.lockss.laaws.config.model",
   "apiPackage":"org.lockss.laaws.config.api",
   "invokerPackage":"org.lockss.laaws.config",
@@ -34,5 +36,7 @@
   "dateLibrary":"java8",
   "title": "LAAWS Configuration Service",
   "java8": true,
-  "library":"spring-boot"
+  "delegatePattern": true,
+  "sourceFolder": "src/generated/java",
+  "swaggerDocketConfig": true
 }

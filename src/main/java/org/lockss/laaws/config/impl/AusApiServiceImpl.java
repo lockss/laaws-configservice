@@ -29,38 +29,34 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
  */
-package org.lockss.laaws.config.api;
+package org.lockss.laaws.config.impl;
 
-import io.swagger.annotations.ApiParam;
 import java.lang.reflect.MalformedParametersException;
 import java.security.AccessControlException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import org.apache.log4j.Logger;
 import org.lockss.app.LockssDaemon;
 import org.lockss.config.ConfigManager;
 import org.lockss.config.Configuration;
+import org.lockss.laaws.config.api.AusApiDelegate;
 import org.lockss.laaws.config.model.ConfigExchange;
+import org.lockss.log.L4JLogger;
 import org.lockss.plugin.PluginManager;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Controller for access to Archival Unit configurations.
+ * Service for accessing Archival Unit configurations.
  */
-@RestController
-public class AusApiController implements AusApi {
-  private static Logger log = Logger.getLogger(AusApiController.class);
+@Service
+public class AusApiServiceImpl implements AusApiDelegate {
+  private static L4JLogger log = L4JLogger.getLogger();
 
   /**
    * Deletes the configuration for an AU given the AU identifier.
@@ -71,11 +67,7 @@ public class AusApiController implements AusApi {
    *         configuration.
    */
   @Override
-  @RequestMapping(value = "/aus/{auid}",
-  produces = { "application/json" },
-  method = RequestMethod.DELETE)
-  public ResponseEntity<ConfigExchange> deleteAuConfig(@PathVariable("auid")
-  String auid) {
+  public ResponseEntity<ConfigExchange> deleteAuConfig(String auid) {
     if (log.isDebugEnabled()) log.debug("auid = " + auid);
 
     SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
@@ -116,9 +108,6 @@ public class AusApiController implements AusApi {
    *         all AUs.
    */
   @Override
-  @RequestMapping(value = "/aus",
-  produces = { "application/json" },
-  method = RequestMethod.GET)
   public ResponseEntity<ConfigExchange> getAllAuConfig() {
     if (log.isDebugEnabled()) log.debug("Invoked");
 
@@ -142,11 +131,7 @@ public class AusApiController implements AusApi {
    * @return a {@code ResponseEntity<ConfigExchange>} with the AU configuration.
    */
   @Override
-  @RequestMapping(value = "/aus/{auid}",
-  produces = { "application/json" },
-  method = RequestMethod.GET)
-  public ResponseEntity<ConfigExchange> getAuConfig(@PathVariable("auid")
-      String auid) {
+  public ResponseEntity<ConfigExchange> getAuConfig(String auid) {
     if (log.isDebugEnabled()) log.debug("auid = " + auid);
 
     try {
@@ -183,11 +168,7 @@ public class AusApiController implements AusApi {
    * @return a {@code ResponseEntity<ConfigExchange>} with the AU configuration.
    */
   @Override
-  @RequestMapping(value = "/aus/{auid}",
-  produces = { "application/json" }, consumes = { "application/json" },
-  method = RequestMethod.PUT)
-  public ResponseEntity<ConfigExchange> putAuConfig(@PathVariable("auid")
-      String auid, @ApiParam(required=true) @RequestBody
+  public ResponseEntity<ConfigExchange> putAuConfig(String auid,
       ConfigExchange configExchange) {
     if (log.isDebugEnabled())
       log.debug("auid = " + auid + ", configExchange = " + configExchange);

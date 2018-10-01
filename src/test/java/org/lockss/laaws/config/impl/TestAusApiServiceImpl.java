@@ -29,7 +29,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
  */
-package org.lockss.laaws.config.api;
+package org.lockss.laaws.config.impl;
 
 import java.io.File;
 import java.io.IOException;
@@ -76,7 +76,7 @@ import org.springframework.web.util.UriComponentsBuilder;
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class TestAusApiController extends SpringLockssTestCase {
+public class TestAusApiServiceImpl extends SpringLockssTestCase {
   private static final String UI_PORT_CONFIGURATION_TEMPLATE =
       "UiPortConfigTemplate.txt";
   private static final String UI_PORT_CONFIGURATION_FILE = "UiPort.txt";
@@ -105,7 +105,7 @@ public class TestAusApiController extends SpringLockssTestCase {
   private static final String BAD_PWD = "badPassword";
 
   private static final Logger logger =
-      LoggerFactory.getLogger(TestAusApiController.class);
+      LoggerFactory.getLogger(TestAusApiServiceImpl.class);
 
   // The port that Tomcat is using during this test.
   @LocalServerPort
@@ -126,7 +126,7 @@ public class TestAusApiController extends SpringLockssTestCase {
     if (logger.isDebugEnabled()) logger.debug("port = " + port);
 
     // Set up the temporary directory where the test data will reside.
-    setUpTempDirectory(TestAusApiController.class.getCanonicalName());
+    setUpTempDirectory(TestAusApiServiceImpl.class.getCanonicalName());
 
     // Copy the necessary files to the test temporary directory.
     File srcTree = new File(new File("test"), "cache");
@@ -239,7 +239,8 @@ public class TestAusApiController extends SpringLockssTestCase {
     assertEquals(HttpStatus.OK, statusCode);
 
     String expectedBody = "{'swagger':'2.0',"
-	+ "'info':{'description':'API of Configuration Service for LAAWS'}}";
+	+ "'info':{'description':'API of the LOCKSS Configuration REST Service'"
+	+ "}}";
 
     JSONAssert.assertEquals(expectedBody, successResponse.getBody(), false);
     if (logger.isDebugEnabled()) logger.debug("Done.");
@@ -267,13 +268,12 @@ public class TestAusApiController extends SpringLockssTestCase {
     runTestPutAuConfig(null, GOOD_AUID_2, null, BAD_USER, BAD_PWD,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    // Missing payload (This should return HttpStatus.BAD_REQUEST, but Spring
-    // returns HttpStatus.INTERNAL_SERVER_ERROR).
+    // Missing payload.
     runTestPutAuConfig(null, GOOD_AUID_2, MediaType.APPLICATION_JSON, null,
-	null, HttpStatus.INTERNAL_SERVER_ERROR);
+	null, HttpStatus.BAD_REQUEST);
 
     runTestPutAuConfig(null, GOOD_AUID_1, MediaType.APPLICATION_JSON, BAD_USER,
-	BAD_PWD, HttpStatus.INTERNAL_SERVER_ERROR);
+	BAD_PWD, HttpStatus.BAD_REQUEST);
 
     // Get the current configuration of the first AU.
     ConfigExchange backupConfig1 =
@@ -477,10 +477,9 @@ public class TestAusApiController extends SpringLockssTestCase {
     runTestPutAuConfig(null, GOOD_AUID_1, null, GOOD_USER, GOOD_PWD,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    // Missing payload (This should return HttpStatus.BAD_REQUEST, but Spring
-    // returns HttpStatus.INTERNAL_SERVER_ERROR).
+    // Missing payload.
     runTestPutAuConfig(null, GOOD_AUID_2, MediaType.APPLICATION_JSON, GOOD_USER,
-	GOOD_PWD, HttpStatus.INTERNAL_SERVER_ERROR);
+	GOOD_PWD, HttpStatus.BAD_REQUEST);
 
     // Get the current configuration of the first AU.
     ConfigExchange backupConfig1 =

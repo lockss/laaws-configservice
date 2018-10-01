@@ -50,8 +50,6 @@ tags:
     description: Tasks on the archival units (AUs)
 schemes:
   - https
-consumes:
-  - application/json
 produces:
   - application/json
 security:
@@ -65,7 +63,7 @@ paths:
       description: Store the configuration file for a given name
       operationId: putConfig
       consumes:
-        - application/json
+        - multipart/form-data
       produces:
         - application/json
       parameters:
@@ -76,22 +74,47 @@ paths:
           required: true
           type: string
         - name: 'configFile'
-          in: body
+          in: formData
           description: The configuration file to be stored
           required: true
+          type: file
+        - name: 'If-Match'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-Modified-Since'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-None-Match'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-Unmodified-Since'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
       responses:
         '200':
           description: OK
         '400':
-          description: Bad request
+          description: Bad Request
         '401':
-          description: Unauthorized request
+          description: Unauthorized
         '403':
-          description: Forbidden request
+          description: Forbidden
+        '404':
+          description: Not Found
+        '412':
+          description: Precondition failed
+        '415':
+          description: Unsupported Media Type
         '500':
-          description: Internal server error
-        '503':
-          description: Some or all of the system is not available
+          description: Internal Server Error
     get:
       tags:
         - config
@@ -107,23 +130,50 @@ paths:
             \ is requested
           required: true
           type: string
+        - name: 'Accept'
+          in: header
+          description: The Accept header
+          required: true
+          type: string
+        - name: 'If-Match'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-Modified-Since'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-None-Match'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-Unmodified-Since'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
       responses:
         '200':
           description: The named configuration file
+          schema:
+            type: file
         '304':
           description: Not Modified
         '400':
-          description: Bad request
+          description: Bad Request
         '401':
-          description: Unauthorized request
+          description: Unauthorized
         '404':
           description: Not Found
         '406':
           description: Not Acceptable
+        '412':
+          description: Precondition failed
         '500':
-          description: Internal server error
-        '503':
-          description: Some or all of the system is not available
+          description: Internal Server Error
   '/config/url':
     get:
       tags:
@@ -139,23 +189,50 @@ paths:
           description: The URL for which the configuration is requested
           required: true
           type: string
+        - name: 'Accept'
+          in: header
+          description: The Accept header
+          required: true
+          type: string
+        - name: 'If-Match'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-Modified-Since'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-None-Match'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-Unmodified-Since'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
       responses:
         '200':
           description: The configuration file for the URL
+          schema:
+            type: file
         '304':
           description: Not Modified
         '400':
-          description: Bad request
+          description: Bad Request
         '401':
-          description: Unauthorized request
+          description: Unauthorized
         '404':
           description: Not Found
         '406':
           description: Not Acceptable
+        '412':
+          description: Precondition failed
         '500':
-          description: Internal server error
-        '503':
-          description: Some or all of the system is not available
+          description: Internal Server Error
   '/config/loadedurls':
     get:
       tags:
@@ -174,11 +251,9 @@ paths:
             items:
               type: string
         '401':
-          description: Unauthorized request
+          description: Unauthorized
         '500':
-          description: Internal server error
-        '503':
-          description: Some or all of the system is not available
+          description: Internal Server Error
   '/config/lastupdatetime':
     get:
       tags:
@@ -195,11 +270,9 @@ paths:
             type: string
             format: date-time
         '401':
-          description: Unauthorized request
+          description: Unauthorized
         '500':
-          description: Internal server error
-        '503':
-          description: Some or all of the system is not available
+          description: Internal Server Error
   '/config/reload':
     put:
       tags:
@@ -207,21 +280,17 @@ paths:
       summary: Request a configuration reload
       description: Request that the stored configuration is reloaded
       operationId: putConfigReload
-      consumes:
-        - application/json
       produces:
         - application/json
       responses:
         '200':
           description: OK
         '401':
-          description: Unauthorized request
+          description: Unauthorized
         '403':
-          description: Forbidden request
+          description: Forbidden
         '500':
-          description: Internal server error
-        '503':
-          description: Some or all of the system is not available
+          description: Internal Server Error
   '/aus':
     get:
       tags:
@@ -237,11 +306,9 @@ paths:
           schema:
             $ref: '#/definitions/configExchange'
         '401':
-          description: Unauthorized request
+          description: Unauthorized
         '500':
-          description: Internal server error
-        '503':
-          description: Some or all of the system is not available
+          description: Internal Server Error
   '/aus/{auid}':
     put:
       tags:
@@ -272,15 +339,17 @@ paths:
           schema:
             $ref: '#/definitions/configExchange'
         '400':
-          description: Bad request
+          description: Bad Request
         '401':
-          description: Unauthorized request
+          description: Unauthorized
         '403':
-          description: Forbidden request
+          description: Forbidden
+        '404':
+          description: Not Found
+        '415':
+          description: Unsupported Media Type
         '500':
-          description: Internal server error
-        '503':
-          description: Some or all of the system is not available
+          description: Internal Server Error
     get:
       tags:
         - aus
@@ -302,17 +371,17 @@ paths:
           schema:
             $ref: '#/definitions/configExchange'
         '400':
-          description: Bad request
+          description: Bad Request
         '401':
-          description: Unauthorized request
+          description: Unauthorized
+        '404':
+          description: Not Found
         '500':
-          description: Internal server error
-        '503':
-          description: Some or all of the system is not available
+          description: Internal Server Error
     delete:
       tags:
         - aus
-      summary: Delete the the configuration of an AU
+      summary: Delete the configuration of an AU
       description: Delete the configuration of an AU given the AU identifier
       operationId: deleteAuConfig
       produces:
@@ -330,15 +399,15 @@ paths:
           schema:
             $ref: '#/definitions/configExchange'
         '400':
-          description: Bad request
+          description: Bad Request
         '401':
-          description: Unauthorized request
+          description: Unauthorized
         '403':
-          description: Forbidden request
+          description: Forbidden
+        '404':
+          description: Not Found
         '500':
-          description: Internal server error
-        '503':
-          description: Some or all of the system is not available
+          description: Internal Server Error
   /status:
     get:
       tags:
@@ -354,38 +423,14 @@ paths:
           schema:
             $ref: "#/definitions/apiStatus"
         401:
-          description: "Unauthorized request"
+          description: "Unauthorized"
         500:
-          description: "Internal server error"
-        503:
-          description: "Some or all of the system is not available"
+          description: "Internal Server Error"
 securityDefinitions:
   basicAuth:
     description: "HTTP Basic Authentication. Works over `HTTP` and `HTTPS`"
     type: "basic"
 definitions:
-  configModSpec:
-    type: object
-    required:
-      - header
-      - updates
-      - deletes
-    properties:
-      header:
-        type: string
-        description: A file header string
-      updates:
-        type: object
-        description: The map of configuration items that are modified
-        additionalProperties:
-          type: string
-          description: The value of the configuration for the key
-      deletes:
-        type: array
-        items:
-          type: string
-        description: The set of configuration keys to be deleted
-    description: The encapsulation of a set of configuration modifications
   configExchange:
     type: object
     required:

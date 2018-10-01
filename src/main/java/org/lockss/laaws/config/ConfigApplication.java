@@ -32,7 +32,6 @@ import static org.lockss.app.ManagerDescs.*;
 import org.lockss.app.LockssApp;
 import org.lockss.app.LockssApp.AppSpec;
 import org.lockss.app.LockssApp.ManagerDesc;
-import org.lockss.plugin.PluginManager;
 import org.lockss.app.LockssDaemon;
 import org.lockss.spring.base.BaseSpringBootApplication;
 import org.slf4j.Logger;
@@ -40,11 +39,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 /**
  * The Spring-Boot application.
  */
 @SpringBootApplication
+@EnableSwagger2
 public class ConfigApplication extends BaseSpringBootApplication
 	implements CommandLineRunner {
   private static final Logger logger =
