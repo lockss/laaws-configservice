@@ -43,6 +43,21 @@ get_script_dir()
 
 DIR=`get_script_dir "${BASH_SOURCE[0]}"`
 
+args=
+java_args=
+
+while true ; do
+  case "$1" in
+    -D* )
+      java_args="$java_args $1"
+      shift; continue;;
+    -* )
+      args="$args $1"
+      shift; continue;;
+  esac
+  break;
+done
+
 # Change to the directory where the root of the project is.
 cd $DIR/..
 
@@ -50,8 +65,9 @@ cd $DIR/..
 if [ -f target/current.jar ]
 then
   # Run the service.
-  java -Dorg.lockss.defaultLogLevel=debug -Dorg.springframework.boot.logging.LoggingSystem=none -jar target/current.jar -l config/common.xml -x tdbxml/prod -p config/lockss.txt -p config/lockss.opt $@
+  java -Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager -Dorg.springframework.boot.logging.LoggingSystem=none $java_args -jar target/current.jar -l config/common.xml -x tdbxml/prod -p config/lockss.txt -p config/lockss.opt $args
 else
   echo Not running service: JAR file does not exist.
+  exit 1
 fi
 
