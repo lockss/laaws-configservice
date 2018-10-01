@@ -43,8 +43,20 @@ get_script_dir()
 
 DIR=`get_script_dir "${BASH_SOURCE[0]}"`
 
+while true ; do
+  case "$1" in
+    "-o" )
+      offline="-o"
+      shift; continue;;
+    -* )
+      args="$args $1"
+      shift; continue;;
+  esac
+  break;
+done
+
 # Change to the directory where the pom.xml file resides.
 cd $DIR/..
 
 # Run the service.
-mvn spring-boot:run -Drun.arguments="-l,config/common.xml,-x,tdbxml/prod,-p,config/lockss.txt,-p,config/lockss.opt" -Dorg.springframework.boot.logging.LoggingSystem=none
+mvn $offline spring-boot:run -Drun.arguments="-l,config/common.xml,-x,tdbxml/prod,-p,config/lockss.txt,-p,config/lockss.opt" -Dorg.springframework.boot.logging.LoggingSystem=none $args
