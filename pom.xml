@@ -143,13 +143,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
               <configOptions>
                 <basePackage>org.lockss.laaws.config</basePackage>
                 <apiPackage>org.lockss.laaws.config.api</apiPackage>
-                <modelPackage>org.lockss.laaws.config.model</modelPackage>
+                <configPackage>org.lockss.laaws.config.config</configPackage>
                 <invokerPackage>org.lockss.laaws.config</invokerPackage>
+                <modelPackage>org.lockss.laaws.config.model</modelPackage>
                 <hideGenerationTimestamp>true</hideGenerationTimestamp>
                 <java8>true</java8>
                 <delegatePattern>true</delegatePattern>
                 <sourceFolder>src/generated/java</sourceFolder>
-<!--                 <swaggerDocketConfig>true</swaggerDocketConfig> -->
+                <swaggerDocketConfig>true</swaggerDocketConfig>
               </configOptions>
             </configuration>
           </execution>
