@@ -102,7 +102,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dependencies>
 
   <build>
+
     <plugins>
+
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
@@ -122,7 +124,61 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
           </execution>
         </executions>
       </plugin>
+
+      <plugin>
+        <groupId>io.swagger</groupId>
+        <artifactId>swagger-codegen-maven-plugin</artifactId>
+        <version>2.3.1</version>
+        <executions>
+          <execution>
+            <id>generate-swagger-sources</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <inputSpec>${project.basedir}/docs/swagger.yaml</inputSpec>
+              <language>spring</language>
+              <output>${project.basedir}</output>
+              <configOptions>
+                <basePackage>org.lockss.laaws.config</basePackage>
+                <apiPackage>org.lockss.laaws.config.api</apiPackage>
+                <configPackage>org.lockss.laaws.config.config</configPackage>
+                <invokerPackage>org.lockss.laaws.config</invokerPackage>
+                <modelPackage>org.lockss.laaws.config.model</modelPackage>
+                <hideGenerationTimestamp>true</hideGenerationTimestamp>
+                <java8>true</java8>
+                <delegatePattern>true</delegatePattern>
+                <sourceFolder>src/generated/java</sourceFolder>
+                <swaggerDocketConfig>true</swaggerDocketConfig>
+              </configOptions>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.6.0</version>
+        <executions>
+          <execution>
+            <id>fix-generated-swagger-sources</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <skip>${skipCodegenFix}</skip>
+              <workingDirectory>${project.basedir}</workingDirectory>
+              <executable>${project.basedir}/scripts/swaggerProcessing.sh</executable>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
     </plugins>
+
   </build>
 
   <repositories>
