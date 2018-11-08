@@ -81,5 +81,5 @@ org.lockss.ws.enabled=false
 # No Repository Manager.
 org.lockss.plugin.auContentFromWs=true
 
-org.lockss.ui.port=54421
+org.lockss.ui.port=24621
 org.lockss.platform.propsLockssXmlUrl=http://props.lockss.org:8001/content-testing/lockss.xml

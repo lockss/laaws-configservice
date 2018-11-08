@@ -58,7 +58,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <!-- GitHub project does not match artifactId -->
     <gitProjectId>laaws-configservice</gitProjectId>
     <skipSpringBootRepackage>false</skipSpringBootRepackage>
-    <springServicePort>54420</springServicePort>
+    <springServicePort>24620</springServicePort>
     <!-- The main class to start by executing java -jar -->
     <start-class>org.lockss.laaws.config.ConfigApplication</start-class>
     <skipDocker>false</skipDocker>
