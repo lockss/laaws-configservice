@@ -55,11 +55,16 @@ public class ConfigApplication extends BaseSpringBootApplication
   // which managers are initialized and started.
   private static final ManagerDesc[] myManagerDescs = {
     ACCOUNT_MANAGER_DESC,
+    CONFIG_DB_MANAGER_DESC,
     PLUGIN_MANAGER_DESC,
+    IDENTITY_MANAGER_DESC,
     CRAWL_MANAGER_DESC,
     REPOSITORY_MANAGER_DESC,
-//    COUNTER_REPORTS_MANAGER_DESC,
+    REMOTE_API_DESC,
+    COUNTER_REPORTS_MANAGER_DESC,
+    SUBSCRIPTION_MANAGER_DESC,
     SERVLET_MANAGER_DESC,
+    ROUTER_MANAGER_DESC,
     PLATFORM_CONFIG_STATUS_DESC,
     CONFIG_STATUS_DESC,
     ARCHIVAL_UNIT_STATUS_DESC,

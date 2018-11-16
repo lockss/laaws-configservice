@@ -31,12 +31,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package org.lockss.laaws.config.impl;
 
-import java.lang.reflect.MalformedParametersException;
 import java.security.AccessControlException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import org.lockss.app.LockssDaemon;
+import org.lockss.config.AuConfig;
 import org.lockss.config.ConfigManager;
 import org.lockss.config.Configuration;
 import org.lockss.laaws.config.api.AusApiDelegate;
@@ -48,8 +49,6 @@ import org.lockss.spring.auth.SpringAuthenticationFilter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 
 /**
  * Service for accessing Archival Unit configurations.
@@ -67,16 +66,22 @@ public class AusApiServiceImpl implements AusApiDelegate {
    *         configuration.
    */
   @Override
-  public ResponseEntity<ConfigExchange> deleteAuConfig(String auid) {
+  public ResponseEntity deleteAuConfig(String auid) {
     if (log.isDebugEnabled()) log.debug("auid = " + auid);
 
-    SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+    // Check authorization.
+    try {
+      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+    } catch (AccessControlException ace) {
+      log.warn(ace.getMessage());
+      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
+    }
 
     try {
       if (auid == null || auid.isEmpty()) {
 	String message = "Invalid auid = '" + auid + "'";
 	log.error(message);
-	throw new MalformedParametersException(message);
+	return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
       }
 
       PluginManager pluginManager =
@@ -88,16 +93,15 @@ public class AusApiServiceImpl implements AusApiDelegate {
 
       pluginManager.deleteAuConfiguration(auid);
       return new ResponseEntity<ConfigExchange>(result, HttpStatus.OK);
-    } catch (MalformedParametersException mpe) {
-      throw mpe;
     } catch (IllegalArgumentException iae) {
       String message = "No Archival Unit found for auid = '" + auid + "'";
       log.error(message);
-      throw new IllegalArgumentException(message);
+      return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
     } catch (Exception e) {
       String message = "Cannot deleteAuConfig() for auid = '" + auid + "'";
       log.error(message, e);
-      throw new RuntimeException(message);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -108,18 +112,29 @@ public class AusApiServiceImpl implements AusApiDelegate {
    *         all AUs.
    */
   @Override
-  public ResponseEntity<ConfigExchange> getAllAuConfig() {
+  public ResponseEntity getAllAuConfig() {
     if (log.isDebugEnabled()) log.debug("Invoked");
 
     try {
-      ConfigExchange result = convertConfig(ConfigManager.getCurrentConfig()
-	  .getConfigTree(PluginManager.PARAM_AU_TREE));
+//      ConfigExchange result = convertConfig(ConfigManager.getCurrentConfig()
+//	  .getConfigTree(PluginManager.PARAM_AU_TREE));
+      Configuration configuration = ConfigManager.newConfiguration();
+
+      Collection<AuConfig> auConfigs =
+	  getConfigManager().retrieveAllArchivalUnitConfiguration();
+
+      for (AuConfig auConfig : auConfigs) {
+	configuration.copyFrom(auConfig.toAuidPrefixedConfiguration());
+      }
+
+      ConfigExchange result = convertConfig(configuration);
       if (log.isDebugEnabled()) log.debug("result = " + result);
       return new ResponseEntity<ConfigExchange>(result, HttpStatus.OK);
     } catch (Exception e) {
       String message = "Cannot getAllAuConfig()";
       log.error(message, e);
-      throw new RuntimeException(message);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -131,30 +146,29 @@ public class AusApiServiceImpl implements AusApiDelegate {
    * @return a {@code ResponseEntity<ConfigExchange>} with the AU configuration.
    */
   @Override
-  public ResponseEntity<ConfigExchange> getAuConfig(String auid) {
+  public ResponseEntity getAuConfig(String auid) {
     if (log.isDebugEnabled()) log.debug("auid = " + auid);
 
     try {
       if (auid == null || auid.isEmpty()) {
 	String message = "Invalid auid = '" + auid + "'";
 	log.error(message);
-	throw new MalformedParametersException(message);
+	return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
       }
 
       ConfigExchange result = convertConfig(LockssDaemon.getLockssDaemon()
 	  .getPluginManager().getStoredAuConfiguration(auid));
       if (log.isDebugEnabled()) log.debug("result = " + result);
       return new ResponseEntity<ConfigExchange>(result, HttpStatus.OK);
-    } catch (MalformedParametersException mpe) {
-      throw mpe;
     } catch (IllegalArgumentException iae) {
       String message = "No Archival Unit found for auid = '" + auid + "'";
       log.error(message);
-      throw new IllegalArgumentException(message);
+      return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
     } catch (Exception e) {
       String message = "Cannot getAuConfig() for auid = '" + auid + "'";
       log.error(message, e);
-      throw new RuntimeException(message);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -168,70 +182,60 @@ public class AusApiServiceImpl implements AusApiDelegate {
    * @return a {@code ResponseEntity<ConfigExchange>} with the AU configuration.
    */
   @Override
-  public ResponseEntity<ConfigExchange> putAuConfig(String auid,
+  public ResponseEntity putAuConfig(String auid,
       ConfigExchange configExchange) {
     if (log.isDebugEnabled())
       log.debug("auid = " + auid + ", configExchange = " + configExchange);
 
-    SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+    // Check authorization.
+    try {
+      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+    } catch (AccessControlException ace) {
+      log.warn(ace.getMessage());
+      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
+    }
 
     try {
       if (auid == null || auid.isEmpty()) {
 	String message = "Invalid auid = '" + auid + "'";
 	log.error(message);
-	throw new MalformedParametersException(message);
+	return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
       }
 
-      if (configExchange == null) {
-	String message = "Configuration to be stored is not allowed to be null";
+      if (configExchange == null || configExchange.getProps().isEmpty()) {
+	String message =
+	    "Configuration to be stored is not allowed to be null or empty";
 	log.error(message);
-	throw new MalformedParametersException(message);
+	return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
       }
 
       PluginManager pluginManager =
 	  LockssDaemon.getLockssDaemon().getPluginManager();
-      pluginManager.updateAuConfigFile(auid, extractConfig(configExchange));
+      pluginManager.updateAuInDatabase(auid, extractConfig(configExchange));
 
       ConfigExchange result =
 	  convertConfig(pluginManager.getStoredAuConfiguration(auid));
       if (log.isDebugEnabled()) log.debug("result = " + result);
       return new ResponseEntity<ConfigExchange>(result, HttpStatus.OK);
-    } catch (MalformedParametersException mpe) {
-      throw mpe;
     } catch (IllegalArgumentException iae) {
       String message = "No Archival Unit found for auid = '" + auid + "'";
       log.error(message);
-      throw new IllegalArgumentException(message);
+      return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
     } catch (Exception e) {
       String message = "Cannot putAuConfig()";
       log.error(message, e);
-      throw new RuntimeException(message);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  @ExceptionHandler(AccessControlException.class)
-  @ResponseStatus(HttpStatus.FORBIDDEN)
-  public ErrorResponse authorizationExceptionHandler(AccessControlException e) {
-    return new ErrorResponse(e.getMessage()); 	
-  }
-
-  @ExceptionHandler(MalformedParametersException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  public ErrorResponse authorizationExceptionHandler(
-      MalformedParametersException e) {
-    return new ErrorResponse(e.getMessage()); 	
-  }
-
-  @ExceptionHandler(IllegalArgumentException.class)
-  @ResponseStatus(HttpStatus.NOT_FOUND)
-  public ErrorResponse notFoundExceptionHandler(IllegalArgumentException e) {
-    return new ErrorResponse(e.getMessage()); 	
-  }
-
-  @ExceptionHandler(RuntimeException.class)
-  @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-  public ErrorResponse internalExceptionHandler(RuntimeException e) {
-    return new ErrorResponse(e.getMessage()); 	
+  /**
+   * Provides the configuration manager.
+   *
+   * @return a ConfigManager with the configuration manager.
+   */
+  private ConfigManager getConfigManager() {
+    return ConfigManager.getConfigManager();
   }
 
   /**

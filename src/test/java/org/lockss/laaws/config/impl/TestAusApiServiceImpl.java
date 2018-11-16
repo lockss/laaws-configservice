@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package org.lockss.laaws.config.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -45,15 +46,16 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.lockss.app.LockssDaemon;
+import org.lockss.config.AuConfig;
 import org.lockss.config.ConfigManager;
 import org.lockss.config.Configuration;
+import org.lockss.db.DbException;
 import org.lockss.laaws.config.model.ConfigExchange;
+import org.lockss.log.L4JLogger;
 import org.lockss.plugin.PluginManager;
 import org.lockss.test.SpringLockssTestCase;
 import org.lockss.util.StringUtil;
 import org.skyscreamer.jsonassert.JSONAssert;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.context.embedded.LocalServerPort;
@@ -96,7 +98,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
       + "&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F";
 
   // The identifier of an AU that does not exist in the test system.
-  private static final String UNKNOWN_AUID ="unknown_auid";
+  private static final String UNKNOWN_AUID ="unknown&auid";
 
   // Credentials.
   private static final String GOOD_USER = "lockss-u";
@@ -104,8 +106,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
   private static final String BAD_USER = "badUser";
   private static final String BAD_PWD = "badPassword";
 
-  private static final Logger logger =
-      LoggerFactory.getLogger(TestAusApiServiceImpl.class);
+  private static L4JLogger log = L4JLogger.getLogger();
 
   // The port that Tomcat is using during this test.
   @LocalServerPort
@@ -123,26 +124,26 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    */
   @Before
   public void setUpBeforeEachTest() throws IOException {
-    if (logger.isDebugEnabled()) logger.debug("port = " + port);
+    log.debug2("port = {}", port);
 
     // Set up the temporary directory where the test data will reside.
     setUpTempDirectory(TestAusApiServiceImpl.class.getCanonicalName());
 
     // Copy the necessary files to the test temporary directory.
-    File srcTree = new File(new File("test"), "cache");
-    if (logger.isDebugEnabled())
-      logger.debug("srcTree = " + srcTree.getAbsolutePath());
+    final File srcTree1 = new File(new File("test"), "cache");
+    log.trace("srcTree1 = {}", () -> srcTree1.getAbsolutePath());
 
-    copyToTempDir(srcTree);
+    copyToTempDir(srcTree1);
 
-    srcTree = new File(new File("test"), "tdbxml");
-    if (logger.isDebugEnabled())
-      logger.debug("srcTree = " + srcTree.getAbsolutePath());
+    final File srcTree2 = new File(new File("test"), "tdbxml");
+    log.trace("srcTree2 = {}", () -> srcTree2.getAbsolutePath());
 
-    copyToTempDir(srcTree);
+    copyToTempDir(srcTree2);
 
     // Set up the UI port.
     setUpUiPort(UI_PORT_CONFIGURATION_TEMPLATE, UI_PORT_CONFIGURATION_FILE);
+
+    log.debug2("Done");
   }
 
   /**
@@ -153,6 +154,8 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    */
   @Test
   public void runUnAuthenticatedTests() throws Exception {
+    log.debug2("Invoked");
+
     // Specify the command line parameters to be used for the tests.
     List<String> cmdLineArgs = getCommandLineArguments();
     cmdLineArgs.add("-p");
@@ -167,7 +170,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     getAllAuConfigUnAuthenticatedTest();
     deleteAusUnAuthenticatedTest();
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    log.debug2("Done");
   }
 
   /**
@@ -178,6 +181,8 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    */
   @Test
   public void runAuthenticatedTests() throws Exception {
+    log.debug2("Invoked");
+
     // Specify the command line parameters to be used for the tests.
     List<String> cmdLineArgs = getCommandLineArguments();
     cmdLineArgs.add("-p");
@@ -192,7 +197,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     getAllAuConfigAuthenticatedTest();
     deleteAusAuthenticatedTest();
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    log.debug2("Done");
   }
 
   /**
@@ -201,6 +206,8 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    * @return a List<String> with the command line arguments.
    */
   private List<String> getCommandLineArguments() {
+    log.debug2("Invoked");
+
     List<String> cmdLineArgs = new ArrayList<String>();
     cmdLineArgs.add("-p");
     cmdLineArgs.add(getPlatformDiskSpaceConfigPath());
@@ -209,7 +216,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     File folder =
 	new File(new File(new File(getTempDirPath()), "tdbxml"), "prod");
-    if (logger.isDebugEnabled()) logger.debug("folder = " + folder);
+    log.trace("folder = {}", folder);
 
     cmdLineArgs.add("-x");
     cmdLineArgs.add(folder.getAbsolutePath());
@@ -220,6 +227,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     cmdLineArgs.add("-p");
     cmdLineArgs.add("test/config/lockss.opt");
 
+    log.debug2("cmdLineArgs = {}", cmdLineArgs);
     return cmdLineArgs;
   }
 
@@ -230,7 +238,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    *           if there are problems.
    */
   private void getSwaggerDocsTest() throws Exception {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+    log.debug2("Invoked");
 
     ResponseEntity<String> successResponse = new TestRestTemplate().exchange(
 	getTestUrlTemplate("/v2/api-docs"), HttpMethod.GET, null, String.class);
@@ -243,14 +251,16 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	+ "}}";
 
     JSONAssert.assertEquals(expectedBody, successResponse.getBody(), false);
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+
+    log.debug2("Done");
   }
 
   /**
    * Runs the putAuConfig()-related un-authenticated-specific tests.
    */
-  private void putAuConfigUnAuthenticatedTest() {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+  private void putAuConfigUnAuthenticatedTest() throws Exception {
+    log.debug2("Invoked");
+
     PluginManager pluginManager =
 	LockssDaemon.getLockssDaemon().getPluginManager();
 
@@ -274,6 +284,12 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     runTestPutAuConfig(null, GOOD_AUID_1, MediaType.APPLICATION_JSON, BAD_USER,
 	BAD_PWD, HttpStatus.BAD_REQUEST);
+
+    runTestPutAuConfig(new ConfigExchange(), GOOD_AUID_1,
+	MediaType.APPLICATION_JSON, null, null, HttpStatus.BAD_REQUEST);
+
+    runTestPutAuConfig(new ConfigExchange(), GOOD_AUID_2,
+	MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD, HttpStatus.BAD_REQUEST);
 
     // Get the current configuration of the first AU.
     ConfigExchange backupConfig1 =
@@ -353,16 +369,16 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, null, null,
 	HttpStatus.OK).getProps(), null);
 
-    // Update the AU configuration of a non-existent AU with empty properties.
-    result = runTestPutAuConfig(new ConfigExchange(), UNKNOWN_AUID,
+    // Update the AU configuration of a non-existent AU with some properties.
+    result = runTestPutAuConfig(new ConfigExchange().props(props), UNKNOWN_AUID,
 	MediaType.APPLICATION_JSON, null, null, HttpStatus.OK).getProps();
 
     // Verify.
-    assertTrue(result.keySet().isEmpty());
+    assertEquals(props, result);
 
     // Verify independently.
-    assertTrue(pluginManager.getStoredAuConfiguration(UNKNOWN_AUID).keySet()
-	.isEmpty());
+    verifyConfigurationProperties(
+	pluginManager.getStoredAuConfiguration(UNKNOWN_AUID), result);
 
     // Verify that the first AU is unaffected.
     verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, null, null,
@@ -406,14 +422,14 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     putAuConfigCommonTest();
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    log.debug2("Done");
   }
 
   /**
    * Runs the putAuConfig()-related authenticated-specific tests.
    */
-  private void putAuConfigAuthenticatedTest() {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+  private void putAuConfigAuthenticatedTest() throws Exception {
+    log.debug2("Invoked");
 
     // No AUId.
     runTestPutAuConfig(null, null, null, null, null, HttpStatus.UNAUTHORIZED);
@@ -436,6 +452,12 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     runTestPutAuConfig(null, GOOD_AUID_1, MediaType.APPLICATION_JSON, BAD_USER,
 	BAD_PWD, HttpStatus.UNAUTHORIZED);
 
+    runTestPutAuConfig(new ConfigExchange(), GOOD_AUID_1,
+	MediaType.APPLICATION_JSON, null, null, HttpStatus.UNAUTHORIZED);
+
+    runTestPutAuConfig(new ConfigExchange(), GOOD_AUID_2,
+	MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+
     // The payload to be sent.
     Map<String, String> props = new HashMap<String, String>();
     props.put("testKey1", "testValue1");
@@ -454,14 +476,15 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     putAuConfigCommonTest();
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    log.debug2("Done");
   }
 
   /**
    * Runs the putAuConfig()-related authentication-independent tests.
    */
-  private void putAuConfigCommonTest() {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+  private void putAuConfigCommonTest() throws Exception {
+    log.debug2("Invoked");
+
     PluginManager pluginManager =
 	LockssDaemon.getLockssDaemon().getPluginManager();
 
@@ -561,17 +584,17 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK).getProps(), null);
 
-    // Update the AU configuration of a non-existent AU with empty properties.
-    result = runTestPutAuConfig(new ConfigExchange(), UNKNOWN_AUID,
+    // Update the AU configuration of a non-existent AU with some properties.
+    result = runTestPutAuConfig(new ConfigExchange().props(props), UNKNOWN_AUID,
 	MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD, HttpStatus.OK)
 	.getProps();
 
     // Verify.
-    assertTrue(result.keySet().isEmpty());
+    assertEquals(props, result);
 
     // Verify independently.
-    assertTrue(pluginManager.getStoredAuConfiguration(UNKNOWN_AUID).keySet()
-	.isEmpty());
+    verifyConfigurationProperties(
+	pluginManager.getStoredAuConfiguration(UNKNOWN_AUID), result);
 
     // Verify that the first AU is unaffected.
     verifyGoodAu1Config(runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD,
@@ -613,7 +636,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     verifyGoodAu2Config(runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD,
 	HttpStatus.OK).getProps(), null);
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    log.debug2("Done");
   }
 
   /**
@@ -635,15 +658,13 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    */
   private ConfigExchange runTestPutAuConfig(ConfigExchange config, String auId,
       MediaType contentType, String user, String password,
-      HttpStatus expectedStatus) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("config = " + config);
-      logger.debug("auId = " + auId);
-      logger.debug("contentType = " + contentType);
-      logger.debug("user = " + user);
-      logger.debug("password = " + password);
-      logger.debug("expectedStatus = " + expectedStatus);
-    }
+      HttpStatus expectedStatus) throws Exception {
+    log.debug2("config = {}", config);
+    log.debug2("auId = {}", auId);
+    log.debug2("contentType = {}", contentType);
+    log.debug2("user = {}", user);
+    log.debug2("password = {}", password);
+    log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
     String template = getTestUrlTemplate("/aus/{auid}");
@@ -654,7 +675,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
 	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
+    log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
     RestTemplate restTemplate = new RestTemplate();
@@ -678,30 +699,40 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
       // Set up the authentication credentials, if necessary.
       setUpCredentials(user, password, headers);
 
-      if (logger.isDebugEnabled())
-	logger.debug("requestHeaders = " + headers.toSingleValueMap());
+      log.trace("requestHeaders = {}", () -> headers.toSingleValueMap());
 
       // Create the request entity.
       requestEntity = new HttpEntity<ConfigExchange>(config, headers);
     }
 
     // Make the request and get the response. 
-    ResponseEntity<ConfigExchange> response =
-	new TestRestTemplate(restTemplate). exchange(uri, HttpMethod.PUT,
-	    requestEntity, ConfigExchange.class);
+    ResponseEntity<?> response = new TestRestTemplate(restTemplate)
+	.exchange(uri, HttpMethod.PUT, requestEntity, String.class);
 
     // Get the response status.
     HttpStatus statusCode = response.getStatusCode();
     assertEquals(expectedStatus, statusCode);
 
-    return response.getBody();
+    ConfigExchange result = null;
+
+    // Check whether it is a success response.
+    if (isSuccess(statusCode)) {
+      // Yes: Parse it.
+      ObjectMapper mapper = new ObjectMapper();
+      result = mapper.readValue((String)response.getBody(),
+	  ConfigExchange.class);
+    }
+
+    log.debug2("result = {}", result);
+    return result;
   }
 
   /**
    * Runs the getAuConfig()-related un-authenticated-specific tests.
    */
-  private void getAuConfigUnAuthenticatedTest() {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+  private void getAuConfigUnAuthenticatedTest() throws DbException {
+    log.debug2("Invoked");
+
     PluginManager pluginManager =
 	LockssDaemon.getLockssDaemon().getPluginManager();
 
@@ -746,14 +777,14 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     getAuConfigCommonTest();
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    log.debug2("Done");
   }
 
   /**
    * Runs the getAuConfig()-related authenticated-specific tests.
    */
-  private void getAuConfigAuthenticatedTest() {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+  private void getAuConfigAuthenticatedTest() throws DbException {
+    log.debug2("Invoked");
 
     // No AUId.
     runTestGetAuConfig(null, null, null, HttpStatus.UNAUTHORIZED);
@@ -772,14 +803,15 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     getAuConfigCommonTest();
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    log.debug2("Done");
   }
 
   /**
    * Runs the getAuConfig()-related authentication-independent tests.
    */
-  private void getAuConfigCommonTest() {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+  private void getAuConfigCommonTest() throws DbException {
+    log.debug2("Invoked");
+
     PluginManager pluginManager =
 	LockssDaemon.getLockssDaemon().getPluginManager();
 
@@ -811,7 +843,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     assertTrue(pluginManager.getStoredAuConfiguration(UNKNOWN_AUID).keySet()
 	.isEmpty());
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    log.debug2("Done");
   }
 
   /**
@@ -829,12 +861,10 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    */
   private ConfigExchange runTestGetAuConfig(String auId, String user,
       String password, HttpStatus expectedStatus) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("auId = " + auId);
-      logger.debug("user = " + user);
-      logger.debug("password = " + password);
-      logger.debug("expectedStatus = " + expectedStatus);
-    }
+    log.debug2("auId = {}", auId);
+    log.debug2("user = {}", user);
+    log.debug2("password = {}", password);
+    log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
     String template = getTestUrlTemplate("/aus/{auid}");
@@ -845,7 +875,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
 	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
+    log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
     RestTemplate restTemplate = new RestTemplate();
@@ -862,8 +892,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
       // Set up the authentication credentials, if necessary.
       setUpCredentials(user, password, headers);
 
-      if (logger.isDebugEnabled())
-	logger.debug("requestHeaders = " + headers.toSingleValueMap());
+      log.trace("requestHeaders = {}", () -> headers.toSingleValueMap());
 
       // Create the request entity.
       requestEntity = new HttpEntity<ConfigExchange>(null, headers);
@@ -878,14 +907,21 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     HttpStatus statusCode = response.getStatusCode();
     assertEquals(expectedStatus, statusCode);
 
-    return response.getBody();
+    ConfigExchange result = null;
+
+    if (isSuccess(statusCode)) {
+      result = response.getBody();
+    }
+
+    log.debug2("result = {}", result);
+    return result;
   }
 
   /**
    * Runs the getAllAuConfig()-related un-authenticated-specific tests.
    */
-  private void getAllAuConfigUnAuthenticatedTest() {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+  private void getAllAuConfigUnAuthenticatedTest() throws Exception {
+    log.debug2("Invoked");
 
     // No credentials.
     ConfigExchange configOutput =
@@ -900,8 +936,14 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	PluginManager.configKeyFromAuId(GOOD_AUID_2));
 
     // Verify independently.
-    verifyConfigurationProperties(ConfigManager.getCurrentConfig()
-	.getConfigTree(PluginManager.PARAM_AU_TREE), allAuProps);
+    Configuration verification = ConfigManager.newConfiguration();
+
+    for (AuConfig auConfig : ConfigManager.getConfigManager()
+	.retrieveAllArchivalUnitConfiguration()) {
+      verification.copyFrom(auConfig.toAuidPrefixedConfiguration());
+    }
+
+    verifyConfigurationProperties(verification, allAuProps);
 
     // Bad credentials.
     configOutput = runTestGetAllAuConfig(BAD_USER, BAD_PWD, HttpStatus.OK);
@@ -909,20 +951,16 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     // Verify.
     assertEquals(allAuProps, configOutput.getProps());
 
-    // Verify independently.
-    verifyConfigurationProperties(ConfigManager.getCurrentConfig()
-	.getConfigTree(PluginManager.PARAM_AU_TREE), configOutput.getProps());
-
     getAllAuConfigCommonTest();
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    log.debug2("Done");
   }
 
   /**
    * Runs the getAllAuConfig()-related authenticated-specific tests.
    */
-  private void getAllAuConfigAuthenticatedTest() {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+  private void getAllAuConfigAuthenticatedTest() throws Exception {
+    log.debug2("Invoked");
 
     // No credentials.
     runTestGetAllAuConfig(null, null, HttpStatus.UNAUTHORIZED);
@@ -932,14 +970,14 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     getAllAuConfigCommonTest();
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    log.debug2("Done");
   }
 
   /**
    * Runs the getAllAuConfig()-related authentication-independent tests.
    */
-  private void getAllAuConfigCommonTest() {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+  private void getAllAuConfigCommonTest() throws Exception {
+    log.debug2("Invoked");
 
     ConfigExchange configOutput =
 	runTestGetAllAuConfig(GOOD_USER, GOOD_PWD, HttpStatus.OK);
@@ -953,10 +991,16 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	PluginManager.configKeyFromAuId(GOOD_AUID_2));
 
     // Verify independently.
-    verifyConfigurationProperties(ConfigManager.getCurrentConfig()
-	.getConfigTree(PluginManager.PARAM_AU_TREE), allAuProps);
+    Configuration verification = ConfigManager.newConfiguration();
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    for (AuConfig auConfig : ConfigManager.getConfigManager()
+	.retrieveAllArchivalUnitConfiguration()) {
+      verification.copyFrom(auConfig.toAuidPrefixedConfiguration());
+    }
+
+    verifyConfigurationProperties(verification, allAuProps);
+
+    log.debug2("Done");
   }
 
   /**
@@ -972,11 +1016,9 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    */
   private ConfigExchange runTestGetAllAuConfig(String user, String password,
       HttpStatus expectedStatus) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("user = " + user);
-      logger.debug("password = " + password);
-      logger.debug("expectedStatus = " + expectedStatus);
-    }
+    log.debug2("user = {}", user);
+    log.debug2("password = {}", password);
+    log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
     String template = getTestUrlTemplate("/aus");
@@ -987,7 +1029,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
 	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
+    log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
     RestTemplate restTemplate = new RestTemplate();
@@ -1004,8 +1046,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
       // Set up the authentication credentials, if necessary.
       setUpCredentials(user, password, headers);
 
-      if (logger.isDebugEnabled())
-	logger.debug("requestHeaders = " + headers.toSingleValueMap());
+      log.trace("requestHeaders = {}", () -> headers.toSingleValueMap());
 
       // Create the request entity.
       requestEntity = new HttpEntity<ConfigExchange>(null, headers);
@@ -1020,14 +1061,21 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     HttpStatus statusCode = response.getStatusCode();
     assertEquals(expectedStatus, statusCode);
 
-    return response.getBody();
+    ConfigExchange result = null;
+
+    if (isSuccess(statusCode)) {
+      result = response.getBody();
+    }
+
+    log.debug2("result = {}", result);
+    return result;
   }
 
   /**
    * Runs the deleteAus()-related un-authenticated-specific tests.
    */
-  private void deleteAusUnAuthenticatedTest() {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+  private void deleteAusUnAuthenticatedTest() throws Exception {
+    log.debug2("Invoked");
 
     // No AUId: Spring reports it cannot find a match to an endpoint.
     runTestDeleteAus(null, null, null, HttpStatus.NOT_FOUND);
@@ -1125,14 +1173,14 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     deleteAusCommonTest();
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    log.debug2("Done");
   }
 
   /**
    * Runs the deleteAus()-related authenticated-specific tests.
    */
-  private void deleteAusAuthenticatedTest() {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+  private void deleteAusAuthenticatedTest() throws Exception {
+    log.debug2("Invoked");
 
     // No AUId.
     runTestDeleteAus(null, null, null, HttpStatus.UNAUTHORIZED);
@@ -1150,14 +1198,15 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     deleteAusCommonTest();
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    log.debug2("Done");
   }
 
   /**
    * Runs the deleteAus()-related authenticated-independent tests.
    */
-  private void deleteAusCommonTest() {
-    if (logger.isDebugEnabled()) logger.debug("Invoked.");
+  private void deleteAusCommonTest() throws Exception {
+    log.debug2("Invoked");
+
     PluginManager pluginManager =
 	LockssDaemon.getLockssDaemon().getPluginManager();
 
@@ -1240,7 +1289,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     verifyConfigurationProperties(
 	pluginManager.getStoredAuConfiguration(GOOD_AUID_2), props);
 
-    if (logger.isDebugEnabled()) logger.debug("Done.");
+    log.debug2("Done");
   }
 
   /**
@@ -1258,13 +1307,11 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    *         was deleted.
    */
   private ConfigExchange runTestDeleteAus(String auId, String user,
-      String password, HttpStatus expectedStatus) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("auId = " + auId);
-      logger.debug("user = " + user);
-      logger.debug("password = " + password);
-      logger.debug("expectedStatus = " + expectedStatus);
-    }
+      String password, HttpStatus expectedStatus) throws DbException {
+    log.debug2("auId = {}", auId);
+    log.debug2("user = {}", user);
+    log.debug2("password = {}", password);
+    log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
     String template = getTestUrlTemplate("/aus/{auid}");
@@ -1275,7 +1322,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
 	.build().encode().toUri();
-    if (logger.isDebugEnabled()) logger.debug("uri = " + uri);
+    log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
     RestTemplate restTemplate = new RestTemplate();
@@ -1292,8 +1339,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
       // Set up the authentication credentials, if necessary.
       setUpCredentials(user, password, headers);
 
-      if (logger.isDebugEnabled())
-	logger.debug("requestHeaders = " + headers.toSingleValueMap());
+      log.trace("requestHeaders = {}", () -> headers.toSingleValueMap());
 
       // Create the request entity.
       requestEntity = new HttpEntity<ConfigExchange>(null, headers);
@@ -1308,15 +1354,19 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     HttpStatus statusCode = response.getStatusCode();
     assertEquals(expectedStatus, statusCode);
 
+    ConfigExchange result = null;
+
     if (isSuccess(statusCode)) {
       // Verify independently.
       Configuration config = LockssDaemon.getLockssDaemon().getPluginManager()
 	.getStoredAuConfiguration(auId);
 
       assertTrue(config.keySet().isEmpty());
+      result = response.getBody();
     }
 
-    return response.getBody();
+    log.debug2("result = {}", result);
+    return result;
   }
 
   /**
@@ -1331,11 +1381,9 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    *          otherwise.
    */
   private void verifyGoodAu1Config(Map<String, String> auConfig,
-      String configKey) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("auConfig = " + auConfig);
-      logger.debug("configKey = " + configKey);
-    }
+      String configKey) throws DbException {
+    log.debug2("auConfig = {}", auConfig);
+    log.debug2("configKey = {}", configKey);
 
     String keyPrefix = "";
 
@@ -1366,6 +1414,8 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	auConfig.get(keyPrefix + "base_url"));
     assertEquals("local:./cache",
 	auConfig.get(keyPrefix + "reserved.repository"));
+
+    log.debug2("Done");
   }
 
   /**
@@ -1380,11 +1430,9 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    *          otherwise.
    */
   private void verifyGoodAu2Config(Map<String, String> auConfig,
-      String configKey) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("auConfig = " + auConfig);
-      logger.debug("configKey = " + configKey);
-    }
+      String configKey) throws DbException {
+    log.debug2("auConfig = {}", auConfig);
+    log.debug2("configKey = {}", configKey);
 
     String keyPrefix = "";
 
@@ -1415,6 +1463,8 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	auConfig.get(keyPrefix + "base_url"));
     assertEquals("local:./cache",
 	auConfig.get(keyPrefix + "reserved.repository"));
+
+    log.debug2("Done");
   }
 
   /**
