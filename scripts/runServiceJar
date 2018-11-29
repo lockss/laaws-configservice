@@ -62,10 +62,10 @@ done
 cd $DIR/..
 
 # Check whether the service JAR exists.
-if [ -f target/current.jar ]
+if [ -f target/current-with-deps.jar ]
 then
   # Run the service.
-  java -Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager -Dorg.springframework.boot.logging.LoggingSystem=none $java_args -jar target/current.jar -l config/common.xml -x tdbxml/prod -p config/lockss.txt -p config/lockss.opt $args
+  java -Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager -Dorg.springframework.boot.logging.LoggingSystem=none $java_args -jar target/current-with-deps.jar -l config/common.xml -x tdbxml/prod -p config/lockss.txt -p config/lockss.opt $args
 else
   echo Not running service: JAR file does not exist.
   exit 1
