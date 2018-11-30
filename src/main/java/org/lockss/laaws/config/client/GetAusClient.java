@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,10 +27,13 @@
  */
 package org.lockss.laaws.config.client;
 
-import org.lockss.laaws.config.model.ConfigExchange;
+import java.util.Collection;
+import org.lockss.config.AuConfiguration;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Client for the getAus() operation.
@@ -39,13 +42,15 @@ public class GetAusClient extends BaseClient {
   public static void main(String[] args) throws Exception {
     String url = baseUri + "/aus";
 
-    ResponseEntity<ConfigExchange> response = getRestTemplate().exchange(url,
-	HttpMethod.GET, new HttpEntity<String>(null, getHttpHeaders()),
-	ConfigExchange.class);
+    ResponseEntity<?> response = getRestTemplate().exchange(url, HttpMethod.GET,
+	new HttpEntity<Collection<AuConfiguration>>(null, getHttpHeaders()),
+	String.class);
 
     int status = response.getStatusCodeValue();
     System.out.println("status = " + status);
-    ConfigExchange result = response.getBody();
+    Collection<AuConfiguration> result =
+	new ObjectMapper().readValue((String)response.getBody(),
+	    new TypeReference<Collection<AuConfiguration>>(){});
     System.out.println("result = " + result);
   }
 }

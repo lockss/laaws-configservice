@@ -27,7 +27,6 @@
  */
 package org.lockss.laaws.config.impl;
 
-import static org.hamcrest.Matchers.equalTo;
 import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
 import static org.lockss.laaws.config.impl.ConfigApiServiceImpl.*;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -37,11 +36,9 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.MalformedParametersException;
 import java.net.URI;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import javax.mail.internet.MimeMultipart;
@@ -64,7 +61,6 @@ import org.lockss.util.ListUtil;
 import org.lockss.util.StringUtil;
 import org.lockss.util.time.TimeBase;
 import org.skyscreamer.jsonassert.JSONAssert;
-import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.context.embedded.LocalServerPort;

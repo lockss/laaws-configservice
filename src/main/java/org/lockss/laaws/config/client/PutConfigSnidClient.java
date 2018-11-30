@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -33,7 +33,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.lockss.laaws.config.model.ConfigExchange;
 import org.lockss.laaws.config.model.ConfigModSpec;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -103,14 +102,12 @@ public class PutConfigSnidClient extends BaseClient {
   	.build().encode().toUri();
       System.out.println("uri = " + uri);
 
-      ResponseEntity<ConfigExchange> response = getRestTemplate().exchange(uri,
+      ResponseEntity<Void> response = getRestTemplate().exchange(uri,
   	HttpMethod.PUT, new HttpEntity<ConfigModSpec>(modSpec,
-  	    getHttpHeaders()), ConfigExchange.class);
+  	    getHttpHeaders()), Void.class);
 
       int status = response.getStatusCodeValue();
       System.out.println("status = " + status);
-      ConfigExchange result = response.getBody();
-      System.out.println("result = " + result);
     } else {
       System.err.println("ERROR: Missing command line argument(s) "
 	  + "with configuration parameter(s) to be updated or deleted.");

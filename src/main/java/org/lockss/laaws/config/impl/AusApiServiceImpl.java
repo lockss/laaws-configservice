@@ -33,15 +33,11 @@ package org.lockss.laaws.config.impl;
 
 import java.security.AccessControlException;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 import org.lockss.app.LockssDaemon;
-import org.lockss.config.AuConfig;
+import org.lockss.config.AuConfiguration;
 import org.lockss.config.ConfigManager;
-import org.lockss.config.Configuration;
 import org.lockss.laaws.config.api.AusApiDelegate;
-import org.lockss.laaws.config.model.ConfigExchange;
 import org.lockss.log.L4JLogger;
 import org.lockss.plugin.PluginManager;
 import org.lockss.spring.auth.Roles;
@@ -62,7 +58,7 @@ public class AusApiServiceImpl implements AusApiDelegate {
    * 
    * @param auid
    *          A String with the AU identifier.
-   * @return {@code ResponseEntity<ConfigExchange>} with the deleted
+   * @return {@code ResponseEntity<AuConfiguration>} with the deleted
    *         configuration.
    */
   @Override
@@ -84,15 +80,13 @@ public class AusApiServiceImpl implements AusApiDelegate {
 	return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
       }
 
-      PluginManager pluginManager =
-	  LockssDaemon.getLockssDaemon().getPluginManager();
+      PluginManager pluginManager = getPluginManager();
 
-      ConfigExchange result =
-	  convertConfig(pluginManager.getStoredAuConfiguration(auid));
+      AuConfiguration result = pluginManager.getStoredAuConfiguration(auid);
       if (log.isDebugEnabled()) log.debug("result = " + result);
 
       pluginManager.deleteAuConfiguration(auid);
-      return new ResponseEntity<ConfigExchange>(result, HttpStatus.OK);
+      return new ResponseEntity<AuConfiguration>(result, HttpStatus.OK);
     } catch (IllegalArgumentException iae) {
       String message = "No Archival Unit found for auid = '" + auid + "'";
       log.error(message);
@@ -108,28 +102,19 @@ public class AusApiServiceImpl implements AusApiDelegate {
   /**
    * Provides the configuration for all AUs.
    * 
-   * @return a {@code ResponseEntity<ConfigExchange>} with the configuration for
-   *         all AUs.
+   * @return a {@code ResponseEntity<Collection<AuConfiguration>>} with the
+   *         configuration for all AUs.
    */
   @Override
   public ResponseEntity getAllAuConfig() {
     if (log.isDebugEnabled()) log.debug("Invoked");
 
     try {
-//      ConfigExchange result = convertConfig(ConfigManager.getCurrentConfig()
-//	  .getConfigTree(PluginManager.PARAM_AU_TREE));
-      Configuration configuration = ConfigManager.newConfiguration();
-
-      Collection<AuConfig> auConfigs =
+      Collection<AuConfiguration> result =
 	  getConfigManager().retrieveAllArchivalUnitConfiguration();
-
-      for (AuConfig auConfig : auConfigs) {
-	configuration.copyFrom(auConfig.toAuidPrefixedConfiguration());
-      }
-
-      ConfigExchange result = convertConfig(configuration);
       if (log.isDebugEnabled()) log.debug("result = " + result);
-      return new ResponseEntity<ConfigExchange>(result, HttpStatus.OK);
+      return new ResponseEntity<Collection<AuConfiguration>>(result,
+	  HttpStatus.OK);
     } catch (Exception e) {
       String message = "Cannot getAllAuConfig()";
       log.error(message, e);
@@ -143,7 +128,8 @@ public class AusApiServiceImpl implements AusApiDelegate {
    * 
    * @param auid
    *          A String with the AU identifier.
-   * @return a {@code ResponseEntity<ConfigExchange>} with the AU configuration.
+   * @return a {@code ResponseEntity<AuConfiguration>} with the AU
+   *         configuration.
    */
   @Override
   public ResponseEntity getAuConfig(String auid) {
@@ -156,10 +142,10 @@ public class AusApiServiceImpl implements AusApiDelegate {
 	return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
       }
 
-      ConfigExchange result = convertConfig(LockssDaemon.getLockssDaemon()
-	  .getPluginManager().getStoredAuConfiguration(auid));
+      AuConfiguration result =
+	  getPluginManager().getStoredAuConfiguration(auid);
       if (log.isDebugEnabled()) log.debug("result = " + result);
-      return new ResponseEntity<ConfigExchange>(result, HttpStatus.OK);
+      return new ResponseEntity<AuConfiguration>(result, HttpStatus.OK);
     } catch (IllegalArgumentException iae) {
       String message = "No Archival Unit found for auid = '" + auid + "'";
       log.error(message);
@@ -173,19 +159,16 @@ public class AusApiServiceImpl implements AusApiDelegate {
   }
 
   /**
-   * Stores the provided configuration for an AU given the AU identifier.
+   * Stores the provided Archival Unit configuration.
    * 
-   * @param auid
-   *          A String with the AU identifier.
-   * @param configExchange
-   *          A ConfigExchange with the AU configuration.
-   * @return a {@code ResponseEntity<ConfigExchange>} with the AU configuration.
+   * @param AuConfiguration
+   *          An AuConfiguration with the Archival Unit configuration.
+   * @return a {@code ResponseEntity<AuConfiguration>} with the Archival Unit
+   *         configuration.
    */
   @Override
-  public ResponseEntity putAuConfig(String auid,
-      ConfigExchange configExchange) {
-    if (log.isDebugEnabled())
-      log.debug("auid = " + auid + ", configExchange = " + configExchange);
+  public ResponseEntity putAuConfig(AuConfiguration auConfiguration) {
+    if (log.isDebugEnabled()) log.debug("auConfiguration = " + auConfiguration);
 
     // Check authorization.
     try {
@@ -195,30 +178,33 @@ public class AusApiServiceImpl implements AusApiDelegate {
       return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
     }
 
+    String auId = null;
+
     try {
-      if (auid == null || auid.isEmpty()) {
-	String message = "Invalid auid = '" + auid + "'";
+      auId = auConfiguration.getAuId();
+
+      if (auId == null || auId.isEmpty()) {
+	String message = "Invalid auId = '" + auId + "'";
 	log.error(message);
 	return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
       }
 
-      if (configExchange == null || configExchange.getProps().isEmpty()) {
+      Map<String, String> auConfig = auConfiguration.getAuConfig();
+      if (auConfig == null || auConfig.isEmpty()) {
 	String message =
 	    "Configuration to be stored is not allowed to be null or empty";
 	log.error(message);
 	return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
       }
 
-      PluginManager pluginManager =
-	  LockssDaemon.getLockssDaemon().getPluginManager();
-      pluginManager.updateAuInDatabase(auid, extractConfig(configExchange));
+      PluginManager pluginManager = getPluginManager();
+      pluginManager.updateAuInDatabase(auConfiguration);
 
-      ConfigExchange result =
-	  convertConfig(pluginManager.getStoredAuConfiguration(auid));
+      AuConfiguration result = pluginManager.getStoredAuConfiguration(auId);
       if (log.isDebugEnabled()) log.debug("result = " + result);
-      return new ResponseEntity<ConfigExchange>(result, HttpStatus.OK);
+      return new ResponseEntity<AuConfiguration>(result, HttpStatus.OK);
     } catch (IllegalArgumentException iae) {
-      String message = "No Archival Unit found for auid = '" + auid + "'";
+      String message = "No Archival Unit found for auid = '" + auId + "'";
       log.error(message);
       return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
     } catch (Exception e) {
@@ -239,47 +225,11 @@ public class AusApiServiceImpl implements AusApiDelegate {
   }
 
   /**
-   * Converts a LOCKSS configuration object into an object ready to be
-   * transmitted.
-   * 
-   * @param config
-   *          A Configuration object to be transmitted.
-   * @return a ConfigExchange object with the converted Configuration.
+   * Provides the plugin manager.
+   *
+   * @return a PluginManager with the plugin manager.
    */
-  private ConfigExchange convertConfig(Configuration config) {
-    if (log.isDebugEnabled()) log.debug("config = " + config);
-
-    ConfigExchange result = new ConfigExchange();
-    Map<String, String> props = new HashMap<String, String>();
-
-    for (String key : config.keySet()) {
-      String value = config.get(key);
-      props.put(key,  value);
-    }
-
-    result.setProps(props);
-
-    if (log.isDebugEnabled()) log.debug("result = " + result);
-    return result;
-  }
-
-  /**
-   * Extracts a LOCKSS configuration object from an object ready to be
-   * transmitted.
-   * 
-   * @param configExchange
-   *          A ConfigExchange object from where to extract the LOCKSS
-   *          configuration object.
-   * @return a Configuration object with the LOCKSS configuration.
-   */
-  private Configuration extractConfig(ConfigExchange configExchange) {
-    if (log.isDebugEnabled()) log.debug("configExchange = " + configExchange);
-
-    Properties props = new Properties();
-    props.putAll(configExchange.getProps());
-
-    Configuration result = ConfigManager.fromProperties(props);
-    if (log.isDebugEnabled()) log.debug("result = " + result);
-    return result;
+  private PluginManager getPluginManager() {
+    return LockssDaemon.getLockssDaemon().getPluginManager();
   }
 }

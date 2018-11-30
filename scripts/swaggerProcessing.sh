@@ -73,3 +73,11 @@ sed -e "s/^}$//" $CONFIG_API > "$TEMPFILE" && cat <<EOF_CONFIG_API_EDIT >> "$TEM
     }
 }
 EOF_CONFIG_API_EDIT
+
+# Edit AusApiDelegate.java.
+AUS_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/AusApiDelegate.java
+sed -i "s/import org.lockss.laaws.config.model.AuConfiguration/import org.lockss.config.AuConfiguration/" $AUS_API_DELEGATE
+
+# Edit AusApi.java.
+AUS_API=src/generated/java/org/lockss/laaws/config/api/AusApi.java
+sed -i "s/import org.lockss.laaws.config.model.AuConfiguration/import org.lockss.config.AuConfiguration/" $AUS_API

@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,7 +31,7 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import org.lockss.laaws.config.model.ConfigExchange;
+import org.lockss.config.AuConfiguration;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -63,19 +63,18 @@ public class PutAusAuidClient extends BaseClient {
       System.out.println("arg[" + i + "] = " + args[i]);
     }
 
-    ConfigExchange config = new ConfigExchange();
-    Map<String, String> props = new HashMap<String, String>();
+    Map<String, String> auConfig = new HashMap<String, String>();
 
     for (int i = 1; i < args.length; i++) {
       int sepLoc = args[i].trim().indexOf("=");
 
       if (sepLoc > 0 && sepLoc < args[i].length() - 1) {
-	props.put(args[i].substring(0, sepLoc),
+	auConfig.put(args[i].substring(0, sepLoc),
 	    args[i].substring(sepLoc + 1));
       }
     }
 
-    config.setProps(props);
+    AuConfiguration auConfiguration = new AuConfiguration(args[0], auConfig);
 
     String template = baseUri + "/aus/{auid}";
 
@@ -87,13 +86,13 @@ public class PutAusAuidClient extends BaseClient {
 	.build().encode().toUri();
     System.out.println("uri = " + uri);
 
-    ResponseEntity<ConfigExchange> response = getRestTemplate().exchange(uri,
-	HttpMethod.PUT, new HttpEntity<ConfigExchange>(config,
-	    getHttpHeaders()), ConfigExchange.class);
+    ResponseEntity<AuConfiguration> response = getRestTemplate().exchange(uri,
+	HttpMethod.PUT, new HttpEntity<AuConfiguration>(auConfiguration,
+	    getHttpHeaders()), AuConfiguration.class);
 
     int status = response.getStatusCodeValue();
     System.out.println("status = " + status);
-    ConfigExchange result = response.getBody();
+    AuConfiguration result = response.getBody();
     System.out.println("result = " + result);
   }
 }

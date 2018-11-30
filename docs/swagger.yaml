@@ -304,7 +304,9 @@ paths:
         '200':
           description: The configuration of all AUs
           schema:
-            $ref: '#/definitions/configExchange'
+            type: array
+            items:
+              $ref: '#/definitions/auConfiguration'
         '401':
           description: Unauthorized
         '500':
@@ -321,23 +323,17 @@ paths:
       produces:
         - application/json
       parameters:
-        - name: 'auid'
-          in: path
-          description: The identifier of the AU for which the configuration is\
-            \ to be stored
-          required: true
-          type: string
-        - name: 'configExchange'
+        - name: 'auConfiguration'
           in: body
-          description: The configuration items to be stored
+          description: The Archival Unit configuration to be stored
           required: true
           schema:
-            $ref: '#/definitions/configExchange'
+            $ref: '#/definitions/auConfiguration'
       responses:
         '200':
-          description: The configuration of the specified AU after it's stored
+          description: The Archival Unit configuration after it is stored
           schema:
-            $ref: '#/definitions/configExchange'
+            $ref: '#/definitions/auConfiguration'
         '400':
           description: Bad Request
         '401':
@@ -369,7 +365,7 @@ paths:
         '200':
           description: The configuration of the specified AU
           schema:
-            $ref: '#/definitions/configExchange'
+            $ref: '#/definitions/auConfiguration'
         '400':
           description: Bad Request
         '401':
@@ -397,7 +393,7 @@ paths:
         '200':
           description: The deleted configuration of the specified AU
           schema:
-            $ref: '#/definitions/configExchange'
+            $ref: '#/definitions/auConfiguration'
         '400':
           description: Bad Request
         '401':
@@ -431,18 +427,22 @@ securityDefinitions:
     description: "HTTP Basic Authentication. Works over `HTTP` and `HTTPS`"
     type: "basic"
 definitions:
-  configExchange:
-    type: object
+  auConfiguration:
+    type: "object"
     required:
-      - props
+      - "auId"
+      - "auConfig"
     properties:
-      props:
-        type: object
-        description: The map of configuration items
+      auId:
+        type: "string"
+        description: "The identifier of the Archival Unit"
+      auConfig:
+        type: "object"
+        description: "The map of Archival Unit configuration items"
         additionalProperties:
-          type: string
-          description: The value of the configuration for the key
-    description: The encapsulation of a set of configuration properties
+          type: "string"
+          description: "The value of the configuration for the key"
+    description: "The encapsulation of an Archival Unit configuration"
   apiStatus:
     type: "object"
     required:
