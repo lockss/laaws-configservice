@@ -314,11 +314,12 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	backupConfig2);
 
     // Update the configuration of the first AU.
-    AuConfiguration result = runTestPutAuConfig(auConfiguration1,
-	MediaType.APPLICATION_JSON, null, null, HttpStatus.OK);
+    runTestPutAuConfig(auConfiguration1, MediaType.APPLICATION_JSON, null, null,
+	HttpStatus.OK);
 
     // Verify.
-    assertEquals(auConfiguration1, result);
+    assertEquals(auConfiguration1,
+	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
 
     // Verify independently.
     assertEquals(auConfiguration1,
@@ -329,11 +330,12 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	backupConfig2);
 
     // Restore the original configuration of the first AU.
-    result = runTestPutAuConfig(backupConfig1, MediaType.APPLICATION_JSON,
-	BAD_USER, BAD_PWD, HttpStatus.OK);
+    runTestPutAuConfig(backupConfig1, MediaType.APPLICATION_JSON, BAD_USER,
+	BAD_PWD, HttpStatus.OK);
 
     // Verify.
-    assertEquals(backupConfig1, result);
+    assertEquals(backupConfig1,
+	runTestGetAuConfig(GOOD_AUID_1, BAD_USER, BAD_PWD, HttpStatus.OK));
 
     // Verify that the second AU is unaffected.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_2),
@@ -343,11 +345,12 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	new AuConfiguration(GOOD_AUID_2, auConfig);
 
     // Update the configuration of the second AU.
-    result = runTestPutAuConfig(auConfiguration2, null, BAD_USER, BAD_PWD,
+    runTestPutAuConfig(auConfiguration2, null, BAD_USER, BAD_PWD,
 	HttpStatus.OK);
 
     // Verify.
-    assertEquals(auConfiguration2, result);
+    assertEquals(auConfiguration2,
+	runTestGetAuConfig(GOOD_AUID_2, BAD_USER, BAD_PWD, HttpStatus.OK));
 
     // Verify independently.
     assertEquals(auConfiguration2,
@@ -358,25 +361,28 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
 
     // Restore the original configuration of the second AU.
-    result = runTestPutAuConfig(backupConfig2, MediaType.APPLICATION_JSON,
-	BAD_USER, BAD_PWD, HttpStatus.OK);
+    runTestPutAuConfig(backupConfig2, MediaType.APPLICATION_JSON, BAD_USER,
+	BAD_PWD, HttpStatus.OK);
 
     // Verify.
-    assertEquals(backupConfig2, result);
+    assertEquals(backupConfig2,
+	runTestGetAuConfig(GOOD_AUID_2, BAD_USER, BAD_PWD, HttpStatus.OK));
 
     // Verify that the first AU is unaffected.
     assertEquals(backupConfig1,
 	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
 
     // Update the AU configuration of a non-existent AU with some properties.
-    result = runTestPutAuConfig(new AuConfiguration(UNKNOWN_AUID, auConfig),
+    runTestPutAuConfig(new AuConfiguration(UNKNOWN_AUID, auConfig),
 	MediaType.APPLICATION_JSON, null, null, HttpStatus.OK);
 
     // Verify.
-    assertEquals(auConfig, result.getAuConfig());
+    assertEquals(new AuConfiguration(UNKNOWN_AUID, auConfig),
+	runTestGetAuConfig(UNKNOWN_AUID, null, null, HttpStatus.OK));
 
     // Verify independently.
-    assertEquals(pluginManager.getStoredAuConfiguration(UNKNOWN_AUID), result);
+    assertEquals(pluginManager.getStoredAuConfiguration(UNKNOWN_AUID),
+	new AuConfiguration(UNKNOWN_AUID, auConfig));
 
     // Verify that the first AU is unaffected.
     assertEquals(backupConfig1,
@@ -496,28 +502,32 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	new AuConfiguration(GOOD_AUID_2, auConfig);
 
     // Update the configuration of the second AU.
-    AuConfiguration result = runTestPutAuConfig(auConfiguration2, null,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    runTestPutAuConfig(auConfiguration2, null, GOOD_USER, GOOD_PWD,
+	HttpStatus.OK);
 
     // Verify.
-    assertEquals(auConfiguration2, result);
+    assertEquals(auConfiguration2,
+	runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD, HttpStatus.OK));
 
     // Verify independently.
-    assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_2), result);
+    assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_2),
+	auConfiguration2);
 
     // Verify that the first AU is unaffected.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1),
 	backupConfig1);
 
     // Restore the original configuration of the second AU.
-    result = runTestPutAuConfig(backupConfig2, MediaType.APPLICATION_JSON,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    runTestPutAuConfig(backupConfig2, MediaType.APPLICATION_JSON, GOOD_USER,
+	GOOD_PWD, HttpStatus.OK);
 
     // Verify.
-    assertEquals(backupConfig2, result);
+    assertEquals(backupConfig2,
+	runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD, HttpStatus.OK));
 
     // Verify independently.
-    assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_2), result);
+    assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_2),
+	backupConfig2);
 
     // Verify that the first AU is unaffected.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1),
@@ -527,36 +537,40 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	new AuConfiguration(GOOD_AUID_1, auConfig);
 
     // Update the configuration of the first AU.
-    result = runTestPutAuConfig(auConfiguration1, MediaType.APPLICATION_JSON,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    runTestPutAuConfig(auConfiguration1, MediaType.APPLICATION_JSON, GOOD_USER,
+	GOOD_PWD, HttpStatus.OK);
 
     // Verify.
-    assertEquals(auConfiguration1, result);
+    assertEquals(auConfiguration1,
+	runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD, HttpStatus.OK));
 
     // Verify independently.
-    assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1), result);
+    assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1),
+	auConfiguration1);
 
     // Verify that the second AU is unaffected.
-    assertEquals(backupConfig2, runTestGetAuConfig(GOOD_AUID_2, GOOD_USER,
-	GOOD_PWD, HttpStatus.OK));
+    assertEquals(backupConfig2,
+	runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD, HttpStatus.OK));
 
     // Restore the original configuration of the first AU.
-    result = runTestPutAuConfig(backupConfig1, MediaType.APPLICATION_JSON,
+    runTestPutAuConfig(backupConfig1, MediaType.APPLICATION_JSON, GOOD_USER,
+	GOOD_PWD, HttpStatus.OK);
+
+    // Verify.
+    assertEquals(backupConfig1,
+	runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD, HttpStatus.OK));
+
+    // Verify that the second AU is unaffected.
+    assertEquals(backupConfig2,
+	runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD, HttpStatus.OK));
+
+    // Update the AU configuration of a non-existent AU with some properties.
+    runTestPutAuConfig(new AuConfiguration(UNKNOWN_AUID, auConfig), null,
 	GOOD_USER, GOOD_PWD, HttpStatus.OK);
 
     // Verify.
-    assertEquals(backupConfig1, result);
-
-    // Verify that the second AU is unaffected.
-    assertEquals(backupConfig2, runTestGetAuConfig(GOOD_AUID_2, GOOD_USER,
-	GOOD_PWD, HttpStatus.OK));
-
-    // Update the AU configuration of a non-existent AU with some properties.
-    result = runTestPutAuConfig(new AuConfiguration(UNKNOWN_AUID, auConfig),
-	null, GOOD_USER, GOOD_PWD, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(auConfig, result.getAuConfig());
+    assertEquals(new AuConfiguration(UNKNOWN_AUID, auConfig),
+	runTestGetAuConfig(UNKNOWN_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK));
 
     // Verify independently.
     assertEquals(pluginManager.getStoredAuConfiguration(UNKNOWN_AUID)
@@ -598,9 +612,10 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    *          A String with the request password.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
-   * @return an AuConfiguration with the stored Archival Unit configuration.
+   * @return a Long with the key under which the Archival Unit configuration has
+   *         been stored.
    */
-  private AuConfiguration runTestPutAuConfig(AuConfiguration auConfiguration,
+  private Long runTestPutAuConfig(AuConfiguration auConfiguration,
       MediaType contentType, String user, String password,
       HttpStatus expectedStatus) throws Exception {
     log.debug2("auConfiguration = {}", auConfiguration);
@@ -656,14 +671,13 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     HttpStatus statusCode = response.getStatusCode();
     assertEquals(expectedStatus, statusCode);
 
-    AuConfiguration result = null;
+    Long result = null;
 
     // Check whether it is a success response.
     if (isSuccess(statusCode)) {
       // Yes: Parse it.
       ObjectMapper mapper = new ObjectMapper();
-      result = mapper.readValue((String)response.getBody(),
-	  AuConfiguration.class);
+      result = mapper.readValue((String)response.getBody(), Long.class);
     }
 
     log.debug2("result = {}", result);
@@ -1073,21 +1087,23 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     assertNull(runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK));
 
     // Restore the original configuration of the second AU.
-    result = runTestPutAuConfig(backupConfig2, MediaType.APPLICATION_JSON, null,
-	null, HttpStatus.OK);
+    runTestPutAuConfig(backupConfig2, MediaType.APPLICATION_JSON, null, null,
+	HttpStatus.OK);
 
     // Verify.
-    assertEquals(backupConfig2, result);
+    assertEquals(backupConfig2,
+	runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK));
 
     // Verify that the first AU is unaffected.
     assertNull(runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
 
     // Restore the original configuration of the first AU.
-    result = runTestPutAuConfig(backupConfig1, MediaType.APPLICATION_JSON,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    runTestPutAuConfig(backupConfig1, MediaType.APPLICATION_JSON, BAD_USER,
+	BAD_PWD, HttpStatus.OK);
 
     // Verify.
-    assertEquals(backupConfig1, result);
+    assertEquals(backupConfig1,
+	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
 
     // Verify that the second AU is unaffected.
     assertEquals(backupConfig2,
@@ -1175,11 +1191,12 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	backupConfig2);
 
     // Restore the original configuration of the first AU.
-    result = runTestPutAuConfig(backupConfig1, MediaType.APPLICATION_JSON,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    runTestPutAuConfig(backupConfig1, MediaType.APPLICATION_JSON, GOOD_USER,
+	GOOD_PWD, HttpStatus.OK);
 
     // Verify.
-    assertEquals(backupConfig1, result);
+    assertEquals(backupConfig1,
+	runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD, HttpStatus.OK));
 
     // Verify independently.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1), result);
@@ -1197,11 +1214,12 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	backupConfig1);
 
     // Restore the original configuration of the second AU.
-    result = runTestPutAuConfig(backupConfig2, MediaType.APPLICATION_JSON,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    runTestPutAuConfig(backupConfig2, MediaType.APPLICATION_JSON, GOOD_USER,
+	GOOD_PWD, HttpStatus.OK);
 
     // Verify.
-    assertEquals(backupConfig2, result);
+    assertEquals(backupConfig2,
+	runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD, HttpStatus.OK));
 
     // Verify independently.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_2), result);

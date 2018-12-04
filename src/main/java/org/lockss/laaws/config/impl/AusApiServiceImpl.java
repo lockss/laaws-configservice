@@ -163,8 +163,8 @@ public class AusApiServiceImpl implements AusApiDelegate {
    * 
    * @param AuConfiguration
    *          An AuConfiguration with the Archival Unit configuration.
-   * @return a {@code ResponseEntity<AuConfiguration>} with the Archival Unit
-   *         configuration.
+   * @return a {@code ResponseEntity<Long>} with the key under which the
+   *         Archival Unit configuration has been stored.
    */
   @Override
   public ResponseEntity putAuConfig(AuConfiguration auConfiguration) {
@@ -197,12 +197,9 @@ public class AusApiServiceImpl implements AusApiDelegate {
 	return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
       }
 
-      PluginManager pluginManager = getPluginManager();
-      pluginManager.updateAuInDatabase(auConfiguration);
-
-      AuConfiguration result = pluginManager.getStoredAuConfiguration(auId);
+      Long result = getPluginManager().updateAuInDatabase(auConfiguration);
       if (log.isDebugEnabled()) log.debug("result = " + result);
-      return new ResponseEntity<AuConfiguration>(result, HttpStatus.OK);
+      return new ResponseEntity<Long>(result, HttpStatus.OK);
     } catch (IllegalArgumentException iae) {
       String message = "No Archival Unit found for auid = '" + auId + "'";
       log.error(message);
