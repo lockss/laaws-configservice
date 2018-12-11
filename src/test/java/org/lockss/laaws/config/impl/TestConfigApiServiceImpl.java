@@ -90,10 +90,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class TestConfigApiServiceImpl extends SpringLockssTestCase {
   private static L4JLogger log = L4JLogger.getLogger();
 
-  private static final String UI_PORT_CONFIGURATION_TEMPLATE =
-      "UiPortConfigTemplate.txt";
-  private static final String UI_PORT_CONFIGURATION_FILE = "UiPort.txt";
-
   private static final String EMPTY_STRING = "";
   private static final String NUMBER = "1234567890";
 

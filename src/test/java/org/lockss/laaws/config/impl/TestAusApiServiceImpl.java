@@ -77,9 +77,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class TestAusApiServiceImpl extends SpringLockssTestCase {
-  private static final String UI_PORT_CONFIGURATION_TEMPLATE =
-      "UiPortConfigTemplate.txt";
-  private static final String UI_PORT_CONFIGURATION_FILE = "UiPort.txt";
 
   private static final String EMPTY_STRING = "";
 
