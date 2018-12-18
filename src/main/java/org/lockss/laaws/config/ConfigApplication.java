@@ -33,6 +33,7 @@ import org.lockss.app.LockssApp;
 import org.lockss.app.LockssApp.AppSpec;
 import org.lockss.app.LockssApp.ManagerDesc;
 import org.lockss.app.LockssDaemon;
+import org.lockss.plugin.PluginManager;
 import org.lockss.spring.base.BaseSpringBootApplication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,7 +104,8 @@ public class ConfigApplication extends BaseSpringBootApplication
         .addAppConfig(org.lockss.jms.JMSManager.PARAM_START_BROKER, "true")
 	.addAppConfig(org.lockss.config.ConfigManager.PARAM_ENABLE_JMS_SEND,
 		      "true")
-        .addAppConfig(PARAM_START_PLUGINS, "true")
+	.addAppConfig(PARAM_START_PLUGINS, "true")
+	.addAppConfig(PluginManager.PARAM_START_ALL_AUS, "false")
 	.setAppManagers(myManagerDescs);
       LockssApp.startStatic(LockssDaemon.class, spec);
     } else {
