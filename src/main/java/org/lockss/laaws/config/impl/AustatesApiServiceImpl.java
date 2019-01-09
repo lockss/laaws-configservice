@@ -31,17 +31,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package org.lockss.laaws.config.impl;
 
+import java.io.IOException;
 import java.security.AccessControlException;
 import org.lockss.app.LockssDaemon;
 import org.lockss.laaws.config.api.AustatesApiDelegate;
 import org.lockss.log.L4JLogger;
-import org.lockss.plugin.ArchivalUnit;
 import org.lockss.plugin.AuUtil;
-import org.lockss.plugin.PluginManager;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
-import org.lockss.state.AuState;
+import org.lockss.state.AuStateBean;
 import org.lockss.state.StateManager;
+import org.lockss.util.JsonUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -58,40 +58,31 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
    * 
    * @param auid
    *          A String with the AU identifier.
-   * @return a {@code ResponseEntity<String>} with the Archival Unit state.
+   * @return a {@code ResponseEntity<String>} with the Archival Unit state if
+   *         successful, or a {@code ResponseEntity<String>} with the error
+   *         information otherwise..
    */
   @Override
   public ResponseEntity<String> getAuState(String auid) {
     log.debug2("auid = {}", auid);
 
     try {
-      // Validation.
-      if (auid == null || auid.isEmpty()) {
-	String message = "Invalid auid = '" + auid + "'";
-	log.error(message);
-	return new ResponseEntity<String>(toJsonError(message),
-	    HttpStatus.BAD_REQUEST);
-      }
+      // Validate the AUId.
+      ResponseEntity<String> errorResponseEntity = validateAuid(auid);
 
-      // Get the Archival Unit.
-      ArchivalUnit au = getPluginManager().getAuFromIdIfExists(auid);
-
-      if (au == null) {
-	String message = "No Archival Unit found for auid = '" + auid + "'";
-	log.error(message);
-	return new ResponseEntity<String>(toJsonError(message),
-	    HttpStatus.NOT_FOUND);
+      if (errorResponseEntity != null) {
+        return errorResponseEntity;
       }
 
       // Get the Archival Unit state.
-      String result = getStateManager().getAuState(au).getBean().toJson();
+      String result = getStateManager().getAuStateBean(auid).toJson();
       log.debug2("result = {}", result);
       return new ResponseEntity<String>(result, HttpStatus.OK);
     } catch (Exception e) {
-      String message = "Cannot getAuState() for auid = '" + auid + "'";
+      String message = "Cannot get the state for auid = '" + auid + "'";
       log.error(message, e);
-      return new ResponseEntity<String>(toJsonError(message),
-	  HttpStatus.INTERNAL_SERVER_ERROR);
+      return getErrorResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, message,
+	  e);
     }
   }
 
@@ -102,10 +93,12 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
    *          A String with the AU identifier.
    * @param auState
    *          A String with the Archival Unit state.
-   * @return a {@code ResponseEntity<String>} with the Archival Unit state.
+   * @return a {@code ResponseEntity<Void>} if successful, or a
+   *         {@code ResponseEntity<String>} with the error information
+   *         otherwise.
    */
   @Override
-  public ResponseEntity<String> postAuState(String auid, String auState) {
+  public ResponseEntity postAuState(String auid, String auState) {
     log.debug2("auid = {}", auid);
     log.debug2("auState = {}", auState);
 
@@ -114,57 +107,32 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
       SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
-      return new ResponseEntity<String>(HttpStatus.FORBIDDEN);
+      return getErrorResponseEntity(HttpStatus.FORBIDDEN, null, ace);
     }
 
     try {
-      // Validation.
-      if (auid == null || auid.isEmpty()) {
-	String message = "Invalid auId = '" + auid + "'";
-	log.error(message);
-	return new ResponseEntity<String>(toJsonError(message),
-	    HttpStatus.BAD_REQUEST);
-      }
+      // Validate the input parameters.
+      ResponseEntity<String> errorResponseEntity =
+	  validateAuidAndAustate(auid, auState);
 
-      if (auState == null || auState.isEmpty()) {
-	String message = "Invalid auState = '" + auState + "'";
-	log.error(message);
-	return new ResponseEntity<String>(toJsonError(message),
-	    HttpStatus.BAD_REQUEST);
-      }
-
-      // Get the Archival Unit.
-      ArchivalUnit au = getPluginManager().getAuFromIdIfExists(auid);
-
-      if (au == null) {
-	String message = "No Archival Unit found for auid = '" + auid + "'";
-	log.error(message);
-	return new ResponseEntity<String>(toJsonError(message),
-	    HttpStatus.NOT_FOUND);
+      if (errorResponseEntity != null) {
+        return errorResponseEntity;
       }
 
       // Add the Archival Unit state.
-      StateManager stateManager = getStateManager();
-      AuState aus = stateManager.getAuState(au);
-      aus.getBean().updateFromJson(auState, getLockssDaemon());
-      stateManager.storeAuState(aus);
+      getStateManager().storeAuStateFromService(auid, auState);
 
-      // Get the added Archival Unit state.
-      String result = stateManager.getAuState(getPluginManager()
-	  .getAuFromIdIfExists(auid)).getBean().toJson();
-      log.debug2("result = {}", result);
-      return new ResponseEntity<String>(result, HttpStatus.OK);
+      return new ResponseEntity<Void>(HttpStatus.OK);
     } catch (IllegalStateException ise) {
-      String message = "Cannot postAuState(): ";
+      String message = "Cannot postAuState()";
       log.error(message, ise);
-      return new ResponseEntity<String>(toJsonError(message + ise.getMessage()),
-	  HttpStatus.BAD_REQUEST);
+      return getErrorResponseEntity(HttpStatus.BAD_REQUEST, message, ise);
     } catch (Exception e) {
       String message = "Cannot postAuState() for auid = '" + auid + "'";
       log.error(message, e);
       log.error("auState = {}", auState);
-      return new ResponseEntity<String>(toJsonError(message + e.getMessage()),
-	  HttpStatus.INTERNAL_SERVER_ERROR);
+      return getErrorResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, message,
+	  e);
     }
   }
 
@@ -175,10 +143,12 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
    *          A String with the AU identifier.
    * @param auState
    *          A String with the Archival Unit state changes.
-   * @return a {@code ResponseEntity<String>} with the Archival Unit state.
+   * @return a {@code ResponseEntity<Void>} if successful, or a
+   *         {@code ResponseEntity<String>} with the error information
+   *         otherwise.
    */
   @Override
-  public ResponseEntity<String> patchAuState(String auid, String auState) {
+  public ResponseEntity patchAuState(String auid, String auState) {
     log.debug2("auid = {}", auid);
     log.debug2("auState = {}", auState);
 
@@ -187,71 +157,101 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
       SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
-      return new ResponseEntity<String>(HttpStatus.FORBIDDEN);
+      return getErrorResponseEntity(HttpStatus.FORBIDDEN, null, ace);
     }
 
     try {
-      // Validation.
-      if (auid == null || auid.isEmpty()) {
-	String message = "Invalid auId = '" + auid + "'";
-	log.error(message);
-	return new ResponseEntity<String>(toJsonError(message),
-	    HttpStatus.BAD_REQUEST);
-      }
+      // Validate the input parameters.
+      ResponseEntity<String> errorResponseEntity =
+	  validateAuidAndAustate(auid, auState);
 
-      if (auState == null || auState.isEmpty()) {
-	String message = "Invalid auState = '" + auState + "'";
-	log.error(message);
-	return new ResponseEntity<String>(toJsonError(message),
-	    HttpStatus.BAD_REQUEST);
-      }
-
-      // Get the Archival Unit.
-      ArchivalUnit au = getPluginManager().getAuFromIdIfExists(auid);
-
-      if (au == null) {
-	String message = "No Archival Unit found for auid = '" + auid + "'";
-	log.error(message);
-	return new ResponseEntity<String>(toJsonError(message),
-	    HttpStatus.NOT_FOUND);
+      if (errorResponseEntity != null) {
+        return errorResponseEntity;
       }
 
       // Update the Archival Unit state.
-      StateManager stateManager = getStateManager();
-      AuState aus = stateManager.getAuState(au);
-      aus.getBean().updateFromJson(auState, getLockssDaemon());
-      stateManager.updateAuState(aus, AuUtil.jsonToMap(auState).keySet());
+      getStateManager().updateAuStateFromService(auid, auState);
 
-      // Get the updated Archival Unit state.
-      String result = stateManager.getAuState(getPluginManager()
-	  .getAuFromIdIfExists(auid)).getBean().toJson();
-      log.debug2("result = {}", result);
-      return new ResponseEntity<String>(result, HttpStatus.OK);
+      return new ResponseEntity<Void>(HttpStatus.OK);
     } catch (Exception e) {
-      String message = "Cannot postAuState() for auid = '" + auid + "'";
+      String message = "Cannot patchAuState() for auid = '" + auid + "'";
       log.error(message, e);
       log.error("auState = {}", auState);
-      return new ResponseEntity<String>(toJsonError(message + e.getMessage()),
-	  HttpStatus.INTERNAL_SERVER_ERROR);
+      return getErrorResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, message,
+	  e);
     }
   }
 
   /**
-   * Provides the daemon.
-   *
-   * @return a LockssDaemon with the daemon.
+   * Validates the AU identifier.
+   * 
+   * @param auid
+   *          A String with the AU identifier.
+   * @return a {@code ResponseEntity<String>} with the error response entity, or
+   *         <code>null</code> if the validation succeeds.
    */
-  private LockssDaemon getLockssDaemon() {
-    return LockssDaemon.getLockssDaemon();
+  private ResponseEntity<String> validateAuid(String auid) {
+    // Check whether there is no AUId.
+    if (auid == null || auid.isEmpty()) {
+      // Yes: Report the problem.
+      String message = "Invalid auId = '" + auid + "'";
+      log.error(message);
+      return getErrorResponseEntity(HttpStatus.BAD_REQUEST, message, null);
+    }
+
+    // No: Check whether the Archival Unit state does not exist.
+    if (!getStateManager().auStateExists(auid)) {
+      // Yes: Report the problem.
+      String message = "No Archival Unit state found for auid = '" + auid + "'";
+      log.error(message);
+      return getErrorResponseEntity(HttpStatus.NOT_FOUND, message, null);
+    }
+
+    // No: Success.
+    return null;
   }
 
   /**
-   * Provides the plugin manager.
-   *
-   * @return a PluginManager with the plugin manager.
+   * Validates the AU identifier and state.
+   * 
+   * @param auid
+   *          A String with the AU identifier.
+   * @param auState
+   *          A String with the Archival Unit state.
+   * @return a {@code ResponseEntity<String>} with the error response entity, or
+   *         <code>null</code> if the validation succeeds.
    */
-  private PluginManager getPluginManager() {
-    return getLockssDaemon().getPluginManager();
+  private ResponseEntity<String> validateAuidAndAustate(String auid,
+      String auState) throws IOException {
+    // Validate the AUId.
+    ResponseEntity<String> errorResponseEntity = validateAuid(auid);
+
+    if (errorResponseEntity != null) {
+      return errorResponseEntity;
+    }
+
+    // Check whether there is no AU state.
+    if (auState == null || auState.isEmpty()) {
+      // Yes: Report the problem.
+      String message = "Invalid auState = '" + auState + "'";
+      log.error(message);
+      return getErrorResponseEntity(HttpStatus.BAD_REQUEST, message, null);
+    }
+
+    // No: Validate the AUId consistency between arguments.
+    String auIdInAuState =
+	AuUtil.updateFromJson(new AuStateBean(), auState).getAuId();
+
+    if (auIdInAuState != null & !auid.isEmpty()
+	&& !auIdInAuState.equals(auid)) {
+      String message = "Incompatible auId in auState = '" + auState + "'";
+      log.error(message);
+      log.error("auid = {}",auid);
+      return getErrorResponseEntity(HttpStatus.BAD_REQUEST, message, null);
+    }
+
+    // Success.
+    return null;
   }
 
   /**
@@ -260,17 +260,33 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
    * @return a StateManager with the state manager.
    */
   private StateManager getStateManager() {
-    return getLockssDaemon().getManagerByType(StateManager.class);
+    return LockssDaemon.getLockssDaemon().getManagerByType(StateManager.class);
   }
 
   /**
-   * Provides an error message formatted in JSON.
+   * Provides the response entity when there is an error.
    * 
+   * @param status
+   *          An HttpStatus with the error HTTP status.
    * @param message
-   *          A String with the text of the message to be formatted.
-   * @return a String with the error message formatted in JSON.
+   *          A String with the error message.
+   * @param e
+   *          An Exception with theerror exception.
+   * @return a {@code ResponseEntity<String>} with the error response entity.
    */
-  private String toJsonError(String message) {
-    return "{\"error\": {\"message\":\"" + message + "\"}}";
+  private ResponseEntity<String> getErrorResponseEntity(HttpStatus status,
+      String message, Exception e) {
+    String errorMessage = message;
+
+    if (e != null) {
+      if (errorMessage == null) {
+	errorMessage = e.getMessage();
+      } else {
+	errorMessage = errorMessage + " - " + e.getMessage();
+      }
+    }
+
+    return new ResponseEntity<String>(JsonUtil.toJsonError(status.value(),
+	errorMessage), status);
   }
 }

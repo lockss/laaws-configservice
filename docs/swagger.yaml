@@ -430,9 +430,7 @@ paths:
             type: string
       responses:
         '200':
-          description: The Archival Unit state after it is stored
-          schema:
-            type: string
+          description: OK
         '400':
           description: Bad Request
         '401':
@@ -491,15 +489,13 @@ paths:
           type: string
         - name: 'auState'
           in: body
-          description: The Archival Unit state to be updated
+          description: The parts of the Archival Unit state to be updated
           required: true
           schema:
             type: string
       responses:
         '200':
-          description: The Archival Unit state after it is updated
-          schema:
-            type: string
+          description: OK
         '400':
           description: Bad Request
         '401':
