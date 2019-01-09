@@ -124,11 +124,11 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
 
       return new ResponseEntity<Void>(HttpStatus.OK);
     } catch (IllegalStateException ise) {
-      String message = "Cannot postAuState()";
+      String message = "Cannot add the state for auid = '" + auid + "'";
       log.error(message, ise);
       return getErrorResponseEntity(HttpStatus.BAD_REQUEST, message, ise);
     } catch (Exception e) {
-      String message = "Cannot postAuState() for auid = '" + auid + "'";
+      String message = "Cannot add the state for auid = '" + auid + "'";
       log.error(message, e);
       log.error("auState = {}", auState);
       return getErrorResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, message,
@@ -174,7 +174,7 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
 
       return new ResponseEntity<Void>(HttpStatus.OK);
     } catch (Exception e) {
-      String message = "Cannot patchAuState() for auid = '" + auid + "'";
+      String message = "Cannot update the state for auid = '" + auid + "'";
       log.error(message, e);
       log.error("auState = {}", auState);
       return getErrorResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, message,
@@ -242,7 +242,7 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
     String auIdInAuState =
 	AuUtil.updateFromJson(new AuStateBean(), auState).getAuId();
 
-    if (auIdInAuState != null & !auid.isEmpty()
+    if (auIdInAuState != null && !auIdInAuState.isEmpty()
 	&& !auIdInAuState.equals(auid)) {
       String message = "Incompatible auId in auState = '" + auState + "'";
       log.error(message);
