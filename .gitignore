@@ -199,3 +199,5 @@ local.properties
 /derby.log
 /remoteCopy/
 /src/generated/
+
+.swagger-codegen/
