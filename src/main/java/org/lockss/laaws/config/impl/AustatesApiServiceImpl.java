@@ -113,7 +113,7 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
     try {
       // Validate the input parameters.
       ResponseEntity<String> errorResponseEntity =
-	  validateAuidAndAustate(auid, auState);
+	  validateAuidAndAustate(auid, auState, true);
 
       if (errorResponseEntity != null) {
         return errorResponseEntity;
@@ -163,7 +163,7 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
     try {
       // Validate the input parameters.
       ResponseEntity<String> errorResponseEntity =
-	  validateAuidAndAustate(auid, auState);
+	  validateAuidAndAustate(auid, auState, false);
 
       if (errorResponseEntity != null) {
         return errorResponseEntity;
@@ -191,6 +191,22 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
    *         <code>null</code> if the validation succeeds.
    */
   private ResponseEntity<String> validateAuid(String auid) {
+    return validateAuid(auid, false);
+  }
+
+  /**
+   * Validates the AU identifier.
+   * 
+   * @param auid
+   *          A String with the AU identifier.
+   * @param newAuidIsValid
+   *          A boolean with the indication of whether an AUId for a currently
+   *          non-existent AU is valid.
+   * @return a {@code ResponseEntity<String>} with the error response entity, or
+   *         <code>null</code> if the validation succeeds.
+   */
+  private ResponseEntity<String> validateAuid(String auid,
+      boolean newAuidIsValid) {
     // Check whether there is no AUId.
     if (auid == null || auid.isEmpty()) {
       // Yes: Report the problem.
@@ -199,8 +215,8 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
       return getErrorResponseEntity(HttpStatus.BAD_REQUEST, message, null);
     }
 
-    // No: Check whether the Archival Unit state does not exist.
-    if (!getStateManager().auStateExists(auid)) {
+    // No: Check whether the Archival Unit state does not exist when it should.
+    if (!newAuidIsValid && !getStateManager().auStateExists(auid)) {
       // Yes: Report the problem.
       String message = "No Archival Unit state found for auid = '" + auid + "'";
       log.error(message);
@@ -218,13 +234,17 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
    *          A String with the AU identifier.
    * @param auState
    *          A String with the Archival Unit state.
+   * @param newAuidIsValid
+   *          A boolean with the indication of whether an AUId for a currently
+   *          non-existent AU is valid.
    * @return a {@code ResponseEntity<String>} with the error response entity, or
    *         <code>null</code> if the validation succeeds.
    */
   private ResponseEntity<String> validateAuidAndAustate(String auid,
-      String auState) throws IOException {
+      String auState, boolean newAuidIsValid) throws IOException {
     // Validate the AUId.
-    ResponseEntity<String> errorResponseEntity = validateAuid(auid);
+    ResponseEntity<String> errorResponseEntity =
+	validateAuid(auid, newAuidIsValid);
 
     if (errorResponseEntity != null) {
       return errorResponseEntity;
