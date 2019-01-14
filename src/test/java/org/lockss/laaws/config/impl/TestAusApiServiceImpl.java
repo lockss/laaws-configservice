@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2000-2018 Board of Trustees of Leland Stanford Jr. University,
+Copyright (c) 2000-2019 Board of Trustees of Leland Stanford Jr. University,
 all rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -36,9 +36,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -77,6 +75,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class TestAusApiServiceImpl extends SpringLockssTestCase {
+  private static L4JLogger log = L4JLogger.getLogger();
 
   private static final String EMPTY_STRING = "";
 
@@ -96,12 +95,14 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
   private static final String UNKNOWN_AUID ="unknown&auid";
 
   // Credentials.
-  private static final String GOOD_USER = "lockss-u";
-  private static final String GOOD_PWD = "lockss-p";
-  private static final String BAD_USER = "badUser";
-  private static final String BAD_PWD = "badPassword";
-
-  private static L4JLogger log = L4JLogger.getLogger();
+  private final Credentials USER_ADMIN =
+      this.new Credentials("lockss-u", "lockss-p");
+  private final Credentials AU_ADMIN =
+      this.new Credentials("au-admin", "I'mAuAdmin");
+  private final Credentials CONTENT_ADMIN =
+      this.new Credentials("content-admin", "I'mContentAdmin");
+  private final Credentials ANYBODY =
+      this.new Credentials("someUser", "somePassword");
 
   // The port that Tomcat is using during this test.
   @LocalServerPort
@@ -261,14 +262,14 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // No configuration.
     try {
-      runTestPutAuConfig(null, null, null, null, HttpStatus.NOT_FOUND);
+      runTestPutAuConfig(null, null, null, HttpStatus.NOT_FOUND);
       fail("Should have thrown NullPointerException");
     } catch (NullPointerException npe) {
       // Expected.
     }
 
     try {
-      runTestPutAuConfig(null, MediaType.APPLICATION_JSON, null, null,
+      runTestPutAuConfig(null, MediaType.APPLICATION_JSON, ANYBODY,
 	  HttpStatus.BAD_REQUEST);
       fail("Should have thrown NullPointerException");
     } catch (NullPointerException npe) {
@@ -276,7 +277,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     }
 
     try {
-      runTestPutAuConfig(null, MediaType.APPLICATION_JSON, BAD_USER, BAD_PWD,
+      runTestPutAuConfig(null, MediaType.APPLICATION_JSON, CONTENT_ADMIN,
 	  HttpStatus.BAD_REQUEST);
       fail("Should have thrown NullPointerException");
     } catch (NullPointerException npe) {
@@ -291,12 +292,12 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	new AuConfiguration(GOOD_AUID_1, auConfig);
 	
     // No Content-Type header.
-    runTestPutAuConfig(auConfiguration1, null, null, null,
+    runTestPutAuConfig(auConfiguration1, null, null,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Get the current configuration of the first AU.
     AuConfiguration backupConfig1 =
-	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK);
+	runTestGetAuConfig(GOOD_AUID_1, ANYBODY, HttpStatus.OK);
 
     // Verify.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1),
@@ -304,7 +305,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Get the current configuration of the second AU.
     AuConfiguration backupConfig2 =
-	runTestGetAuConfig(GOOD_AUID_2, BAD_USER, BAD_PWD, HttpStatus.OK);
+	runTestGetAuConfig(GOOD_AUID_2, CONTENT_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_2),
@@ -312,7 +313,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Update the configuration of the first AU.
     AuConfiguration result = runTestPutAuConfig(auConfiguration1,
-	MediaType.APPLICATION_JSON, null, null, HttpStatus.OK);
+	MediaType.APPLICATION_JSON, null, HttpStatus.OK);
 
     // Verify.
     assertEquals(auConfiguration1, result);
@@ -327,7 +328,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Restore the original configuration of the first AU.
     result = runTestPutAuConfig(backupConfig1, MediaType.APPLICATION_JSON,
-	BAD_USER, BAD_PWD, HttpStatus.OK);
+	ANYBODY, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupConfig1, result);
@@ -340,7 +341,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	new AuConfiguration(GOOD_AUID_2, auConfig);
 
     // Update the configuration of the second AU.
-    result = runTestPutAuConfig(auConfiguration2, null, BAD_USER, BAD_PWD,
+    result = runTestPutAuConfig(auConfiguration2, null, CONTENT_ADMIN,
 	HttpStatus.OK);
 
     // Verify.
@@ -352,22 +353,22 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Verify that the first AU is unaffected.
     assertEquals(backupConfig1,
-	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
+	runTestGetAuConfig(GOOD_AUID_1, null, HttpStatus.OK));
 
     // Restore the original configuration of the second AU.
     result = runTestPutAuConfig(backupConfig2, MediaType.APPLICATION_JSON,
-	BAD_USER, BAD_PWD, HttpStatus.OK);
+	ANYBODY, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupConfig2, result);
 
     // Verify that the first AU is unaffected.
     assertEquals(backupConfig1,
-	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
+	runTestGetAuConfig(GOOD_AUID_1, null, HttpStatus.OK));
 
     // Update the AU configuration of a non-existent AU with some properties.
     result = runTestPutAuConfig(new AuConfiguration(UNKNOWN_AUID, auConfig),
-	MediaType.APPLICATION_JSON, null, null, HttpStatus.OK);
+	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(auConfig, result.getAuConfig());
@@ -377,23 +378,23 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Verify that the first AU is unaffected.
     assertEquals(backupConfig1,
-	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
+	runTestGetAuConfig(GOOD_AUID_1, ANYBODY, HttpStatus.OK));
 
     // Verify that the second AU is unaffected.
     assertEquals(backupConfig2,
-	runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK));
+	runTestGetAuConfig(GOOD_AUID_2, CONTENT_ADMIN, HttpStatus.OK));
 
     // Delete the configuration just added.
-    assertEquals(auConfig, runTestDeleteAus(UNKNOWN_AUID, null, null,
-	HttpStatus.OK).getAuConfig());
+    assertEquals(auConfig,
+	runTestDeleteAus(UNKNOWN_AUID, null, HttpStatus.OK).getAuConfig());
 
     // Verify that the first AU is unaffected.
     assertEquals(backupConfig1,
-	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
+	runTestGetAuConfig(GOOD_AUID_1, ANYBODY, HttpStatus.OK));
 
     // Verify that the second AU is unaffected.
     assertEquals(backupConfig2,
-	runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK));
+	runTestGetAuConfig(GOOD_AUID_2, CONTENT_ADMIN, HttpStatus.OK));
 
     putAuConfigCommonTest();
 
@@ -408,7 +409,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // No configuration.
     try {
-      runTestPutAuConfig(null, null, null, null, HttpStatus.UNAUTHORIZED);
+      runTestPutAuConfig(null, null, null, HttpStatus.UNAUTHORIZED);
       fail("Should have thrown NullPointerException");
     } catch (NullPointerException npe) {
       // Expected.
@@ -422,22 +423,24 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	new AuConfiguration(GOOD_AUID_1, auConfig);
 
     // No Content-Type header.
-    runTestPutAuConfig(auConfiguration1, null, null, null,
-	HttpStatus.UNAUTHORIZED);
+    runTestPutAuConfig(auConfiguration1, null, null, HttpStatus.UNAUTHORIZED);
 
     AuConfiguration auConfiguration2 =
 	new AuConfiguration(GOOD_AUID_2, auConfig);
 
-    runTestPutAuConfig(auConfiguration2, null, BAD_USER, BAD_PWD,
+    runTestPutAuConfig(auConfiguration2, null, ANYBODY,
 	HttpStatus.UNAUTHORIZED);
 
     // No credentials.
-    runTestPutAuConfig(auConfiguration1, MediaType.APPLICATION_JSON, null, null,
+    runTestPutAuConfig(auConfiguration1, MediaType.APPLICATION_JSON, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestPutAuConfig(auConfiguration2, MediaType.APPLICATION_JSON, BAD_USER,
-	BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestPutAuConfig(auConfiguration2, MediaType.APPLICATION_JSON, ANYBODY,
+	HttpStatus.UNAUTHORIZED);
+
+    runTestPutAuConfig(auConfiguration2, MediaType.APPLICATION_JSON,
+	CONTENT_ADMIN, HttpStatus.FORBIDDEN);
 
     putAuConfigCommonTest();
 
@@ -455,14 +458,14 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // No configuration.
     try {
-      runTestPutAuConfig(null, null, GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
+      runTestPutAuConfig(null, null, USER_ADMIN, HttpStatus.NOT_FOUND);
       fail("Should have thrown NullPointerException");
     } catch (NullPointerException npe) {
       // Expected.
     }
 
     try {
-      runTestPutAuConfig(null, MediaType.APPLICATION_JSON, GOOD_USER, GOOD_PWD,
+      runTestPutAuConfig(null, MediaType.APPLICATION_JSON, USER_ADMIN,
 	  HttpStatus.BAD_REQUEST);
       fail("Should have thrown NullPointerException");
     } catch (NullPointerException npe) {
@@ -471,7 +474,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Get the current configuration of the first AU.
     AuConfiguration backupConfig1 =
-	runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	runTestGetAuConfig(GOOD_AUID_1, USER_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1),
@@ -479,7 +482,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Get the current configuration of the second AU.
     AuConfiguration backupConfig2 =
-	runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	runTestGetAuConfig(GOOD_AUID_2, AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_2),
@@ -494,7 +497,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Update the configuration of the second AU.
     AuConfiguration result = runTestPutAuConfig(auConfiguration2, null,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	USER_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(auConfiguration2, result);
@@ -508,7 +511,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Restore the original configuration of the second AU.
     result = runTestPutAuConfig(backupConfig2, MediaType.APPLICATION_JSON,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupConfig2, result);
@@ -525,7 +528,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Update the configuration of the first AU.
     result = runTestPutAuConfig(auConfiguration1, MediaType.APPLICATION_JSON,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	USER_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(auConfiguration1, result);
@@ -534,23 +537,23 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1), result);
 
     // Verify that the second AU is unaffected.
-    assertEquals(backupConfig2, runTestGetAuConfig(GOOD_AUID_2, GOOD_USER,
-	GOOD_PWD, HttpStatus.OK));
+    assertEquals(backupConfig2, runTestGetAuConfig(GOOD_AUID_2, AU_ADMIN,
+	HttpStatus.OK));
 
     // Restore the original configuration of the first AU.
     result = runTestPutAuConfig(backupConfig1, MediaType.APPLICATION_JSON,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	USER_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupConfig1, result);
 
     // Verify that the second AU is unaffected.
-    assertEquals(backupConfig2, runTestGetAuConfig(GOOD_AUID_2, GOOD_USER,
-	GOOD_PWD, HttpStatus.OK));
+    assertEquals(backupConfig2, runTestGetAuConfig(GOOD_AUID_2, AU_ADMIN,
+	HttpStatus.OK));
 
     // Update the AU configuration of a non-existent AU with some properties.
     result = runTestPutAuConfig(new AuConfiguration(UNKNOWN_AUID, auConfig),
-	null, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	null, USER_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(auConfig, result.getAuConfig());
@@ -560,24 +563,24 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	.getAuConfig(), auConfig);
 
     // Verify that the first AU is unaffected.
-    assertEquals(backupConfig1, runTestGetAuConfig(GOOD_AUID_1, GOOD_USER,
-	GOOD_PWD, HttpStatus.OK));
+    assertEquals(backupConfig1, runTestGetAuConfig(GOOD_AUID_1, AU_ADMIN,
+	HttpStatus.OK));
 
     // Verify that the second AU is unaffected.
-    assertEquals(backupConfig2, runTestGetAuConfig(GOOD_AUID_2, GOOD_USER,
-	GOOD_PWD, HttpStatus.OK));
+    assertEquals(backupConfig2, runTestGetAuConfig(GOOD_AUID_2, USER_ADMIN,
+	HttpStatus.OK));
 
     // Delete the configuration just added.
-    assertEquals(auConfig, runTestDeleteAus(UNKNOWN_AUID, GOOD_USER, GOOD_PWD,
+    assertEquals(auConfig, runTestDeleteAus(UNKNOWN_AUID, AU_ADMIN,
 	HttpStatus.OK).getAuConfig());
 
     // Verify that the first AU is unaffected.
-    assertEquals(backupConfig1, runTestGetAuConfig(GOOD_AUID_1, GOOD_USER,
-	GOOD_PWD, HttpStatus.OK));
+    assertEquals(backupConfig1, runTestGetAuConfig(GOOD_AUID_1, USER_ADMIN,
+	HttpStatus.OK));
 
     // Verify that the second AU is unaffected.
-    assertEquals(backupConfig2, runTestGetAuConfig(GOOD_AUID_2, GOOD_USER,
-	GOOD_PWD, HttpStatus.OK));
+    assertEquals(backupConfig2, runTestGetAuConfig(GOOD_AUID_2, AU_ADMIN,
+	HttpStatus.OK));
 
     log.debug2("Done");
   }
@@ -589,21 +592,18 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    *          An AuConfiguration with the Archival Unit configuration.
    * @param contentType
    *          A MediaType with the content type of the request.
-   * @param user
-   *          A String with the request username.
-   * @param password
-   *          A String with the request password.
+   * @param credentials
+   *          A Credentials with the request credentials.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @return an AuConfiguration with the stored Archival Unit configuration.
    */
   private AuConfiguration runTestPutAuConfig(AuConfiguration auConfiguration,
-      MediaType contentType, String user, String password,
-      HttpStatus expectedStatus) throws Exception {
+      MediaType contentType, Credentials credentials, HttpStatus expectedStatus)
+	  throws Exception {
     log.debug2("auConfiguration = {}", auConfiguration);
     log.debug2("contentType = {}", contentType);
-    log.debug2("user = {}", user);
-    log.debug2("password = {}", password);
+    log.debug2("credentials = {}", credentials);
     log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
@@ -623,6 +623,15 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
+    // Get the individual credentials elements.
+    String user = null;
+    String password = null;
+
+    if (credentials != null) {
+      user = credentials.getUser();
+      password = credentials.getPassword();
+    }
+
     // Check whether there are any custom headers to be specified in the
     // request.
     if (contentType != null || user != null || password != null) {
@@ -637,7 +646,9 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
       }
 
       // Set up the authentication credentials, if necessary.
-      setUpCredentials(user, password, headers);
+      if (credentials != null) {
+	credentials.setUpBasicAuthentication(headers);
+      }
 
       log.trace("requestHeaders = {}", () -> headers.toSingleValueMap());
 
@@ -677,26 +688,26 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	LockssDaemon.getLockssDaemon().getPluginManager();
 
     // No AUId: Spring reports it cannot find a match to an endpoint.
-    runTestGetAuConfig(null, null, null, HttpStatus.NOT_FOUND);
+    runTestGetAuConfig(null, null, HttpStatus.NOT_FOUND);
 
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
-    runTestGetAuConfig(EMPTY_STRING, null, null, HttpStatus.NOT_FOUND);
+    runTestGetAuConfig(EMPTY_STRING, ANYBODY, HttpStatus.NOT_FOUND);
 
     // No credentials.
     AuConfiguration result =
-	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK);
+	runTestGetAuConfig(GOOD_AUID_1, CONTENT_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1), result);
 
     // Bad credentials.
-    result = runTestGetAuConfig(GOOD_AUID_2, BAD_USER, BAD_PWD, HttpStatus.OK);
+    result = runTestGetAuConfig(GOOD_AUID_2, null, HttpStatus.OK);
 
     // Verify.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_2), result);
 
     // Non-existent AUId.
-    result = runTestGetAuConfig(UNKNOWN_AUID, null, null, HttpStatus.OK);
+    result = runTestGetAuConfig(UNKNOWN_AUID, ANYBODY, HttpStatus.OK);
 
     // Verify.
     assertNull(result);
@@ -715,20 +726,36 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
   private void getAuConfigAuthenticatedTest() throws DbException {
     log.debug2("Invoked");
 
+    PluginManager pluginManager =
+	LockssDaemon.getLockssDaemon().getPluginManager();
+
     // No AUId.
-    runTestGetAuConfig(null, null, null, HttpStatus.UNAUTHORIZED);
+    runTestGetAuConfig(null, null, HttpStatus.UNAUTHORIZED);
 
     // Empty AUId.
-    runTestGetAuConfig(EMPTY_STRING, null, null, HttpStatus.UNAUTHORIZED);
+    runTestGetAuConfig(EMPTY_STRING, null, HttpStatus.UNAUTHORIZED);
 
     // No credentials.
-    runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.UNAUTHORIZED);
-    runTestGetAuConfig(UNKNOWN_AUID, null, null, HttpStatus.UNAUTHORIZED);
+    runTestGetAuConfig(GOOD_AUID_2, null, HttpStatus.UNAUTHORIZED);
+    runTestGetAuConfig(UNKNOWN_AUID, null, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetAuConfig(GOOD_AUID_1, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
-    runTestGetAuConfig(UNKNOWN_AUID, BAD_USER, BAD_PWD,
-	HttpStatus.UNAUTHORIZED);
+    runTestGetAuConfig(GOOD_AUID_1, ANYBODY, HttpStatus.UNAUTHORIZED);
+    runTestGetAuConfig(UNKNOWN_AUID, ANYBODY, HttpStatus.UNAUTHORIZED);
+
+    AuConfiguration result =
+	runTestGetAuConfig(GOOD_AUID_1, CONTENT_ADMIN, HttpStatus.OK);
+
+    // Verify.
+    assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1), result);
+
+    result = runTestGetAuConfig(UNKNOWN_AUID, CONTENT_ADMIN, HttpStatus.OK);
+
+    // Verify.
+    assertNull(result);
+
+    // Verify independently.
+    assertNull(pluginManager.getStoredAuConfiguration(UNKNOWN_AUID));
 
     getAuConfigCommonTest();
 
@@ -745,21 +772,21 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	LockssDaemon.getLockssDaemon().getPluginManager();
 
     // No AUId: Spring reports it cannot find a match to an endpoint.
-    runTestGetAuConfig(null, GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
+    runTestGetAuConfig(null, USER_ADMIN, HttpStatus.NOT_FOUND);
 
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
-    runTestGetAuConfig(EMPTY_STRING, GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
+    runTestGetAuConfig(EMPTY_STRING, AU_ADMIN, HttpStatus.NOT_FOUND);
 
     // Good AUId.
     AuConfiguration result =
-	runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	runTestGetAuConfig(GOOD_AUID_1, USER_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1), result);
 
     // Non-existent AUId.
     result =
-	runTestGetAuConfig(UNKNOWN_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	runTestGetAuConfig(UNKNOWN_AUID, AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertNull(result);
@@ -775,19 +802,16 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    * 
    * @param auId
    *          A String with the identifier of the Archival Unit.
-   * @param user
-   *          A String with the request username.
-   * @param password
-   *          A String with the request password.
+   * @param credentials
+   *          A Credentials with the request credentials.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @return an AuConfiguration with the Archival Unit configuration.
    */
-  private AuConfiguration runTestGetAuConfig(String auId, String user,
-      String password, HttpStatus expectedStatus) {
+  private AuConfiguration runTestGetAuConfig(String auId,
+      Credentials credentials, HttpStatus expectedStatus) {
     log.debug2("auId = {}", auId);
-    log.debug2("user = {}", user);
-    log.debug2("password = {}", password);
+    log.debug2("credentials = {}", credentials);
     log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
@@ -806,6 +830,15 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
+    // Get the individual credentials elements.
+    String user = null;
+    String password = null;
+
+    if (credentials != null) {
+      user = credentials.getUser();
+      password = credentials.getPassword();
+    }
+
     // Check whether there are any custom headers to be specified in the
     // request.
     if (user != null || password != null) {
@@ -814,7 +847,9 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
       HttpHeaders headers = new HttpHeaders();
 
       // Set up the authentication credentials, if necessary.
-      setUpCredentials(user, password, headers);
+      if (credentials != null) {
+	credentials.setUpBasicAuthentication(headers);
+      }
 
       log.trace("requestHeaders = {}", () -> headers.toSingleValueMap());
 
@@ -852,13 +887,11 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // No credentials.
     Collection<AuConfiguration> configOutput =
-	runTestGetAllAuConfig(null, null, HttpStatus.OK);
+	runTestGetAllAuConfig(null, HttpStatus.OK);
 
     // Verify.
-    configOutput.contains(
-	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
-    configOutput.contains(
-	runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK));
+    configOutput.contains(runTestGetAuConfig(GOOD_AUID_1, null, HttpStatus.OK));
+    configOutput.contains(runTestGetAuConfig(GOOD_AUID_2, null, HttpStatus.OK));
 
     // Verify independently.
     configOutput.contains(pluginManager.getStoredAuConfiguration(GOOD_AUID_1));
@@ -866,7 +899,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Bad credentials.
     Collection<AuConfiguration> configOutput2 =
-	runTestGetAllAuConfig(BAD_USER, BAD_PWD, HttpStatus.OK);
+	runTestGetAllAuConfig(ANYBODY, HttpStatus.OK);
 
     // Verify.
     assertEquals(configOutput, configOutput2);
@@ -882,11 +915,28 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
   private void getAllAuConfigAuthenticatedTest() throws Exception {
     log.debug2("Invoked");
 
+    PluginManager pluginManager =
+	LockssDaemon.getLockssDaemon().getPluginManager();
+
     // No credentials.
-    runTestGetAllAuConfig(null, null, HttpStatus.UNAUTHORIZED);
+    runTestGetAllAuConfig(null, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetAllAuConfig(BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestGetAllAuConfig(ANYBODY, HttpStatus.UNAUTHORIZED);
+
+    Collection<AuConfiguration> configOutput =
+	runTestGetAllAuConfig(CONTENT_ADMIN, HttpStatus.OK);
+
+    // Verify.
+    configOutput.contains(runTestGetAuConfig(GOOD_AUID_1, CONTENT_ADMIN,
+	HttpStatus.OK));
+
+    configOutput.contains(runTestGetAuConfig(GOOD_AUID_2, CONTENT_ADMIN,
+	HttpStatus.OK));
+
+    // Verify independently.
+    configOutput.contains(pluginManager.getStoredAuConfiguration(GOOD_AUID_1));
+    configOutput.contains(pluginManager.getStoredAuConfiguration(GOOD_AUID_2));
 
     getAllAuConfigCommonTest();
 
@@ -903,13 +953,21 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	LockssDaemon.getLockssDaemon().getPluginManager();
 
     Collection<AuConfiguration> configOutput =
-	runTestGetAllAuConfig(GOOD_USER, GOOD_PWD, HttpStatus.OK);
-    log.error("configOutput = {}", configOutput);
+	runTestGetAllAuConfig(USER_ADMIN, HttpStatus.OK);
+
     // Verify.
     configOutput.contains(
-	runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD, HttpStatus.OK));
+	runTestGetAuConfig(GOOD_AUID_1, AU_ADMIN, HttpStatus.OK));
     configOutput.contains(
-	runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD, HttpStatus.OK));
+	runTestGetAuConfig(GOOD_AUID_2, USER_ADMIN, HttpStatus.OK));
+
+    configOutput = runTestGetAllAuConfig(AU_ADMIN, HttpStatus.OK);
+
+    // Verify.
+    configOutput.contains(
+	runTestGetAuConfig(GOOD_AUID_1, USER_ADMIN, HttpStatus.OK));
+    configOutput.contains(
+	runTestGetAuConfig(GOOD_AUID_2, AU_ADMIN, HttpStatus.OK));
 
     // Verify independently.
     configOutput.contains(pluginManager.getStoredAuConfiguration(GOOD_AUID_1));
@@ -921,10 +979,8 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
   /**
    * Performs a GET operation for all Archival Units.
    * 
-   * @param user
-   *          A String with the request username.
-   * @param password
-   *          A String with the request password.
+   * @param credentials
+   *          A Credentials with the request credentials.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @return a {@code Collection<AuConfiguration>} with the configuration of all
@@ -933,10 +989,9 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    * @throws Exception
    *           if there are problems.
    */
-  private Collection<AuConfiguration> runTestGetAllAuConfig(String user,
-      String password, HttpStatus expectedStatus) throws Exception {
-    log.debug2("user = {}", user);
-    log.debug2("password = {}", password);
+  private Collection<AuConfiguration> runTestGetAllAuConfig(
+      Credentials credentials, HttpStatus expectedStatus) throws Exception {
+    log.debug2("credentials = {}", credentials);
     log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
@@ -955,6 +1010,15 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     HttpEntity<Collection<AuConfiguration>> requestEntity = null;
 
+    // Get the individual credentials elements.
+    String user = null;
+    String password = null;
+
+    if (credentials != null) {
+      user = credentials.getUser();
+      password = credentials.getPassword();
+    }
+
     // Check whether there are any custom headers to be specified in the
     // request.
     if (user != null || password != null) {
@@ -963,7 +1027,9 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
       HttpHeaders headers = new HttpHeaders();
 
       // Set up the authentication credentials, if necessary.
-      setUpCredentials(user, password, headers);
+      if (credentials != null) {
+	credentials.setUpBasicAuthentication(headers);
+      }
 
       log.trace("requestHeaders = {}", () -> headers.toSingleValueMap());
 
@@ -1004,14 +1070,14 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	LockssDaemon.getLockssDaemon().getPluginManager();
 
     // No AUId: Spring reports it cannot find a match to an endpoint.
-    runTestDeleteAus(null, null, null, HttpStatus.NOT_FOUND);
+    runTestDeleteAus(null, null, HttpStatus.NOT_FOUND);
 
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
-    runTestDeleteAus(EMPTY_STRING, null, null, HttpStatus.NOT_FOUND);
+    runTestDeleteAus(EMPTY_STRING, ANYBODY, HttpStatus.NOT_FOUND);
 
     // Get the current configuration of the second AU.
     AuConfiguration backupConfig2 =
-	runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK);
+	runTestGetAuConfig(GOOD_AUID_2, null, HttpStatus.OK);
 
     // Verify.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_2),
@@ -1019,7 +1085,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Get the current configuration of the first AU.
     AuConfiguration backupConfig1 =
-	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK);
+	runTestGetAuConfig(GOOD_AUID_1, ANYBODY, HttpStatus.OK);
 
     // Verify.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1),
@@ -1027,68 +1093,67 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Delete the second AU with no credentials.
     AuConfiguration result =
-	runTestDeleteAus(GOOD_AUID_2, null, null, HttpStatus.OK);
+	runTestDeleteAus(GOOD_AUID_2, CONTENT_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupConfig2, result);
-    assertNull(runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK));
+    assertNull(runTestGetAuConfig(GOOD_AUID_2, CONTENT_ADMIN, HttpStatus.OK));
 
     // Verify that the first AU is unaffected.
     assertEquals(backupConfig1,
-	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
+	runTestGetAuConfig(GOOD_AUID_1, null, HttpStatus.OK));
 
     // Delete the second AU again with bad credentials.
-    result = runTestDeleteAus(GOOD_AUID_2, BAD_USER, BAD_PWD, HttpStatus.OK);
+    result = runTestDeleteAus(GOOD_AUID_2, null, HttpStatus.OK);
 
     // Verify.
     assertNull(result);
-    assertNull(runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK));
+    assertNull(runTestGetAuConfig(GOOD_AUID_2, ANYBODY, HttpStatus.OK));
 
     // Verify that the first AU is unaffected.
     assertEquals(backupConfig1,
-	runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
+	runTestGetAuConfig(GOOD_AUID_1, CONTENT_ADMIN, HttpStatus.OK));
 
     // Delete the first AU with bad credentials.
-    result = runTestDeleteAus(GOOD_AUID_1, BAD_USER, BAD_PWD, HttpStatus.OK);
+    result = runTestDeleteAus(GOOD_AUID_1, ANYBODY, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupConfig1, result);
-    assertNull(runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
+    assertNull(runTestGetAuConfig(GOOD_AUID_1, null, HttpStatus.OK));
 
     // Verify that the second AU is unaffected.
-    assertNull(runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK));
+    assertNull(runTestGetAuConfig(GOOD_AUID_2, ANYBODY, HttpStatus.OK));
 
     // Delete the first AU again with no credentials.
-    result = runTestDeleteAus(GOOD_AUID_1, null, null, HttpStatus.OK);
+    result = runTestDeleteAus(GOOD_AUID_1, CONTENT_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertNull(result);
-    assertNull(runTestGetAuConfig(GOOD_AUID_2, BAD_USER, BAD_PWD,
-	HttpStatus.OK));
+    assertNull(runTestGetAuConfig(GOOD_AUID_2, CONTENT_ADMIN, HttpStatus.OK));
 
     // Verify that the second AU is unaffected.
-    assertNull(runTestGetAuConfig(GOOD_AUID_2, null, null, HttpStatus.OK));
+    assertNull(runTestGetAuConfig(GOOD_AUID_2, null, HttpStatus.OK));
 
     // Restore the original configuration of the second AU.
     result = runTestPutAuConfig(backupConfig2, MediaType.APPLICATION_JSON, null,
-	null, HttpStatus.OK);
+	HttpStatus.OK);
 
     // Verify.
     assertEquals(backupConfig2, result);
 
     // Verify that the first AU is unaffected.
-    assertNull(runTestGetAuConfig(GOOD_AUID_1, null, null, HttpStatus.OK));
+    assertNull(runTestGetAuConfig(GOOD_AUID_1, ANYBODY, HttpStatus.OK));
 
     // Restore the original configuration of the first AU.
     result = runTestPutAuConfig(backupConfig1, MediaType.APPLICATION_JSON,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	ANYBODY, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupConfig1, result);
 
     // Verify that the second AU is unaffected.
     assertEquals(backupConfig2,
-	runTestGetAuConfig(GOOD_AUID_2, BAD_USER, BAD_PWD, HttpStatus.OK));
+	runTestGetAuConfig(GOOD_AUID_2, CONTENT_ADMIN, HttpStatus.OK));
 
     deleteAusCommonTest();
 
@@ -1102,18 +1167,21 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     log.debug2("Invoked");
 
     // No AUId.
-    runTestDeleteAus(null, null, null, HttpStatus.UNAUTHORIZED);
+    runTestDeleteAus(null, null, HttpStatus.UNAUTHORIZED);
 
     // Empty AUId.
-    runTestDeleteAus(EMPTY_STRING, null, null, HttpStatus.UNAUTHORIZED);
+    runTestDeleteAus(EMPTY_STRING, null, HttpStatus.UNAUTHORIZED);
 
     // No credentials.
-    runTestDeleteAus(GOOD_AUID_2, null, null, HttpStatus.UNAUTHORIZED);
-    runTestDeleteAus(UNKNOWN_AUID, null, null, HttpStatus.UNAUTHORIZED);
+    runTestDeleteAus(GOOD_AUID_2, null, HttpStatus.UNAUTHORIZED);
+    runTestDeleteAus(UNKNOWN_AUID, null, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestDeleteAus(GOOD_AUID_1, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
-    runTestDeleteAus(UNKNOWN_AUID, BAD_USER, BAD_PWD, HttpStatus.UNAUTHORIZED);
+    runTestDeleteAus(GOOD_AUID_1, ANYBODY, HttpStatus.UNAUTHORIZED);
+    runTestDeleteAus(UNKNOWN_AUID, ANYBODY, HttpStatus.UNAUTHORIZED);
+
+    runTestDeleteAus(GOOD_AUID_1, CONTENT_ADMIN, HttpStatus.FORBIDDEN);
+    runTestDeleteAus(UNKNOWN_AUID, CONTENT_ADMIN, HttpStatus.FORBIDDEN);
 
     deleteAusCommonTest();
 
@@ -1130,21 +1198,21 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 	LockssDaemon.getLockssDaemon().getPluginManager();
 
     // No AUId: Spring reports it cannot find a match to an endpoint.
-    runTestDeleteAus(null, GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
+    runTestDeleteAus(null, USER_ADMIN, HttpStatus.NOT_FOUND);
 
     // No AUId: Spring reports it cannot find a match to an endpoint.
-    runTestDeleteAus(EMPTY_STRING, GOOD_USER, GOOD_PWD, HttpStatus.NOT_FOUND);
+    runTestDeleteAus(EMPTY_STRING, AU_ADMIN, HttpStatus.NOT_FOUND);
 
     // Unknown AU.
     AuConfiguration configOutput =
-	runTestDeleteAus(UNKNOWN_AUID, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	runTestDeleteAus(UNKNOWN_AUID, USER_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertNull(configOutput);
 
     // Get the current configuration of the first good AU.
     AuConfiguration backupConfig1 =
-	runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	runTestGetAuConfig(GOOD_AUID_1, AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1),
@@ -1152,20 +1220,19 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Get the current configuration of the second good AU.
     AuConfiguration backupConfig2 =
-	runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	runTestGetAuConfig(GOOD_AUID_2, USER_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_2),
 	backupConfig2);
 
     // Delete the first AU.
-    AuConfiguration result = runTestDeleteAus(GOOD_AUID_1, GOOD_USER,
-	GOOD_PWD, HttpStatus.OK);
+    AuConfiguration result =
+	runTestDeleteAus(GOOD_AUID_1, AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupConfig1, result);
-    assertNull(runTestGetAuConfig(GOOD_AUID_1, GOOD_USER, GOOD_PWD,
-	HttpStatus.OK));
+    assertNull(runTestGetAuConfig(GOOD_AUID_1, USER_ADMIN, HttpStatus.OK));
 
     // Verify that the second AU is unaffected.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_2),
@@ -1173,7 +1240,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Restore the original configuration of the first AU.
     result = runTestPutAuConfig(backupConfig1, MediaType.APPLICATION_JSON,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupConfig1, result);
@@ -1182,12 +1249,11 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1), result);
 
     // Delete the second AU.
-    result = runTestDeleteAus(GOOD_AUID_2, GOOD_USER, GOOD_PWD, HttpStatus.OK);
+    result = runTestDeleteAus(GOOD_AUID_2, USER_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupConfig2, result);
-    assertNull(runTestGetAuConfig(GOOD_AUID_2, GOOD_USER, GOOD_PWD,
-	HttpStatus.OK));
+    assertNull(runTestGetAuConfig(GOOD_AUID_2, AU_ADMIN, HttpStatus.OK));
 
     // Verify that the first AU is unaffected.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1),
@@ -1195,7 +1261,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     // Restore the original configuration of the second AU.
     result = runTestPutAuConfig(backupConfig2, MediaType.APPLICATION_JSON,
-	GOOD_USER, GOOD_PWD, HttpStatus.OK);
+	USER_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupConfig2, result);
@@ -1211,20 +1277,17 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
    * 
    * @param auId
    *          A String with the identifier of the Archival Unit.
-   * @param user
-   *          A String with the request username.
-   * @param password
-   *          A String with the request password.
+   * @param credentials
+   *          A Credentials with the request credentials.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @return an AuConfiguration with the configuration of the Archival Unit that
    *         was deleted.
    */
-  private AuConfiguration runTestDeleteAus(String auId, String user,
-      String password, HttpStatus expectedStatus) throws DbException {
+  private AuConfiguration runTestDeleteAus(String auId, Credentials credentials,
+      HttpStatus expectedStatus) throws DbException {
     log.debug2("auId = {}", auId);
-    log.debug2("user = {}", user);
-    log.debug2("password = {}", password);
+    log.debug2("credentials = {}", credentials);
     log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
@@ -1243,6 +1306,15 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
+    // Get the individual credentials elements.
+    String user = null;
+    String password = null;
+
+    if (credentials != null) {
+      user = credentials.getUser();
+      password = credentials.getPassword();
+    }
+
     // Check whether there are any custom headers to be specified in the
     // request.
     if (user != null || password != null) {
@@ -1251,7 +1323,9 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
       HttpHeaders headers = new HttpHeaders();
 
       // Set up the authentication credentials, if necessary.
-      setUpCredentials(user, password, headers);
+      if (credentials != null) {
+	credentials.setUpBasicAuthentication(headers);
+      }
 
       log.trace("requestHeaders = {}", () -> headers.toSingleValueMap());
 
@@ -1280,29 +1354,6 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     log.debug2("result = {}", result);
     return result;
-  }
-
-  /**
-   * Adds credentials to the HTTP headers, if necessary.
-   * 
-   * @param user
-   *          A String with the credentials username.
-   * @param password
-   *          A String with the credentials password.
-   * @param headers
-   *          An HttpHeaders with the HTTP headers.
-   */
-  private void setUpCredentials(String user, String password,
-      HttpHeaders headers) {
-    // Check whether there are credentials to be added.
-    if (user != null && password != null) {
-      // Yes: Set the authentication credentials.
-      String credentials = user + ":" + password;
-      String authHeaderValue = "Basic " + Base64.getEncoder()
-      .encodeToString(credentials.getBytes(StandardCharsets.US_ASCII));
-
-      headers.set("Authorization", authHeaderValue);
-    }
   }
 
   /**
