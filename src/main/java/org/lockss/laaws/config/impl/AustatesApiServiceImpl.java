@@ -87,56 +87,6 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
   }
 
   /**
-   * Stores the provided Archival Unit state.
-   * 
-   * @param auid
-   *          A String with the AU identifier.
-   * @param auState
-   *          A String with the Archival Unit state.
-   * @return a {@code ResponseEntity<Void>} if successful, or a
-   *         {@code ResponseEntity<String>} with the error information
-   *         otherwise.
-   */
-  @Override
-  public ResponseEntity postAuState(String auid, String auState) {
-    log.debug2("auid = {}", auid);
-    log.debug2("auState = {}", auState);
-
-    // Check authorization.
-    try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
-    } catch (AccessControlException ace) {
-      log.warn(ace.getMessage());
-      return getErrorResponseEntity(HttpStatus.FORBIDDEN, null, ace);
-    }
-
-    try {
-      // Validate the input parameters.
-      ResponseEntity<String> errorResponseEntity =
-	  validateAuidAndAustate(auid, auState, true);
-
-      if (errorResponseEntity != null) {
-        return errorResponseEntity;
-      }
-
-      // Add the Archival Unit state.
-      getStateManager().storeAuStateFromService(auid, auState);
-
-      return new ResponseEntity<Void>(HttpStatus.OK);
-    } catch (IllegalStateException ise) {
-      String message = "Cannot add the state for auid = '" + auid + "'";
-      log.error(message, ise);
-      return getErrorResponseEntity(HttpStatus.BAD_REQUEST, message, ise);
-    } catch (Exception e) {
-      String message = "Cannot add the state for auid = '" + auid + "'";
-      log.error(message, e);
-      log.error("auState = {}", auState);
-      return getErrorResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, message,
-	  e);
-    }
-  }
-
-  /**
    * Updates the state of an Archival Unit with the provided values.
    * 
    * @param auid
@@ -163,14 +113,14 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
     try {
       // Validate the input parameters.
       ResponseEntity<String> errorResponseEntity =
-	  validateAuidAndAustate(auid, auState, false);
+	  validateAuidAndAustate(auid, auState);
 
       if (errorResponseEntity != null) {
         return errorResponseEntity;
       }
 
       // Update the Archival Unit state.
-      getStateManager().updateAuStateFromService(auid, auState);
+      getStateManager().updateAuStateFromJson(auid, auState);
 
       return new ResponseEntity<Void>(HttpStatus.OK);
     } catch (Exception e) {
@@ -191,36 +141,12 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
    *         <code>null</code> if the validation succeeds.
    */
   private ResponseEntity<String> validateAuid(String auid) {
-    return validateAuid(auid, false);
-  }
-
-  /**
-   * Validates the AU identifier.
-   * 
-   * @param auid
-   *          A String with the AU identifier.
-   * @param newAuidIsValid
-   *          A boolean with the indication of whether an AUId for a currently
-   *          non-existent AU is valid.
-   * @return a {@code ResponseEntity<String>} with the error response entity, or
-   *         <code>null</code> if the validation succeeds.
-   */
-  private ResponseEntity<String> validateAuid(String auid,
-      boolean newAuidIsValid) {
     // Check whether there is no AUId.
     if (auid == null || auid.isEmpty()) {
       // Yes: Report the problem.
       String message = "Invalid auId = '" + auid + "'";
       log.error(message);
       return getErrorResponseEntity(HttpStatus.BAD_REQUEST, message, null);
-    }
-
-    // No: Check whether the Archival Unit state does not exist when it should.
-    if (!newAuidIsValid && !getStateManager().auStateExists(auid)) {
-      // Yes: Report the problem.
-      String message = "No Archival Unit state found for auid = '" + auid + "'";
-      log.error(message);
-      return getErrorResponseEntity(HttpStatus.NOT_FOUND, message, null);
     }
 
     // No: Success.
@@ -234,17 +160,13 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
    *          A String with the AU identifier.
    * @param auState
    *          A String with the Archival Unit state.
-   * @param newAuidIsValid
-   *          A boolean with the indication of whether an AUId for a currently
-   *          non-existent AU is valid.
    * @return a {@code ResponseEntity<String>} with the error response entity, or
    *         <code>null</code> if the validation succeeds.
    */
   private ResponseEntity<String> validateAuidAndAustate(String auid,
-      String auState, boolean newAuidIsValid) throws IOException {
+      String auState) throws IOException {
     // Validate the AUId.
-    ResponseEntity<String> errorResponseEntity =
-	validateAuid(auid, newAuidIsValid);
+    ResponseEntity<String> errorResponseEntity = validateAuid(auid);
 
     if (errorResponseEntity != null) {
       return errorResponseEntity;
