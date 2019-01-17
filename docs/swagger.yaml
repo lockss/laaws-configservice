@@ -331,9 +331,7 @@ paths:
             $ref: '#/definitions/auConfiguration'
       responses:
         '200':
-          description: The Archival Unit configuration after it is stored
-          schema:
-            $ref: '#/definitions/auConfiguration'
+          description: OK
         '400':
           description: Bad Request
         '401':

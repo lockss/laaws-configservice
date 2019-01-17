@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2000-2018 Board of Trustees of Leland Stanford Jr. University,
+Copyright (c) 2000-2019 Board of Trustees of Leland Stanford Jr. University,
 all rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -163,7 +163,7 @@ public class AusApiServiceImpl implements AusApiDelegate {
    * 
    * @param AuConfiguration
    *          An AuConfiguration with the Archival Unit configuration.
-   * @return a {@code ResponseEntity<AuConfiguration>} with the Archival Unit
+   * @return a {@code ResponseEntity<Void>} with the Archival Unit
    *         configuration.
    */
   @Override
@@ -197,12 +197,10 @@ public class AusApiServiceImpl implements AusApiDelegate {
 	return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
       }
 
-      PluginManager pluginManager = getPluginManager();
-      pluginManager.updateAuInDatabase(auConfiguration);
+      // Update the Archival Unit configuration.
+      getPluginManager().updateAuInDatabase(auConfiguration);
 
-      AuConfiguration result = pluginManager.getStoredAuConfiguration(auId);
-      if (log.isDebugEnabled()) log.debug("result = " + result);
-      return new ResponseEntity<AuConfiguration>(result, HttpStatus.OK);
+      return new ResponseEntity<Void>(HttpStatus.OK);
     } catch (IllegalArgumentException iae) {
       String message = "No Archival Unit found for auid = '" + auId + "'";
       log.error(message);
