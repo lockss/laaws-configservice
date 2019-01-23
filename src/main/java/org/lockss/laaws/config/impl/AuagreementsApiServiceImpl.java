@@ -123,6 +123,12 @@ public class AuagreementsApiServiceImpl implements AuagreementsApiDelegate {
       getStateManager().updateAuAgreementsFromJson(auid, auAgreements);
 
       return new ResponseEntity<Void>(HttpStatus.OK);
+    } catch (IllegalArgumentException iae) {
+      String message =
+	  "Cannot update the poll agreements for auid = '" + auid + "'";
+      log.error(message, iae);
+      log.error("auAgreements = {}", auAgreements);
+      return getErrorResponseEntity(HttpStatus.BAD_REQUEST, message, iae);
     } catch (Exception e) {
       String message =
 	  "Cannot update the poll agreements for auid = '" + auid + "'";
