@@ -77,6 +77,11 @@ public class AuagreementsApiServiceImpl implements AuagreementsApiDelegate {
       String result = getStateManager().getAuAgreements(auid).toJson();
       log.debug2("result = {}", result);
       return new ResponseEntity<String>(result, HttpStatus.OK);
+    } catch (IllegalArgumentException iae) {
+      String message =
+	  "Cannot get the poll agreements for auid = '" + auid + "'";
+      log.error(message, iae);
+      return getErrorResponseEntity(HttpStatus.BAD_REQUEST, message, iae);
     } catch (Exception e) {
       String message =
 	  "Cannot get the poll agreements for auid = '" + auid + "'";

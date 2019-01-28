@@ -31,27 +31,30 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package org.lockss.laaws.config.impl;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.lockss.app.LockssDaemon;
 import org.lockss.log.L4JLogger;
-import org.lockss.plugin.AuUtil;
 import org.lockss.protocol.AgreementType;
 import org.lockss.protocol.AuAgreements;
+import org.lockss.protocol.IdentityManager;
 import org.lockss.protocol.MockIdentityManager;
 import org.lockss.protocol.MockPeerIdentity;
 import org.lockss.protocol.PeerAgreement;
 import org.lockss.protocol.PeerIdentity;
 import org.lockss.state.StateManager;
+import org.lockss.test.MockLockssDaemon;
 import org.lockss.test.SpringLockssTestCase;
 import org.lockss.util.ListUtil;
 import org.lockss.util.time.TimeBase;
@@ -83,49 +86,42 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 
   private static final String EMPTY_STRING = "";
 
-  // The identifier of an AU that exists in the test system.
-  private static final String GOOD_AUID_1 =
-      "org|lockss|plugin|pensoft|oai|PensoftOaiPlugin"
-      + "&au_oai_date~2014&au_oai_set~biorisk"
-      + "&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F";
-
-  // The identifier of another AU that exists in the test system.
-  private static final String GOOD_AUID_2 =
-      "org|lockss|plugin|pensoft|oai|PensoftOaiPlugin"
-      + "&au_oai_date~2015&au_oai_set~biorisk"
-      + "&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F";
-
-  // The identifiers of AUs that do not exist in the test system.
-  private static final String UNKNOWN_AUID_1 ="unknown1&auid1";
-  private static final String UNKNOWN_AUID_2 ="unknown2&auid2";
-  private static final String UNKNOWN_AUID_3 ="unknown3&auid3";
-  private static final String UNKNOWN_AUID_4 ="unknown4&auid4";
-  private static final String UNKNOWN_AUID_5 ="unknown5&auid5";
-  private static final String UNKNOWN_AUID_6 ="unknown6&auid6";
-  private static final String UNKNOWN_AUID_7 ="unknown7&auid7";
-  private static final String UNKNOWN_AUID_8 ="unknown8&auid8";
+  // The identifiers of AUs.
+  private static final String BAD_AUID = "badAuId";
+  private static final String AUID_1 = "plugin1&auid1";
+  private static final String AUID_2 = "plugin1&auid2";
+  private static final String AUID_3 = "plugin1&auid3";
+  private static final String AUID_4 = "plugin1&auid4";
+  private static final String AUID_5 = "plugin1&auid5";
+  private static final String AUID_6 = "plugin1&auid6";
+  private static final String AUID_7 = "plugin2&auid7";
 
   // Credentials.
   private final Credentials USER_ADMIN =
-      this.new Credentials("lockss-u", "lockss-p");
+      new Credentials("lockss-u", "lockss-p");
   private final Credentials AU_ADMIN =
-      this.new Credentials("au-admin", "I'mAuAdmin");
+      new Credentials("au-admin", "I'mAuAdmin");
   private final Credentials CONTENT_ADMIN =
-      this.new Credentials("content-admin", "I'mContentAdmin");
+      new Credentials("content-admin", "I'mContentAdmin");
   private final Credentials ANYBODY =
-      this.new Credentials("someUser", "somePassword");
+      new Credentials("someUser", "somePassword");
 
-  // Bad peer identity list.
-  private List<MockPeerIdentity> badPeerIdentityList = ListUtil.list(
-      new MockPeerIdentity("id0"),
-      new MockPeerIdentity("id1"),
-      new MockPeerIdentity("id2"));
+  // Bad peer identity ID string list.
+  private List<String> badPeerIdentityIdStringList =
+      ListUtil.list("id0", "id1", "id2");
 
-  // Good peer identity list.
-  private List<MockPeerIdentity> goodPeerIdentityList = ListUtil.list(
-      new MockPeerIdentity("TCP:[1.2.3.4]:111"),
-      new MockPeerIdentity("TCP:[2.3.4.5]:222"),
-      new MockPeerIdentity("TCP:[3.4.5.6]:333"));
+  // Good first peer identity ID string list.
+  private List<String> goodPeerIdentityIdStringList1 =
+      ListUtil.list("TCP:[1.2.3.4]:111", "TCP:[2.3.4.5]:222",
+	  "TCP:[3.4.5.6]:333");
+
+  // Good first peer identity ID string list subset.
+  private List<String> goodPeerIdentityIdStringList1s =
+      ListUtil.list("TCP:[2.3.4.5]:222", "TCP:[3.4.5.6]:333");
+
+  // Good second peer identity ID string list.
+  private List<String> goodPeerIdentityIdStringList2 =
+      ListUtil.list("TCP:[9.8.7.6]:999", "TCP:[8.7.6.5]:888");
 
   // The port that Tomcat is using during this test.
   @LocalServerPort
@@ -135,6 +131,8 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
   // used for the tests.
   @Autowired
   ApplicationContext appCtx;
+
+  MockLockssDaemon daemon = null;
 
   /**
    * Set up code to be run before each test.
@@ -148,19 +146,10 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     // Set up the temporary directory where the test data will reside.
     setUpTempDirectory(TestAuagreementsApiServiceImpl.class.getCanonicalName());
 
-    // Copy the necessary files to the test temporary directory.
-    final File srcTree1 = new File(new File("test"), "cache");
-    log.trace("srcTree1 = {}", () -> srcTree1.getAbsolutePath());
-
-    copyToTempDir(srcTree1);
-
-    final File srcTree2 = new File(new File("test"), "tdbxml");
-    log.trace("srcTree2 = {}", () -> srcTree2.getAbsolutePath());
-
-    copyToTempDir(srcTree2);
-
     // Set up the UI port.
     setUpUiPort(UI_PORT_CONFIGURATION_TEMPLATE, UI_PORT_CONFIGURATION_FILE);
+
+    daemon = getMockLockssDaemon();
 
     log.debug2("Done");
   }
@@ -184,6 +173,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
     getSwaggerDocsTest();
+    runMethodsNotAllowedUnAuthenticatedTest();
     getAuAgreementsUnAuthenticatedTest();
     patchAuAgreementsUnAuthenticatedTest();
 
@@ -209,6 +199,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
     getSwaggerDocsTest();
+    runMethodsNotAllowedAuthenticatedTest();
     getAuAgreementsAuthenticatedTest();
     patchAuAgreementsAuthenticatedTest();
 
@@ -218,7 +209,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
   /**
    * Provides the standard command line arguments to start the server.
    * 
-   * @return a List<String> with the command line arguments.
+   * @return a {@code List<String>} with the command line arguments.
    */
   private List<String> getCommandLineArguments() {
     log.debug2("Invoked");
@@ -228,13 +219,6 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     cmdLineArgs.add(getPlatformDiskSpaceConfigPath());
     cmdLineArgs.add("-p");
     cmdLineArgs.add("config/common.xml");
-
-    File folder =
-	new File(new File(new File(getTempDirPath()), "tdbxml"), "prod");
-    log.trace("folder = {}", folder);
-
-    cmdLineArgs.add("-x");
-    cmdLineArgs.add(folder.getAbsolutePath());
     cmdLineArgs.add("-p");
     cmdLineArgs.add(getUiPortConfigFile().getAbsolutePath());
     cmdLineArgs.add("-p");
@@ -271,6 +255,178 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
   }
 
   /**
+   * Runs the invalid method-related un-authenticated-specific tests.
+   * 
+   * @throws Exception
+   *           if there are problems.
+   */
+  private void runMethodsNotAllowedUnAuthenticatedTest() throws Exception {
+    log.debug2("Invoked");
+
+    // No AUId: Spring reports it cannot find a match to an endpoint.
+    runTestMethodNotAllowed(null, null, HttpMethod.POST, HttpStatus.NOT_FOUND);
+
+    // Empty AUId: Spring reports it cannot find a match to an endpoint.
+    runTestMethodNotAllowed(EMPTY_STRING, ANYBODY, HttpMethod.PUT,
+	HttpStatus.NOT_FOUND);
+
+    // Bad AUId.
+    runTestMethodNotAllowed(BAD_AUID, ANYBODY, HttpMethod.POST,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runTestMethodNotAllowed(BAD_AUID, null, HttpMethod.PUT,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    // Good AUId.
+    runTestMethodNotAllowed(AUID_1, null, HttpMethod.PUT,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runTestMethodNotAllowed(AUID_1, ANYBODY, HttpMethod.POST,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runMethodsNotAllowedCommonTest();
+
+    log.debug2("Done");
+  }
+
+  /**
+   * Runs the invalid method-related authenticated-specific tests.
+   * 
+   * @throws Exception
+   *           if there are problems.
+   */
+  private void runMethodsNotAllowedAuthenticatedTest() throws Exception {
+    log.debug2("Invoked");
+
+    // No AUId.
+    runTestMethodNotAllowed(null, ANYBODY, HttpMethod.POST,
+	HttpStatus.UNAUTHORIZED);
+
+    // Empty AUId.
+    runTestMethodNotAllowed(EMPTY_STRING, null, HttpMethod.PUT,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad AUId.
+    runTestMethodNotAllowed(BAD_AUID, ANYBODY, HttpMethod.POST,
+	HttpStatus.UNAUTHORIZED);
+
+    // No credentials.
+    runTestMethodNotAllowed(AUID_1, null, HttpMethod.PUT,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestMethodNotAllowed(AUID_2, ANYBODY, HttpMethod.POST,
+	HttpStatus.UNAUTHORIZED);
+
+    runMethodsNotAllowedCommonTest();
+
+    log.debug2("Done");
+  }
+
+  /**
+   * Runs the invalid method-related authentication-independent tests.
+   */
+  private void runMethodsNotAllowedCommonTest() throws Exception {
+    log.debug2("Invoked");
+
+    // No AUId: Spring reports it cannot find a match to an endpoint.
+    runTestMethodNotAllowed(null, USER_ADMIN, HttpMethod.POST,
+	HttpStatus.NOT_FOUND);
+
+    // Empty AUId: Spring reports it cannot find a match to an endpoint.
+    runTestMethodNotAllowed(EMPTY_STRING, AU_ADMIN, HttpMethod.PUT,
+	HttpStatus.NOT_FOUND);
+
+    // Bad AUId.
+    runTestMethodNotAllowed(BAD_AUID, USER_ADMIN, HttpMethod.PUT,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runTestMethodNotAllowed(BAD_AUID, AU_ADMIN, HttpMethod.POST,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    // Good AUId.
+    runTestMethodNotAllowed(AUID_1, AU_ADMIN, HttpMethod.PUT,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runTestMethodNotAllowed(AUID_1, USER_ADMIN, HttpMethod.POST,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    log.debug2("Done");
+  }
+
+  /**
+   * Performs an operation using a method that is not allowed.
+   * 
+   * @param auId
+   *          A String with the Archival Unit identifier.
+   * @param credentials
+   *          A Credentials with the request credentials.
+   * @param method
+   *          An HttpMethod with the request method.
+   * @param expectedStatus
+   *          An HttpStatus with the HTTP status of the result.
+   */
+  private void runTestMethodNotAllowed(String auId, Credentials credentials,
+      HttpMethod method, HttpStatus expectedStatus) throws Exception {
+    log.debug2("auId = {}", auId);
+    log.debug2("credentials = {}", credentials);
+    log.debug2("method = {}", method);
+    log.debug2("expectedStatus = {}", expectedStatus);
+
+    // Get the test URL template.
+    String template = getTestUrlTemplate("/auagreements/{auid}");
+
+    // Create the URI of the request to the REST service.
+    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
+	.build().expand(Collections.singletonMap("auid", auId));
+
+    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
+	.build().encode().toUri();
+    log.trace("uri = {}", uri);
+
+    // Initialize the request to the REST service.
+    RestTemplate restTemplate = new RestTemplate();
+
+    HttpEntity<String> requestEntity = null;
+
+    // Get the individual credentials elements.
+    String user = null;
+    String password = null;
+
+    if (credentials != null) {
+      user = credentials.getUser();
+      password = credentials.getPassword();
+    }
+
+    // Check whether there are any custom headers to be specified in the
+    // request.
+    if (user != null || password != null) {
+
+      // Initialize the request headers.
+      HttpHeaders headers = new HttpHeaders();
+
+      // Set up the authentication credentials, if necessary.
+      if (credentials != null) {
+	credentials.setUpBasicAuthentication(headers);
+      }
+
+      log.trace("requestHeaders = {}", () -> headers.toSingleValueMap());
+
+      // Create the request entity.
+      requestEntity = new HttpEntity<String>(null, headers);
+    }
+
+    // Make the request and get the response. 
+    ResponseEntity<String> response = new TestRestTemplate(restTemplate)
+	.exchange(uri, method, requestEntity, String.class);
+
+    // Get the response status.
+    HttpStatus statusCode = response.getStatusCode();
+    assertFalse(isSuccess(statusCode));
+    assertEquals(expectedStatus, statusCode);
+  }
+
+  /**
    * Runs the getAuAgreements()-related un-authenticated-specific tests.
    */
   private void getAuAgreementsUnAuthenticatedTest() throws Exception {
@@ -285,23 +441,15 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestGetAuAgreements(EMPTY_STRING, ANYBODY, HttpStatus.NOT_FOUND);
 
-    // Non-existent AUId.
-    String result = runTestGetAuAgreements(UNKNOWN_AUID_6, null, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(stateManager.getAuAgreements(UNKNOWN_AUID_6).toJson(), result);
+    // Bad AUId.
+    runTestGetAuAgreements(BAD_AUID, null, HttpStatus.BAD_REQUEST);
 
     // No credentials.
-    result = runTestGetAuAgreements(GOOD_AUID_1, ANYBODY, HttpStatus.OK);
+    assertEquals(stateManager.getAuAgreements(AUID_1).toJson(),
+	runTestGetAuAgreements(AUID_1, null, HttpStatus.OK));
 
-    // Verify.
-    assertEquals(stateManager.getAuAgreements(GOOD_AUID_1).toJson(), result);
-
-    // Bad credentials.
-    result = runTestGetAuAgreements(GOOD_AUID_2, CONTENT_ADMIN, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(stateManager.getAuAgreements(GOOD_AUID_2).toJson(), result);
+    assertEquals(stateManager.getAuAgreements(AUID_2).toJson(),
+	runTestGetAuAgreements(AUID_2, ANYBODY, HttpStatus.OK));
 
     getAuAgreementsCommonTest();
 
@@ -315,19 +463,19 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     log.debug2("Invoked");
 
     // No AUId.
-    runTestGetAuAgreements(null, null, HttpStatus.UNAUTHORIZED);
+    runTestGetAuAgreements(null, ANYBODY, HttpStatus.UNAUTHORIZED);
 
     // Empty AUId.
     runTestGetAuAgreements(EMPTY_STRING, null, HttpStatus.UNAUTHORIZED);
 
-    // Non-existent AUId.
-    runTestGetAuAgreements(UNKNOWN_AUID_8, ANYBODY, HttpStatus.UNAUTHORIZED);
+    // Bad AUId.
+    runTestGetAuAgreements(BAD_AUID, ANYBODY, HttpStatus.UNAUTHORIZED);
 
     // No credentials.
-    runTestGetAuAgreements(GOOD_AUID_1, null, HttpStatus.UNAUTHORIZED);
+    runTestGetAuAgreements(AUID_1, null, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetAuAgreements(GOOD_AUID_2, ANYBODY, HttpStatus.UNAUTHORIZED);
+    runTestGetAuAgreements(AUID_2, ANYBODY, HttpStatus.UNAUTHORIZED);
 
     getAuAgreementsCommonTest();
 
@@ -349,24 +497,15 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestGetAuAgreements(EMPTY_STRING, AU_ADMIN, HttpStatus.NOT_FOUND);
 
-    // Non-existent AUId.
-    String result =
-	runTestGetAuAgreements(UNKNOWN_AUID_7, USER_ADMIN, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(stateManager.getAuAgreements(UNKNOWN_AUID_7).toJson(), result);
+    // Bad AUId.
+    runTestGetAuAgreements(BAD_AUID, USER_ADMIN, HttpStatus.BAD_REQUEST);
 
     // Good AUId.
-    result = runTestGetAuAgreements(GOOD_AUID_1, AU_ADMIN, HttpStatus.OK);
+    assertEquals(stateManager.getAuAgreements(AUID_1).toJson(),
+	runTestGetAuAgreements(AUID_1, AU_ADMIN, HttpStatus.OK));
 
-    // Verify.
-    assertEquals(stateManager.getAuAgreements(GOOD_AUID_1).toJson(), result);
-
-    // Good AUId.
-    result = runTestGetAuAgreements(GOOD_AUID_2, USER_ADMIN, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(stateManager.getAuAgreements(GOOD_AUID_2).toJson(), result);
+    assertEquals(stateManager.getAuAgreements(AUID_2).toJson(),
+	runTestGetAuAgreements(AUID_2, USER_ADMIN, HttpStatus.OK));
 
     log.debug2("Done");
   }
@@ -461,139 +600,160 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     // No AUId: Spring reports it cannot find a match to an endpoint.
     runTestPatchAuAgreements(null, null, null, null, HttpStatus.NOT_FOUND);
 
-    runTestPatchAuAgreements(null, null, MediaType.APPLICATION_JSON, null,
-	HttpStatus.NOT_FOUND);
-
     runTestPatchAuAgreements(null, null, MediaType.APPLICATION_JSON, ANYBODY,
 	HttpStatus.NOT_FOUND);
 
-    runTestPatchAuAgreements(null, null, MediaType.APPLICATION_JSON,
-	CONTENT_ADMIN, HttpStatus.NOT_FOUND);
-
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
-    runTestPatchAuAgreements(EMPTY_STRING, null, null, null,
+    runTestPatchAuAgreements(EMPTY_STRING, null, null, CONTENT_ADMIN,
 	HttpStatus.NOT_FOUND);
 
     runTestPatchAuAgreements(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
 	null, HttpStatus.NOT_FOUND);
 
-    runTestPatchAuAgreements(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
-	ANYBODY, HttpStatus.NOT_FOUND);
-
-    runTestPatchAuAgreements(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
-	CONTENT_ADMIN, HttpStatus.NOT_FOUND);
-
-    // No AU agreements.
-    runTestPatchAuAgreements(GOOD_AUID_1, null, null, null,
+    // Bad AUId.
+    runTestPatchAuAgreements(BAD_AUID, null, null, ANYBODY,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, null, MediaType.APPLICATION_JSON,
-	null, HttpStatus.BAD_REQUEST);
-
-    runTestPatchAuAgreements(GOOD_AUID_1, null, MediaType.APPLICATION_JSON,
-	ANYBODY, HttpStatus.BAD_REQUEST);
-
-    runTestPatchAuAgreements(GOOD_AUID_1, null, MediaType.APPLICATION_JSON,
+    runTestPatchAuAgreements(BAD_AUID, null, MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, EMPTY_STRING, null, null,
+    // No AU poll agreements.
+    runTestPatchAuAgreements(AUID_1, null, null, null,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, EMPTY_STRING,
-	MediaType.APPLICATION_JSON, null, HttpStatus.BAD_REQUEST);
+    runTestPatchAuAgreements(AUID_1, null, MediaType.APPLICATION_JSON, ANYBODY,
+	HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, EMPTY_STRING,
-	MediaType.APPLICATION_JSON, ANYBODY, HttpStatus.BAD_REQUEST);
+    runTestPatchAuAgreements(AUID_1, EMPTY_STRING, null, CONTENT_ADMIN,
+	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, EMPTY_STRING,
-	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
+    runTestPatchAuAgreements(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
+	null, HttpStatus.BAD_REQUEST);
 
-    AuAgreements auAgreements = createAuAgreements(GOOD_AUID_1,
-	badPeerIdentityList, AgreementType.POR, 0.1f);
+    AuAgreements auAgreements = createAuAgreements(AUID_1,
+	badPeerIdentityIdStringList, AgreementType.POR, 0.0625f);
 
     // No Content-Type header.
-    runTestPatchAuAgreements(GOOD_AUID_1, auAgreements.toJson(), null, null,
+    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(), null, ANYBODY,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Bad peer agreement ID.
-    runTestPatchAuAgreements(GOOD_AUID_1, auAgreements.toJson(),
-	MediaType.APPLICATION_JSON, ANYBODY, HttpStatus.BAD_REQUEST);
+    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(),
+	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
     // Get the current poll agreements of the second AU.
-    AuAgreements auAgreements2 = stateManager.getAuAgreements(GOOD_AUID_2);
-    assertEquals(auAgreements2,	AuUtil.auAgreementsFromJson(
-	runTestGetAuAgreements(GOOD_AUID_2, ANYBODY, HttpStatus.OK)));
+    AuAgreements auAgreements2 = stateManager.getAuAgreements(AUID_2);
+
+    assertEquals(auAgreements2,	AuAgreements.fromJson(AUID_2,
+	runTestGetAuAgreements(AUID_2, ANYBODY, HttpStatus.OK), daemon));
 
     // Patch first AU.
-    auAgreements = createAuAgreements(GOOD_AUID_1, goodPeerIdentityList,
-	AgreementType.POP, 0.2f);
+    auAgreements = createAuAgreements(AUID_1, goodPeerIdentityIdStringList1,
+	AgreementType.POP, 0.125f);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, auAgreements.toJson(),
+    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(),
 	MediaType.APPLICATION_JSON, null, HttpStatus.OK);
 
     // Verify.
-    auAgreementsMatch(auAgreements, stateManager.getAuAgreements(GOOD_AUID_1));
+    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_1));
     AuAgreements auAgreements1 = auAgreements;
 
     // Verify that the current poll agreements of the second AU have not been
     // affected.
-    auAgreementsMatch(auAgreements2, stateManager.getAuAgreements(GOOD_AUID_2));
+    assertAuAgreementsMatch(auAgreements2,
+	stateManager.getAuAgreements(AUID_2));
 
     // Patch second AU.
-    auAgreements = createAuAgreements(GOOD_AUID_2, goodPeerIdentityList,
-	AgreementType.SYMMETRIC_POR, 0.3f);
+    auAgreements = createAuAgreements(AUID_2, goodPeerIdentityIdStringList2,
+	AgreementType.SYMMETRIC_POR, 0.250f);
 
-    runTestPatchAuAgreements(GOOD_AUID_2, auAgreements.toJson(),
-	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.OK);
+    runTestPatchAuAgreements(AUID_2, auAgreements.toJson(),
+	MediaType.APPLICATION_JSON, ANYBODY, HttpStatus.OK);
 
     // Verify.
-    auAgreementsMatch(auAgreements, stateManager.getAuAgreements(GOOD_AUID_2));
+    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_2));
     auAgreements2 = auAgreements;
 
     // Verify that the current poll agreements of the first AU have not been
     // affected.
-    auAgreementsMatch(auAgreements1, stateManager.getAuAgreements(GOOD_AUID_1));
+    assertAuAgreementsMatch(auAgreements1,
+	stateManager.getAuAgreements(AUID_1));
 
-    // Patch first non-existent AU.
-    auAgreements = createAuAgreements(UNKNOWN_AUID_1, goodPeerIdentityList,
-	AgreementType.SYMMETRIC_POP, 0.4f);
+    // Patch third AU.
+    auAgreements = createAuAgreements(AUID_3, goodPeerIdentityIdStringList1,
+	AgreementType.SYMMETRIC_POP, 0.375f);
 
-    runTestPatchAuAgreements(UNKNOWN_AUID_1, auAgreements.toJson(),
-	MediaType.APPLICATION_JSON, null, HttpStatus.OK);
-
-    // Verify.
-    auAgreementsMatch(auAgreements,
-	stateManager.getAuAgreements(UNKNOWN_AUID_1));
-
-    // Patch second non-existent AU.
-    auAgreements = createAuAgreements(UNKNOWN_AUID_2, goodPeerIdentityList,
-	AgreementType.POR_HINT, 0.5f);
-
-    runTestPatchAuAgreements(UNKNOWN_AUID_2, auAgreements.toJson(),
-	MediaType.APPLICATION_JSON, ANYBODY, HttpStatus.OK);
-
-    // Verify.
-    auAgreementsMatch(auAgreements,
-	stateManager.getAuAgreements(UNKNOWN_AUID_2));
-
-    // Patch third non-existent AU.
-    auAgreements = createAuAgreements(UNKNOWN_AUID_3, goodPeerIdentityList,
-	AgreementType.POP_HINT, 0.6f);
-
-    runTestPatchAuAgreements(UNKNOWN_AUID_3, auAgreements.toJson(),
+    runTestPatchAuAgreements(AUID_3, auAgreements.toJson(),
 	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.OK);
 
     // Verify.
-    auAgreementsMatch(auAgreements,
-	stateManager.getAuAgreements(UNKNOWN_AUID_3));
+    assertAuAgreementsMatch(auAgreements,
+	stateManager.getAuAgreements(AUID_3));
+
+    // Patch third AU again with different types of agreements for the same
+    // peers.
+    auAgreements = createAuAgreements(AUID_3, goodPeerIdentityIdStringList1,
+	AgreementType.SYMMETRIC_POR_HINT, 0.75f);
+
+    runTestPatchAuAgreements(AUID_3, auAgreements.toJson(),
+	MediaType.APPLICATION_JSON, null, HttpStatus.OK);
+
+    // Verify.
+    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_3));
+
+    // Patch fourth AU.
+    auAgreements = createAuAgreements(AUID_4, goodPeerIdentityIdStringList1,
+	AgreementType.POR_HINT, 0.4375f);
+
+    runTestPatchAuAgreements(AUID_4, auAgreements.toJson(),
+	MediaType.APPLICATION_JSON, ANYBODY, HttpStatus.OK);
+
+    // Verify.
+    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_4));
+    AuAgreements auAgreements4 = auAgreements;
+
+    // Patch fourth AU again with a subset of agreements for the same peers.
+    auAgreements = createAuAgreements(AUID_4, goodPeerIdentityIdStringList1s,
+	AgreementType.POR_HINT, 0.875f);
+
+    runTestPatchAuAgreements(AUID_4, auAgreements.toJson(),
+	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.OK);
+
+    // Verify.
+    assertAuAgreementsMatch(expectedMergedAuAgreements(auAgreements4,
+	auAgreements), stateManager.getAuAgreements(AUID_4));
+
+    // Patch fifth AU.
+    auAgreements = createAuAgreements(AUID_5, goodPeerIdentityIdStringList1,
+	AgreementType.POP_HINT, 0.5f);
+
+    runTestPatchAuAgreements(AUID_5, auAgreements.toJson(),
+	MediaType.APPLICATION_JSON, null, HttpStatus.OK);
+
+    // Verify.
+    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_5));
+    AuAgreements auAgreements5 = auAgreements;
+
+    // Patch fifth AU again with agreements for other peers.
+    auAgreements = createAuAgreements(AUID_5, goodPeerIdentityIdStringList2,
+	AgreementType.SYMMETRIC_POR_HINT, 0.75f);
+
+    runTestPatchAuAgreements(AUID_5, auAgreements.toJson(),
+	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.OK);
+
+    // Verify.
+    assertAuAgreementsMatch(expectedMergedAuAgreements(auAgreements5,
+	auAgreements), stateManager.getAuAgreements(AUID_5));
 
     // Verify that the current poll agreements of the first AU have not been
     // affected.
-    auAgreementsMatch(auAgreements1, stateManager.getAuAgreements(GOOD_AUID_1));
+    assertAuAgreementsMatch(auAgreements1,
+	stateManager.getAuAgreements(AUID_1));
 
     // Verify that the current poll agreements of the second AU have not been
     // affected.
-    auAgreementsMatch(auAgreements2, stateManager.getAuAgreements(GOOD_AUID_2));
+    assertAuAgreementsMatch(auAgreements2,
+	stateManager.getAuAgreements(AUID_2));
 
     patchAuAgreementsCommonTest();
 
@@ -609,9 +769,6 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     // No AUId.
     runTestPatchAuAgreements(null, null, null, null, HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuAgreements(null, null, MediaType.APPLICATION_JSON, null,
-	HttpStatus.UNAUTHORIZED);
-
     runTestPatchAuAgreements(null, null, MediaType.APPLICATION_JSON, ANYBODY,
 	HttpStatus.UNAUTHORIZED);
 
@@ -624,64 +781,57 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	HttpStatus.UNAUTHORIZED);
 
     runTestPatchAuAgreements(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
-	null, HttpStatus.UNAUTHORIZED);
-
-    runTestPatchAuAgreements(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
 	ANYBODY, HttpStatus.UNAUTHORIZED);
 
     // Spring reports it cannot find a match to an endpoint.
     runTestPatchAuAgreements(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.NOT_FOUND);
 
-    // No AU state.
-    runTestPatchAuAgreements(GOOD_AUID_1, null, null, null,
+    // Bad AUId.
+    runTestPatchAuAgreements(BAD_AUID, null, MediaType.APPLICATION_JSON, null,
 	HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, null, MediaType.APPLICATION_JSON,
-	null, HttpStatus.UNAUTHORIZED);
-
-    runTestPatchAuAgreements(GOOD_AUID_1, null, MediaType.APPLICATION_JSON,
-	ANYBODY, HttpStatus.UNAUTHORIZED);
-
-    runTestPatchAuAgreements(GOOD_AUID_1, null, MediaType.APPLICATION_JSON,
+    runTestPatchAuAgreements(BAD_AUID, null, MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, EMPTY_STRING, null, null,
+    // No AU poll agreements.
+    runTestPatchAuAgreements(AUID_1, null, null, null, HttpStatus.UNAUTHORIZED);
+
+    runTestPatchAuAgreements(AUID_1, null, MediaType.APPLICATION_JSON,
+	ANYBODY, HttpStatus.UNAUTHORIZED);
+
+    runTestPatchAuAgreements(AUID_1, null, MediaType.APPLICATION_JSON,
+	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
+
+    runTestPatchAuAgreements(AUID_1, EMPTY_STRING, null, null,
 	HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, EMPTY_STRING,
+    runTestPatchAuAgreements(AUID_1, EMPTY_STRING,
 	MediaType.APPLICATION_JSON, null, HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, EMPTY_STRING,
+    runTestPatchAuAgreements(AUID_1, EMPTY_STRING,
 	MediaType.APPLICATION_JSON, ANYBODY, HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, EMPTY_STRING,
+    runTestPatchAuAgreements(AUID_1, EMPTY_STRING,
 	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
-    AuAgreements auAgreements = createAuAgreements(GOOD_AUID_1,
-	badPeerIdentityList, AgreementType.SYMMETRIC_POR_HINT, 0.1f);
+    AuAgreements auAgreements = createAuAgreements(AUID_1,
+	badPeerIdentityIdStringList, AgreementType.SYMMETRIC_POR_HINT, 0.125f);
 
     // No Content-Type header.
-    runTestPatchAuAgreements(GOOD_AUID_1, auAgreements.toJson(), null, null,
+    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(), null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad peer agreement ID.
-    runTestPatchAuAgreements(GOOD_AUID_1, auAgreements.toJson(),
+    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(),
 	MediaType.APPLICATION_JSON, ANYBODY, HttpStatus.UNAUTHORIZED);
 
     // Patch first AU.
-    runTestPatchAuAgreements(GOOD_AUID_1, auAgreements.toJson(),
+    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(),
 	MediaType.APPLICATION_JSON, null, HttpStatus.UNAUTHORIZED);
 
     // Patch second AU.
-    runTestPatchAuAgreements(GOOD_AUID_2, auAgreements.toJson(),
-	MediaType.APPLICATION_JSON, ANYBODY, HttpStatus.UNAUTHORIZED);
-
-    // Non-existent AUId.
-    auAgreements = createAuAgreements(UNKNOWN_AUID_8, goodPeerIdentityList,
-	AgreementType.SYMMETRIC_POP_HINT, 0.2f);
-
-    runTestPatchAuAgreements(UNKNOWN_AUID_8, auAgreements.toJson(),
+    runTestPatchAuAgreements(AUID_2, auAgreements.toJson(),
 	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.FORBIDDEN);
 
     patchAuAgreementsCommonTest();
@@ -700,136 +850,144 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 
     // No AUId: Spring reports it cannot find a match to an endpoint.
     runTestPatchAuAgreements(null, null, null, AU_ADMIN, HttpStatus.NOT_FOUND);
-    runTestPatchAuAgreements(null, null, null, USER_ADMIN,
-	HttpStatus.NOT_FOUND);
-
-    runTestPatchAuAgreements(null, null, MediaType.APPLICATION_JSON, AU_ADMIN,
-	HttpStatus.NOT_FOUND);
 
     runTestPatchAuAgreements(null, null, MediaType.APPLICATION_JSON, USER_ADMIN,
 	HttpStatus.NOT_FOUND);
 
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
-    runTestPatchAuAgreements(EMPTY_STRING, null, null, AU_ADMIN,
-	HttpStatus.NOT_FOUND);
-
     runTestPatchAuAgreements(EMPTY_STRING, null, null, USER_ADMIN,
 	HttpStatus.NOT_FOUND);
 
     runTestPatchAuAgreements(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
 	AU_ADMIN, HttpStatus.NOT_FOUND);
 
-    runTestPatchAuAgreements(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
-	USER_ADMIN, HttpStatus.NOT_FOUND);
-
-    // No AU state.
-    runTestPatchAuAgreements(GOOD_AUID_1, null, null, AU_ADMIN,
+    // Bad AUId.
+    runTestPatchAuAgreements(BAD_AUID, null, null, AU_ADMIN,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, null, null, USER_ADMIN,
-	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-
-    runTestPatchAuAgreements(GOOD_AUID_1, null, MediaType.APPLICATION_JSON,
-	AU_ADMIN, HttpStatus.BAD_REQUEST);
-
-    runTestPatchAuAgreements(GOOD_AUID_1, null, MediaType.APPLICATION_JSON,
+    runTestPatchAuAgreements(BAD_AUID, null, MediaType.APPLICATION_JSON,
 	USER_ADMIN, HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, EMPTY_STRING, null, AU_ADMIN,
+    // No AU poll agreements.
+    runTestPatchAuAgreements(AUID_1, null, null, USER_ADMIN,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, EMPTY_STRING, null, USER_ADMIN,
+    runTestPatchAuAgreements(AUID_1, null, MediaType.APPLICATION_JSON,
+	AU_ADMIN, HttpStatus.BAD_REQUEST);
+
+    runTestPatchAuAgreements(AUID_1, EMPTY_STRING, null, AU_ADMIN,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, EMPTY_STRING,
-	MediaType.APPLICATION_JSON, AU_ADMIN, HttpStatus.BAD_REQUEST);
-
-    runTestPatchAuAgreements(GOOD_AUID_1, EMPTY_STRING,
+    runTestPatchAuAgreements(AUID_1, EMPTY_STRING,
 	MediaType.APPLICATION_JSON, USER_ADMIN, HttpStatus.BAD_REQUEST);
 
-    AuAgreements auAgreements = createAuAgreements(GOOD_AUID_1,
-	badPeerIdentityList, AgreementType.SYMMETRIC_POP_HINT, 0.7f);
+    AuAgreements auAgreements = createAuAgreements(AUID_1,
+	badPeerIdentityIdStringList, AgreementType.SYMMETRIC_POP_HINT, 0.9375f);
 
     // No Content-Type header.
-    runTestPatchAuAgreements(GOOD_AUID_1, auAgreements.toJson(), null, AU_ADMIN,
-	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-
-    runTestPatchAuAgreements(GOOD_AUID_1, auAgreements.toJson(), null,
+    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(), null,
 	USER_ADMIN, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Bad peer agreement ID.
-    runTestPatchAuAgreements(GOOD_AUID_1, auAgreements.toJson(),
+    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(),
 	MediaType.APPLICATION_JSON, AU_ADMIN, HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, auAgreements.toJson(),
-	MediaType.APPLICATION_JSON, USER_ADMIN, HttpStatus.BAD_REQUEST);
+    // Set the identity manager.
+    createIdentityManager(goodPeerIdentityIdStringList2);
 
     // Get the current poll agreements of the second AU.
-    AuAgreements auAgreements2 = AuUtil.auAgreementsFromJson(
-	runTestGetAuAgreements(GOOD_AUID_2, USER_ADMIN, HttpStatus.OK));
+    AuAgreements auAgreements2 = AuAgreements.fromJson(AUID_2,
+	runTestGetAuAgreements(AUID_2, USER_ADMIN, HttpStatus.OK), daemon);
 
     // Verify.
-    auAgreementsMatch(stateManager.getAuAgreements(GOOD_AUID_2), auAgreements2);
+    assertAuAgreementsMatch(stateManager.getAuAgreements(AUID_2),
+	auAgreements2);
 
     // Patch first AU.
-    auAgreements = createAuAgreements(GOOD_AUID_1, goodPeerIdentityList,
-	AgreementType.SYMMETRIC_POR_HINT, 0.8f);
+    auAgreements = createAuAgreements(AUID_1, goodPeerIdentityIdStringList1,
+	AgreementType.SYMMETRIC_POR_HINT, 0.875f);
 
-    runTestPatchAuAgreements(GOOD_AUID_1, auAgreements.toJson(),
+    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(),
 	MediaType.APPLICATION_JSON, AU_ADMIN, HttpStatus.OK);
 
     // Verify.
-    auAgreementsMatch(auAgreements, stateManager.getAuAgreements(GOOD_AUID_1));
+    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_1));
     AuAgreements auAgreements1 = auAgreements;
 
     // Verify that the current poll agreements of the second AU have not been
     // affected.
-    auAgreementsMatch(auAgreements2, stateManager.getAuAgreements(GOOD_AUID_2));
+    assertAuAgreementsMatch(auAgreements2,
+	stateManager.getAuAgreements(AUID_2));
 
     // Patch second AU.
-    auAgreements = createAuAgreements(GOOD_AUID_2, goodPeerIdentityList,
-	AgreementType.POP_HINT, 0.9f);
+    auAgreements = createAuAgreements(AUID_2, goodPeerIdentityIdStringList2,
+	AgreementType.POP_HINT, 0.75f);
 
-    runTestPatchAuAgreements(GOOD_AUID_2, auAgreements.toJson(),
+    runTestPatchAuAgreements(AUID_2, auAgreements.toJson(),
 	MediaType.APPLICATION_JSON, USER_ADMIN, HttpStatus.OK);
 
     // Verify.
-    auAgreementsMatch(auAgreements, stateManager.getAuAgreements(GOOD_AUID_2));
+    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_2));
     auAgreements2 = auAgreements;
 
     // Verify that the current poll agreements of the first AU have not been
     // affected.
-    auAgreementsMatch(auAgreements1, stateManager.getAuAgreements(GOOD_AUID_1));
+    assertAuAgreementsMatch(auAgreements1,
+	stateManager.getAuAgreements(AUID_1));
 
-    // Patch fourth non-existent AU.
-    auAgreements = createAuAgreements(UNKNOWN_AUID_4, goodPeerIdentityList,
-	AgreementType.POR_HINT, 0.99f);
+    // Patch sixth AU.
+    auAgreements = createAuAgreements(AUID_6, goodPeerIdentityIdStringList1,
+	AgreementType.POR_HINT, 0.625f);
 
-    runTestPatchAuAgreements(UNKNOWN_AUID_4, auAgreements.toJson(),
+    runTestPatchAuAgreements(AUID_6, auAgreements.toJson(),
 	MediaType.APPLICATION_JSON, AU_ADMIN, HttpStatus.OK);
 
     // Verify.
-    auAgreementsMatch(auAgreements,
-	stateManager.getAuAgreements(UNKNOWN_AUID_4));
+    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_6));
+    AuAgreements auAgreements6 = auAgreements;
 
-    // Patch fifth non-existent AU.
-    auAgreements = createAuAgreements(UNKNOWN_AUID_5, goodPeerIdentityList,
-	AgreementType.SYMMETRIC_POP, 0.999f);
+    // Patch sixth AU again with a subset of agreements for the same peers.
+    auAgreements = createAuAgreements(AUID_6, goodPeerIdentityIdStringList1s,
+	AgreementType.POP, 0.5f);
 
-    runTestPatchAuAgreements(UNKNOWN_AUID_5, auAgreements.toJson(),
+    runTestPatchAuAgreements(AUID_6, auAgreements.toJson(),
+	MediaType.APPLICATION_JSON, AU_ADMIN, HttpStatus.OK);
+
+    // Verify.
+    assertAuAgreementsMatch(expectedMergedAuAgreements(auAgreements6,
+	auAgreements), stateManager.getAuAgreements(AUID_6));
+
+    // Patch seventh AU.
+    auAgreements = createAuAgreements(AUID_7, goodPeerIdentityIdStringList1,
+	AgreementType.SYMMETRIC_POP, 0.875f);
+
+    runTestPatchAuAgreements(AUID_7, auAgreements.toJson(),
 	MediaType.APPLICATION_JSON, USER_ADMIN, HttpStatus.OK);
 
     // Verify.
-    auAgreementsMatch(auAgreements,
-	stateManager.getAuAgreements(UNKNOWN_AUID_5));
+    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_7));
+    AuAgreements auAgreements7 = auAgreements;
+
+    // Patch seventh AU again with agreements for other peers.
+    auAgreements = createAuAgreements(AUID_7,
+	goodPeerIdentityIdStringList2, AgreementType.SYMMETRIC_POR_HINT, 0.75f);
+
+    runTestPatchAuAgreements(AUID_7, auAgreements.toJson(),
+	MediaType.APPLICATION_JSON, USER_ADMIN, HttpStatus.OK);
+
+    // Verify.
+    assertAuAgreementsMatch(expectedMergedAuAgreements(auAgreements7,
+	auAgreements), stateManager.getAuAgreements(AUID_7));
 
     // Verify that the current poll agreements of the first AU have not been
     // affected.
-    auAgreementsMatch(auAgreements1, stateManager.getAuAgreements(GOOD_AUID_1));
+    assertAuAgreementsMatch(auAgreements1,
+	stateManager.getAuAgreements(AUID_1));
 
     // Verify that the current poll agreements of the second AU have not been
     // affected.
-    auAgreementsMatch(auAgreements2, stateManager.getAuAgreements(GOOD_AUID_2));
+    assertAuAgreementsMatch(auAgreements2,
+	stateManager.getAuAgreements(AUID_2));
 
     log.debug2("Done");
   }
@@ -921,8 +1079,8 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
    * 
    * @param auId
    *          A String with the Archival Unit identifier.
-   * @param peerIdentityList
-   *          A List<MockPeerIdentity> with peer identities.
+   * @param peerIdentityIdStringList
+   *          {@code A Collection<String>} with peer identities identifiers.
    * @param agreementType
    *          An AgreementType with the type agreement.
    * @param agreementPercent
@@ -930,32 +1088,59 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
    * @return An AuAgreements with the Archival Unit poll agreements.
    */
   private AuAgreements createAuAgreements(String auId,
-      List<MockPeerIdentity> peerIdentityList, AgreementType agreementType,
-      float agreementPercent) {
+      Collection<String> peerIdentityIdStringList, AgreementType agreementType,
+      float agreementPercent) throws Exception {
     log.debug2("auId = {}", auId);
-    log.debug2("peerIdentityList = {}", peerIdentityList);
+    log.debug2("peerIdentityIdStringList = {}", peerIdentityIdStringList);
     log.debug2("agreementType = {}", agreementType);
     log.debug2("agreementPercent = {}", agreementPercent);
 
     // Create the identity manager.
-    MockIdentityManager idMgr = new MockIdentityManager();
-
-    // Populate the identity manager with the passed peer identities.
-    for (PeerIdentity pid : peerIdentityList) {
-      idMgr.addPeerIdentity(pid.getIdString(), pid);
-    }
+    IdentityManager idMgr = createIdentityManager(peerIdentityIdStringList);
 
     // Create the agreements.
     AuAgreements auAgreements = AuAgreements.make(auId, idMgr);
 
     // Populate the agreements details.
-    for (int i = 0; i < peerIdentityList.size(); i++) {
-      auAgreements.signalPartialAgreement(peerIdentityList.get(i),
-	  agreementType, agreementPercent, TimeBase.nowMs() + i);
+    for (String peerIdentityIdString : peerIdentityIdStringList) {
+      auAgreements.signalPartialAgreement(
+	  idMgr.findPeerIdentity(peerIdentityIdString),
+	  agreementType, agreementPercent, TimeBase.nowMs());
     }
 
     log.debug2("auAgreements = {}", auAgreements);
     return auAgreements;
+  }
+
+  /**
+   * Creates an identity manager.
+   * 
+   * @param peerIdentityIdStringList
+   *          A {@code Collection<String>} with peer identities identifiers.
+   * @return An IdentityManager with the identity manager.
+   */
+  private IdentityManager createIdentityManager(
+      Collection<String> peerIdentityIdStringList) {
+    log.debug2("peerIdentityList = {}", peerIdentityIdStringList);
+
+    // Create the identity manager.
+    MockIdentityManager idMgr = new MockIdentityManager();
+
+    // Populate the identity manager with the passed peer identities.
+    for (String pid : peerIdentityIdStringList) {
+      log.trace("pid = {}", pid);
+      PeerIdentity pi = idMgr.findPeerIdentity(pid);
+      log.trace("pi = {}", pi);
+
+      if (pi == null) {
+	idMgr.addPeerIdentity(pid, new MockPeerIdentity(pid));
+      }
+    }
+
+    daemon.setIdentityManager(idMgr);
+
+    log.debug2("idMgr = {}", idMgr);
+    return idMgr;
   }
 
   /**
@@ -966,14 +1151,32 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
    * @param aua2
    *          An AuAgreements with the second object to be matched.
    */
-  private void auAgreementsMatch(AuAgreements aua1, AuAgreements aua2) {
+  private void assertAuAgreementsMatch(AuAgreements aua1, AuAgreements aua2) {
+    for (AgreementType type : AgreementType.allTypes()) {
+      assertAuAgreementsMatch(aua1, aua2, type);
+    }
+  }
+
+  /**
+   * Verifies that two AuAgreements objects match in their PeerAgreements.
+   * 
+   * @param aua1
+   *          An AuAgreements with the first object to be matched.
+   * @param aua2
+   *          An AuAgreements with the second object to be matched.
+   * @param type
+   *          An AgreementType with the type of agreements to verify.
+   */
+  private void assertAuAgreementsMatch(AuAgreements aua1, AuAgreements aua2,
+      AgreementType type) {
+    log.debug2("type = {}", type);
+
     // Get the AuAgreements objects maps.
-    Map<PeerIdentity, PeerAgreement> aua1Map =
-	aua1.getAgreements(AgreementType.POR);
-    //log.error("aua1Map = " + aua1Map);
-    Map<PeerIdentity, PeerAgreement> aua2Map =
-	aua2.getAgreements(AgreementType.POR);
-    //log.error("aua2Map = " + aua2Map);
+    Map<PeerIdentity, PeerAgreement> aua1Map = aua1.getAgreements(type);
+    log.trace("aua1Map = {}", aua1Map);
+
+    Map<PeerIdentity, PeerAgreement> aua2Map = aua2.getAgreements(type);
+    log.trace("aua2Map = {}", aua2Map);
 
     // Verify that they have the same number of entries.
     assertEquals(aua1Map.size(), aua2Map.size());
@@ -987,7 +1190,6 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 
       // Get this first object peer identity.
       PeerIdentity aua1pid = aua1Iterator.next();
-      //log.error("aua1pid = " + aua1pid);
 
       // Iterate through the second object map entries.
       Iterator<PeerIdentity> aua2Iterator = aua2Map.keySet().iterator();
@@ -995,11 +1197,10 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
       while (aua2Iterator.hasNext()) {
 	// Get this second object peer identity.
 	PeerIdentity aua2pid = aua2Iterator.next();
-	//log.error("aua2pid = " + aua2pid);
 
 	// Check whether the peer identities from both iterators match.
 	if (aua2pid.getIdString().equals(aua1pid.getIdString())) {
-	  // Yes: Verify that the agreements match.
+	  // Yes: Verify that the poll agreements match.
 	  assertEquals(aua1Map.get(aua1pid), aua2Map.get(aua2pid));
 
 	  // Remember the match.
@@ -1011,6 +1212,143 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
       // Verify that this first object map entry has a match in the second
       // object map.
       assertTrue(matched);
+    }
+  }
+
+  /**
+   * Provides the result of merging partial poll agreements into other poll
+   * agreements.
+   * 
+   * @param original
+   *          An AuAgreements where to merge the partial other.
+   * @param partial
+   *          An AuAgreements with the poll agreements to be merged.
+   * @return an AuAgreements with the resulting merged poll agreements.
+   */
+  private AuAgreements expectedMergedAuAgreements(AuAgreements original,
+      AuAgreements partial) throws Exception {
+    log.debug2("original = {}", original);
+    log.debug2("partial = {}", partial);
+
+    // Get the Archival Unit ID.
+    String auId = original.getAuid();
+    log.trace("auId = {}", auId);
+
+    Set<String> originalPeerIdentityIdStringSet = new HashSet<>();
+    Set<String> partialPeerIdentityIdStringSet = new HashSet<>();
+
+    // Loop through all the poll agreements types.
+    for (AgreementType type : AgreementType.allTypes()) {
+      log.trace("type = {}", type);
+
+      // Get this type map of poll agreements in the original poll agreements.
+      Map<PeerIdentity, PeerAgreement> originalMap =
+	  original.getAgreements(type);
+      log.trace("originalMap = {}", originalMap);
+
+      // Update the set of peer identities in the original poll agreements.
+      for (PeerIdentity pi : originalMap.keySet()) {
+	originalPeerIdentityIdStringSet.add(pi.getIdString());
+      }
+
+      // Get this type map of poll agreements in the partial poll agreements.
+      Map<PeerIdentity, PeerAgreement> partialMap =
+	  partial.getAgreements(type);
+      log.trace("partialMap = {}", partialMap);
+
+      // Update the set of peer identities in the partial poll agreements.
+      //partialPeerIdentitySet.addAll(partialMap.keySet());
+      for (PeerIdentity pi : partialMap.keySet()) {
+	partialPeerIdentityIdStringSet.add(pi.getIdString());
+      }
+    }
+
+    log.trace("originalPeerIdentityIdStringSet = {}",
+	originalPeerIdentityIdStringSet);
+    log.trace("partialPeerIdentityIdStringSet = {}",
+	partialPeerIdentityIdStringSet);
+
+    // Get the set of peer identities in the merged poll agreements.
+    Set<String> peerIdentityIdStringSet =
+	new HashSet<>(originalPeerIdentityIdStringSet);
+    peerIdentityIdStringSet.addAll(partialPeerIdentityIdStringSet);
+    log.trace("peerIdentityIdStringSet = {}", peerIdentityIdStringSet);
+
+    IdentityManager idMgr = createIdentityManager(peerIdentityIdStringSet);
+
+    // Create the agreements.
+    AuAgreements auAgreements =
+	AuAgreements.make(auId, idMgr);
+
+    // Loop through all the merged peer identities identifiers.
+    for (String pid : peerIdentityIdStringSet) {
+      log.trace("pid = {}", pid);
+
+      // Check whether this peer identity appears in the partial poll agreements
+      // to be merged.
+      if (partialPeerIdentityIdStringSet.contains(pid)) {
+	// Yes: Incorporate into the merged poll agreements only the partial
+	// poll agreements for this peer identity.
+	log.trace("pid from partial");
+	copyAuPeerAgreements(partial, pid, auAgreements);
+      } else {
+	// No: Incorporate into the merged poll agreements the original poll
+	// agreements for this peer identity.
+	log.trace("pid from original");
+	copyAuPeerAgreements(original, pid, auAgreements);
+      }
+    }
+
+    log.debug2("auAgreements = {}", auAgreements);
+    return auAgreements;
+  }
+
+  /**
+   * Copies peer agreements from a source to a target.
+   * 
+   * @param source
+   *          An AuAgreements with the peer agreements to be copied.
+   * @param pid
+   *          A String with the peer identity identifier of the peer agreements
+   *          to be copied.
+   * @param target
+   *          An AuAgreements where to copy the peer agreements.
+   */
+  private void copyAuPeerAgreements(AuAgreements source, String pid,
+      AuAgreements target) {
+    log.debug2("source = {}", source);
+    log.debug2("pid = {}", pid);
+    log.debug2("target = {}", target);
+
+    // Loop through all the poll agreements types.
+    for (AgreementType type : AgreementType.allTypes()) {
+      log.trace("type = {}", type);
+
+      // Get this type's peer agreements in the source poll agreements.
+      Map<PeerIdentity, PeerAgreement> paMap = source.getAgreements(type);
+      log.trace("paMap = {}", paMap);
+
+      // Loop through all the peer identifies.
+      for (PeerIdentity pi : paMap.keySet()) {
+	log.trace("pi = {}", pi);
+
+	// Check whether its identifier matches the passed one.
+	if (pid.equals(pi.getIdString())) {
+	  // Yes: Get the peer agreement.
+	  PeerAgreement pa = source.getAgreements(type).get(pi);
+	  log.trace("pa = {}", pa);
+
+	  // Check whether it exists.
+	  if (pa != null) {
+	    // Yes: Populate the agreements details in the target.
+	    target.signalPartialAgreement(pi, type, pa.getPercentAgreement(),
+		pa.getPercentAgreementTime());
+	    log.trace("Added agreement to target.");
+	  }
+
+	  break;
+	}
+      }
     }
   }
 
