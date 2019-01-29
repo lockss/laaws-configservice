@@ -78,6 +78,10 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
       String result = getStateManager().getAuStateBean(auid).toJson();
       log.debug2("result = {}", result);
       return new ResponseEntity<String>(result, HttpStatus.OK);
+    } catch (IllegalArgumentException iae) {
+      String message = "Cannot get the state for auid = '" + auid + "'";
+      log.error(message, iae);
+      return getErrorResponseEntity(HttpStatus.BAD_REQUEST, message, iae);
     } catch (Exception e) {
       String message = "Cannot get the state for auid = '" + auid + "'";
       log.error(message, e);
@@ -123,6 +127,11 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
       getStateManager().updateAuStateFromJson(auid, auState);
 
       return new ResponseEntity<Void>(HttpStatus.OK);
+    } catch (IllegalArgumentException iae) {
+      String message = "Cannot update the state for auid = '" + auid + "'";
+      log.error(message, iae);
+      log.error("auState = {}", auState);
+      return getErrorResponseEntity(HttpStatus.BAD_REQUEST, message, iae);
     } catch (Exception e) {
       String message = "Cannot update the state for auid = '" + auid + "'";
       log.error(message, e);

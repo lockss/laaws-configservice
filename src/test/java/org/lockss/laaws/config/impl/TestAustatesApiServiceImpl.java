@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package org.lockss.laaws.config.impl;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -74,37 +73,22 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 
   private static final String EMPTY_STRING = "";
 
-  // The identifier of an AU that exists in the test system.
-  private static final String GOOD_AUID_1 =
-      "org|lockss|plugin|pensoft|oai|PensoftOaiPlugin"
-      + "&au_oai_date~2014&au_oai_set~biorisk"
-      + "&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F";
-
-  // The identifier of another AU that exists in the test system.
-  private static final String GOOD_AUID_2 =
-      "org|lockss|plugin|pensoft|oai|PensoftOaiPlugin"
-      + "&au_oai_date~2015&au_oai_set~biorisk"
-      + "&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F";
-
-  // The identifiers of AUs that do not exist in the test system.
-  private static final String UNKNOWN_AUID_1 ="unknown1&auid1";
-  private static final String UNKNOWN_AUID_2 ="unknown2&auid2";
-  private static final String UNKNOWN_AUID_3 ="unknown3&auid3";
-  private static final String UNKNOWN_AUID_4 ="unknown4&auid4";
-  private static final String UNKNOWN_AUID_5 ="unknown5&auid5";
-  private static final String UNKNOWN_AUID_6 ="unknown6&auid6";
-  private static final String UNKNOWN_AUID_7 ="unknown7&auid7";
-  private static final String UNKNOWN_AUID_8 ="unknown8&auid8";
+  // The identifiers of AUs.
+  private static final String BAD_AUID = "badAuId";
+  private static final String AUID_1 = "plugin1&auid1";
+  private static final String AUID_2 = "plugin1&auid2";
+  private static final String AUID_3 = "plugin1&auid3";
+  private static final String AUID_4 = "plugin1&auid4";
 
   // Credentials.
   private final Credentials USER_ADMIN =
-      this.new Credentials("lockss-u", "lockss-p");
+      new Credentials("lockss-u", "lockss-p");
   private final Credentials AU_ADMIN =
-      this.new Credentials("au-admin", "I'mAuAdmin");
+      new Credentials("au-admin", "I'mAuAdmin");
   private final Credentials CONTENT_ADMIN =
-      this.new Credentials("content-admin", "I'mContentAdmin");
+      new Credentials("content-admin", "I'mContentAdmin");
   private final Credentials ANYBODY =
-      this.new Credentials("someUser", "somePassword");
+      new Credentials("someUser", "somePassword");
 
   // The port that Tomcat is using during this test.
   @LocalServerPort
@@ -126,17 +110,6 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 
     // Set up the temporary directory where the test data will reside.
     setUpTempDirectory(TestAustatesApiServiceImpl.class.getCanonicalName());
-
-    // Copy the necessary files to the test temporary directory.
-    final File srcTree1 = new File(new File("test"), "cache");
-    log.trace("srcTree1 = {}", () -> srcTree1.getAbsolutePath());
-
-    copyToTempDir(srcTree1);
-
-    final File srcTree2 = new File(new File("test"), "tdbxml");
-    log.trace("srcTree2 = {}", () -> srcTree2.getAbsolutePath());
-
-    copyToTempDir(srcTree2);
 
     // Set up the UI port.
     setUpUiPort(UI_PORT_CONFIGURATION_TEMPLATE, UI_PORT_CONFIGURATION_FILE);
@@ -163,6 +136,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
     getSwaggerDocsTest();
+    runMethodsNotAllowedUnAuthenticatedTest();
     getAuStateUnAuthenticatedTest();
     patchAuStateUnAuthenticatedTest();
 
@@ -188,6 +162,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
     getSwaggerDocsTest();
+    runMethodsNotAllowedAuthenticatedTest();
     getAuStateAuthenticatedTest();
     patchAuStateAuthenticatedTest();
 
@@ -197,7 +172,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
   /**
    * Provides the standard command line arguments to start the server.
    * 
-   * @return a List<String> with the command line arguments.
+   * @return a {@code List<String>} with the command line arguments.
    */
   private List<String> getCommandLineArguments() {
     log.debug2("Invoked");
@@ -207,13 +182,6 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     cmdLineArgs.add(getPlatformDiskSpaceConfigPath());
     cmdLineArgs.add("-p");
     cmdLineArgs.add("config/common.xml");
-
-    File folder =
-	new File(new File(new File(getTempDirPath()), "tdbxml"), "prod");
-    log.trace("folder = {}", folder);
-
-    cmdLineArgs.add("-x");
-    cmdLineArgs.add(folder.getAbsolutePath());
     cmdLineArgs.add("-p");
     cmdLineArgs.add(getUiPortConfigFile().getAbsolutePath());
     cmdLineArgs.add("-p");
@@ -250,6 +218,178 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
   }
 
   /**
+   * Runs the invalid method-related un-authenticated-specific tests.
+   * 
+   * @throws Exception
+   *           if there are problems.
+   */
+  private void runMethodsNotAllowedUnAuthenticatedTest() throws Exception {
+    log.debug2("Invoked");
+
+    // No AUId: Spring reports it cannot find a match to an endpoint.
+    runTestMethodNotAllowed(null, null, HttpMethod.POST, HttpStatus.NOT_FOUND);
+
+    // Empty AUId: Spring reports it cannot find a match to an endpoint.
+    runTestMethodNotAllowed(EMPTY_STRING, ANYBODY, HttpMethod.PUT,
+	HttpStatus.NOT_FOUND);
+
+    // Bad AUId.
+    runTestMethodNotAllowed(BAD_AUID, ANYBODY, HttpMethod.POST,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runTestMethodNotAllowed(BAD_AUID, null, HttpMethod.PUT,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    // Good AUId.
+    runTestMethodNotAllowed(AUID_1, null, HttpMethod.PUT,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runTestMethodNotAllowed(AUID_1, ANYBODY, HttpMethod.POST,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runMethodsNotAllowedCommonTest();
+
+    log.debug2("Done");
+  }
+
+  /**
+   * Runs the invalid method-related authenticated-specific tests.
+   * 
+   * @throws Exception
+   *           if there are problems.
+   */
+  private void runMethodsNotAllowedAuthenticatedTest() throws Exception {
+    log.debug2("Invoked");
+
+    // No AUId.
+    runTestMethodNotAllowed(null, ANYBODY, HttpMethod.POST,
+	HttpStatus.UNAUTHORIZED);
+
+    // Empty AUId.
+    runTestMethodNotAllowed(EMPTY_STRING, null, HttpMethod.PUT,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad AUId.
+    runTestMethodNotAllowed(BAD_AUID, ANYBODY, HttpMethod.POST,
+	HttpStatus.UNAUTHORIZED);
+
+    // No credentials.
+    runTestMethodNotAllowed(AUID_1, null, HttpMethod.PUT,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestMethodNotAllowed(AUID_2, ANYBODY, HttpMethod.POST,
+	HttpStatus.UNAUTHORIZED);
+
+    runMethodsNotAllowedCommonTest();
+
+    log.debug2("Done");
+  }
+
+  /**
+   * Runs the invalid method-related authentication-independent tests.
+   */
+  private void runMethodsNotAllowedCommonTest() throws Exception {
+    log.debug2("Invoked");
+
+    // No AUId: Spring reports it cannot find a match to an endpoint.
+    runTestMethodNotAllowed(null, USER_ADMIN, HttpMethod.POST,
+	HttpStatus.NOT_FOUND);
+
+    // Empty AUId: Spring reports it cannot find a match to an endpoint.
+    runTestMethodNotAllowed(EMPTY_STRING, AU_ADMIN, HttpMethod.PUT,
+	HttpStatus.NOT_FOUND);
+
+    // Bad AUId.
+    runTestMethodNotAllowed(BAD_AUID, USER_ADMIN, HttpMethod.PUT,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runTestMethodNotAllowed(BAD_AUID, AU_ADMIN, HttpMethod.POST,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    // Good AUId.
+    runTestMethodNotAllowed(AUID_1, AU_ADMIN, HttpMethod.PUT,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runTestMethodNotAllowed(AUID_1, USER_ADMIN, HttpMethod.POST,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    log.debug2("Done");
+  }
+
+  /**
+   * Performs an operation using a method that is not allowed.
+   * 
+   * @param auId
+   *          A String with the Archival Unit identifier.
+   * @param credentials
+   *          A Credentials with the request credentials.
+   * @param method
+   *          An HttpMethod with the request method.
+   * @param expectedStatus
+   *          An HttpStatus with the HTTP status of the result.
+   */
+  private void runTestMethodNotAllowed(String auId, Credentials credentials,
+      HttpMethod method, HttpStatus expectedStatus) throws Exception {
+    log.debug2("auId = {}", auId);
+    log.debug2("credentials = {}", credentials);
+    log.debug2("method = {}", method);
+    log.debug2("expectedStatus = {}", expectedStatus);
+
+    // Get the test URL template.
+    String template = getTestUrlTemplate("/austates/{auid}");
+
+    // Create the URI of the request to the REST service.
+    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
+	.build().expand(Collections.singletonMap("auid", auId));
+
+    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
+	.build().encode().toUri();
+    log.trace("uri = {}", uri);
+
+    // Initialize the request to the REST service.
+    RestTemplate restTemplate = new RestTemplate();
+
+    HttpEntity<String> requestEntity = null;
+
+    // Get the individual credentials elements.
+    String user = null;
+    String password = null;
+
+    if (credentials != null) {
+      user = credentials.getUser();
+      password = credentials.getPassword();
+    }
+
+    // Check whether there are any custom headers to be specified in the
+    // request.
+    if (user != null || password != null) {
+
+      // Initialize the request headers.
+      HttpHeaders headers = new HttpHeaders();
+
+      // Set up the authentication credentials, if necessary.
+      if (credentials != null) {
+	credentials.setUpBasicAuthentication(headers);
+      }
+
+      log.trace("requestHeaders = {}", () -> headers.toSingleValueMap());
+
+      // Create the request entity.
+      requestEntity = new HttpEntity<String>(null, headers);
+    }
+
+    // Make the request and get the response. 
+    ResponseEntity<String> response = new TestRestTemplate(restTemplate)
+	.exchange(uri, method, requestEntity, String.class);
+
+    // Get the response status.
+    HttpStatus statusCode = response.getStatusCode();
+    assertFalse(isSuccess(statusCode));
+    assertEquals(expectedStatus, statusCode);
+  }
+
+  /**
    * Runs the getAuState()-related un-authenticated-specific tests.
    */
   private void getAuStateUnAuthenticatedTest() throws Exception {
@@ -264,23 +404,16 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestGetAuState(EMPTY_STRING, ANYBODY, HttpStatus.NOT_FOUND);
 
-    // Non-existent AUId.
-    String result = runTestGetAuState(UNKNOWN_AUID_6, null, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(stateManager.getAuStateBean(UNKNOWN_AUID_6).toJson(), result);
+    // Bad AUId.
+    runTestGetAuState(BAD_AUID, null, HttpStatus.BAD_REQUEST);
 
     // No credentials.
-    result = runTestGetAuState(GOOD_AUID_1, ANYBODY, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(stateManager.getAuStateBean(GOOD_AUID_1).toJson(), result);
+    assertEquals(stateManager.getAuStateBean(AUID_1).toJson(),
+	runTestGetAuState(AUID_1, null, HttpStatus.OK));
 
     // Bad credentials.
-    result = runTestGetAuState(GOOD_AUID_2, CONTENT_ADMIN, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(stateManager.getAuStateBean(GOOD_AUID_2).toJson(), result);
+    assertEquals(stateManager.getAuStateBean(AUID_2).toJson(),
+	runTestGetAuState(AUID_2, ANYBODY, HttpStatus.OK));
 
     getAuStateCommonTest();
 
@@ -299,14 +432,14 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     // Empty AUId.
     runTestGetAuState(EMPTY_STRING, null, HttpStatus.UNAUTHORIZED);
 
-    // Non-existent AUId.
-    runTestGetAuState(UNKNOWN_AUID_8, ANYBODY, HttpStatus.UNAUTHORIZED);
+    // Bad AUId.
+    runTestGetAuState(BAD_AUID, ANYBODY, HttpStatus.UNAUTHORIZED);
 
     // No credentials.
-    runTestGetAuState(GOOD_AUID_1, null, HttpStatus.UNAUTHORIZED);
+    runTestGetAuState(AUID_1, null, HttpStatus.UNAUTHORIZED);
 
     // Bad credentials.
-    runTestGetAuState(GOOD_AUID_2, ANYBODY, HttpStatus.UNAUTHORIZED);
+    runTestGetAuState(AUID_2, ANYBODY, HttpStatus.UNAUTHORIZED);
 
     getAuStateCommonTest();
 
@@ -328,24 +461,15 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestGetAuState(EMPTY_STRING, AU_ADMIN, HttpStatus.NOT_FOUND);
 
-    // Non-existent AUId.
-    String result =
-	runTestGetAuState(UNKNOWN_AUID_7, USER_ADMIN, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(stateManager.getAuStateBean(UNKNOWN_AUID_7).toJson(), result);
+    // Bad AUId.
+    runTestGetAuState(BAD_AUID, USER_ADMIN, HttpStatus.BAD_REQUEST);
 
     // Good AUId.
-    result = runTestGetAuState(GOOD_AUID_1, AU_ADMIN, HttpStatus.OK);
+    assertEquals(stateManager.getAuStateBean(AUID_1).toJson(),
+	runTestGetAuState(AUID_1, AU_ADMIN, HttpStatus.OK));
 
-    // Verify.
-    assertEquals(stateManager.getAuStateBean(GOOD_AUID_1).toJson(), result);
-
-    // Good AUId.
-    result = runTestGetAuState(GOOD_AUID_2, USER_ADMIN, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(stateManager.getAuStateBean(GOOD_AUID_2).toJson(), result);
+    assertEquals(stateManager.getAuStateBean(AUID_2).toJson(),
+	runTestGetAuState(AUID_2, USER_ADMIN, HttpStatus.OK));
 
     log.debug2("Done");
   }
@@ -461,29 +585,36 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     runTestPatchAuState(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.NOT_FOUND);
 
-    // No AU state.
-    runTestPatchAuState(GOOD_AUID_1, null, null, null,
+    // Bad AUId.
+    runTestPatchAuState(BAD_AUID, null, null, ANYBODY,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuState(GOOD_AUID_1, null, MediaType.APPLICATION_JSON, null,
-	HttpStatus.BAD_REQUEST);
-
-    runTestPatchAuState(GOOD_AUID_1, null, MediaType.APPLICATION_JSON, ANYBODY,
-	HttpStatus.BAD_REQUEST);
-
-    runTestPatchAuState(GOOD_AUID_1, null, MediaType.APPLICATION_JSON,
+    runTestPatchAuState(BAD_AUID, null, MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuState(GOOD_AUID_1, EMPTY_STRING, null, null,
+    // No AU state.
+    runTestPatchAuState(AUID_1, null, null, null,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuState(GOOD_AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
-	null, HttpStatus.BAD_REQUEST);
+    runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, null,
+	HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuState(GOOD_AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
+    runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, ANYBODY,
+	HttpStatus.BAD_REQUEST);
+
+    runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, CONTENT_ADMIN,
+	HttpStatus.BAD_REQUEST);
+
+    runTestPatchAuState(AUID_1, EMPTY_STRING, null, null,
+	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+
+    runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON, null,
+	HttpStatus.BAD_REQUEST);
+
+    runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
 	ANYBODY, HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuState(GOOD_AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
+    runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
     AuStateBean bean = new AuStateBean();
@@ -491,103 +622,83 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     bean.setAuCreationTime(creationTime);
 
     // No Content-Type header.
-    runTestPatchAuState(GOOD_AUID_1, bean.toJson(), null, null,
+    runTestPatchAuState(AUID_1, bean.toJson(), null, null,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Get the current state of the first AU.
-    String backupState1 = runTestGetAuState(GOOD_AUID_1, null, HttpStatus.OK);
+    String backupState1 = runTestGetAuState(AUID_1, null, HttpStatus.OK);
 
     // Verify.
-    AuStateBean bean1 = stateManager.getAuStateBean(GOOD_AUID_1);
+    AuStateBean bean1 = stateManager.getAuStateBean(AUID_1);
     assertEquals(bean1.toJson(), backupState1);
 
     // Get the current state of the second AU.
-    String backupState2 =
-	runTestGetAuState(GOOD_AUID_2, ANYBODY, HttpStatus.OK);
+    String backupState2 = runTestGetAuState(AUID_2, ANYBODY, HttpStatus.OK);
 
     // Verify.
-    AuStateBean bean2 = stateManager.getAuStateBean(GOOD_AUID_2);
+    AuStateBean bean2 = stateManager.getAuStateBean(AUID_2);
     assertEquals(bean2.toJson(), backupState2);
 
     // Patch first AU.
-    runTestPatchAuState(GOOD_AUID_1, bean.toJson(),
-	MediaType.APPLICATION_JSON, null, HttpStatus.OK);
+    runTestPatchAuState(AUID_1, bean.toJson(), MediaType.APPLICATION_JSON, null,
+	HttpStatus.OK);
 
     // Verify.
     assertEquals(creationTime,
-	stateManager.getAuStateBean(GOOD_AUID_1).getAuCreationTime());
+	stateManager.getAuStateBean(AUID_1).getAuCreationTime());
 
     // Verify that the current state of the second AU has not been affected.
     assertEquals(backupState2,
-	runTestGetAuState(GOOD_AUID_2, CONTENT_ADMIN, HttpStatus.OK));
+	runTestGetAuState(AUID_2, CONTENT_ADMIN, HttpStatus.OK));
 
     // Restore the original state of the first AU.
-    runTestPatchAuState(GOOD_AUID_1, backupState1, MediaType.APPLICATION_JSON,
+    runTestPatchAuState(AUID_1, backupState1, MediaType.APPLICATION_JSON,
 	ANYBODY, HttpStatus.OK);
 
     // Verify.
-    assertEquals(backupState1,
-	runTestGetAuState(GOOD_AUID_1, null, HttpStatus.OK));
+    assertEquals(backupState1, runTestGetAuState(AUID_1, null, HttpStatus.OK));
 
     // Verify that the current state of the second AU has not been affected.
     assertEquals(backupState2,
-	runTestGetAuState(GOOD_AUID_2, ANYBODY, HttpStatus.OK));
+	runTestGetAuState(AUID_2, ANYBODY, HttpStatus.OK));
 
     // Patch second AU.
-    runTestPatchAuState(GOOD_AUID_2, bean.toJson(),
-	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.OK);
+    runTestPatchAuState(AUID_2, bean.toJson(), MediaType.APPLICATION_JSON,
+	CONTENT_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(creationTime,
-	stateManager.getAuStateBean(GOOD_AUID_2).getAuCreationTime());
+	stateManager.getAuStateBean(AUID_2).getAuCreationTime());
 
     // Verify that the current state of the first AU has not been affected.
     assertEquals(backupState1,
-	runTestGetAuState(GOOD_AUID_1, CONTENT_ADMIN, HttpStatus.OK));
+	runTestGetAuState(AUID_1, CONTENT_ADMIN, HttpStatus.OK));
 
     // Restore the original state of the second AU.
-    runTestPatchAuState(GOOD_AUID_2, backupState2, MediaType.APPLICATION_JSON,
-	null, HttpStatus.OK);
+    runTestPatchAuState(AUID_2, backupState2, MediaType.APPLICATION_JSON, null,
+	HttpStatus.OK);
 
     // Verify.
-    assertEquals(backupState2,
-	runTestGetAuState(GOOD_AUID_2, null, HttpStatus.OK));
+    assertEquals(backupState2, runTestGetAuState(AUID_2, null, HttpStatus.OK));
 
     // Verify that the current state of the first AU has not been affected.
     assertEquals(backupState1,
-	runTestGetAuState(GOOD_AUID_1, ANYBODY, HttpStatus.OK));
+	runTestGetAuState(AUID_1, ANYBODY, HttpStatus.OK));
 
-    // Patch first non-existent AU.
-    runTestPatchAuState(UNKNOWN_AUID_1, bean.toJson(),
-	MediaType.APPLICATION_JSON, null, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(creationTime,
-	stateManager.getAuStateBean(UNKNOWN_AUID_1).getAuCreationTime());
-
-    // Patch second non-existent AU.
-    runTestPatchAuState(UNKNOWN_AUID_2, bean.toJson(),
-	MediaType.APPLICATION_JSON, ANYBODY, HttpStatus.OK);
+    // Patch third AU.
+    runTestPatchAuState(AUID_3, bean.toJson(), MediaType.APPLICATION_JSON,
+	CONTENT_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(creationTime,
-	stateManager.getAuStateBean(UNKNOWN_AUID_2).getAuCreationTime());
-
-    // Patch third non-existent AU.
-    runTestPatchAuState(UNKNOWN_AUID_3, bean.toJson(),
-	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(creationTime,
-	stateManager.getAuStateBean(UNKNOWN_AUID_3).getAuCreationTime());
+	stateManager.getAuStateBean(AUID_3).getAuCreationTime());
 
     // Verify that the current state of the first AU has not been affected.
-    assertEquals(backupState1,
-	runTestGetAuState(GOOD_AUID_1, CONTENT_ADMIN, HttpStatus.OK));
+    assertEquals(backupState1, runTestGetAuState(AUID_1, null, HttpStatus.OK));
 
     // Verify that the current state of the second AU has not been affected.
     assertEquals(backupState2,
-	runTestGetAuState(GOOD_AUID_2, null, HttpStatus.OK));
+	runTestGetAuState(AUID_2, ANYBODY, HttpStatus.OK));
 
     patchAuStateCommonTest();
 
@@ -614,7 +725,8 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	HttpStatus.NOT_FOUND);
 
     // Empty AUId.
-    runTestPatchAuState(EMPTY_STRING, null, null, null, HttpStatus.UNAUTHORIZED);
+    runTestPatchAuState(EMPTY_STRING, null, null, null,
+	HttpStatus.UNAUTHORIZED);
 
     runTestPatchAuState(EMPTY_STRING, null, MediaType.APPLICATION_JSON, null,
 	HttpStatus.UNAUTHORIZED);
@@ -626,28 +738,35 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     runTestPatchAuState(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.NOT_FOUND);
 
-    // No AU state.
-    runTestPatchAuState(GOOD_AUID_1, null, null, null, HttpStatus.UNAUTHORIZED);
-
-    runTestPatchAuState(GOOD_AUID_1, null, MediaType.APPLICATION_JSON, null,
+    // Bad AUId.
+    runTestPatchAuState(BAD_AUID, null, MediaType.APPLICATION_JSON, null,
 	HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuState(GOOD_AUID_1, null, MediaType.APPLICATION_JSON, ANYBODY,
-	HttpStatus.UNAUTHORIZED);
-
-    runTestPatchAuState(GOOD_AUID_1, null, MediaType.APPLICATION_JSON,
+    runTestPatchAuState(BAD_AUID, null, MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuState(GOOD_AUID_1, EMPTY_STRING, null, null,
+    // No AU state.
+    runTestPatchAuState(AUID_1, null, null, null, HttpStatus.UNAUTHORIZED);
+
+    runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, null,
 	HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuState(GOOD_AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
+    runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, ANYBODY,
+	HttpStatus.UNAUTHORIZED);
+
+    runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, CONTENT_ADMIN,
+	HttpStatus.BAD_REQUEST);
+
+    runTestPatchAuState(AUID_1, EMPTY_STRING, null, null,
+	HttpStatus.UNAUTHORIZED);
+
+    runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
 	null, HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuState(GOOD_AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
+    runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
 	ANYBODY, HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuState(GOOD_AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
+    runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
     AuStateBean bean = new AuStateBean();
@@ -655,20 +774,16 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     bean.setAuCreationTime(creationTime);
 
     // No Content-Type header.
-    runTestPatchAuState(GOOD_AUID_1, bean.toJson(), null, null,
+    runTestPatchAuState(AUID_1, bean.toJson(), null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Patch first AU.
-    runTestPatchAuState(GOOD_AUID_1, bean.toJson(),
-	MediaType.APPLICATION_JSON, null, HttpStatus.UNAUTHORIZED);
+    runTestPatchAuState(AUID_1, bean.toJson(), MediaType.APPLICATION_JSON, null,
+	HttpStatus.UNAUTHORIZED);
 
     // Patch second AU.
-    runTestPatchAuState(GOOD_AUID_2, bean.toJson(),
-	MediaType.APPLICATION_JSON, ANYBODY, HttpStatus.UNAUTHORIZED);
-
-    // Non-existent AUId.
-    runTestPatchAuState(UNKNOWN_AUID_8, bean.toJson(),
-	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.FORBIDDEN);
+    runTestPatchAuState(AUID_2, bean.toJson(), MediaType.APPLICATION_JSON,
+	CONTENT_ADMIN, HttpStatus.FORBIDDEN);
 
     patchAuStateCommonTest();
 
@@ -707,29 +822,36 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     runTestPatchAuState(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
 	USER_ADMIN, HttpStatus.NOT_FOUND);
 
-    // No AU state.
-    runTestPatchAuState(GOOD_AUID_1, null, null, AU_ADMIN,
+    // Bad AUId.
+    runTestPatchAuState(BAD_AUID, null, null, AU_ADMIN,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuState(GOOD_AUID_1, null, null, USER_ADMIN,
-	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-
-    runTestPatchAuState(GOOD_AUID_1, null, MediaType.APPLICATION_JSON,
-	AU_ADMIN, HttpStatus.BAD_REQUEST);
-
-    runTestPatchAuState(GOOD_AUID_1, null, MediaType.APPLICATION_JSON,
+    runTestPatchAuState(BAD_AUID, null, MediaType.APPLICATION_JSON,
 	USER_ADMIN, HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuState(GOOD_AUID_1, EMPTY_STRING, null, AU_ADMIN,
+    // No AU state.
+    runTestPatchAuState(AUID_1, null, null, AU_ADMIN,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuState(GOOD_AUID_1, EMPTY_STRING, null, USER_ADMIN,
+    runTestPatchAuState(AUID_1, null, null, USER_ADMIN,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuState(GOOD_AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
+    runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, AU_ADMIN,
+	HttpStatus.BAD_REQUEST);
+
+    runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, USER_ADMIN,
+	HttpStatus.BAD_REQUEST);
+
+    runTestPatchAuState(AUID_1, EMPTY_STRING, null, AU_ADMIN,
+	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+
+    runTestPatchAuState(AUID_1, EMPTY_STRING, null, USER_ADMIN,
+	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+
+    runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
 	AU_ADMIN, HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuState(GOOD_AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
+    runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
 	USER_ADMIN, HttpStatus.BAD_REQUEST);
 
     AuStateBean bean = new AuStateBean();
@@ -737,99 +859,90 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     bean.setAuCreationTime(creationTime);
 
     // No Content-Type header.
-    runTestPatchAuState(GOOD_AUID_1, bean.toJson(), null, AU_ADMIN,
+    runTestPatchAuState(AUID_1, bean.toJson(), null, AU_ADMIN,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuState(GOOD_AUID_1, bean.toJson(), null, USER_ADMIN,
+    runTestPatchAuState(AUID_1, bean.toJson(), null, USER_ADMIN,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Get the current state of the first AU.
     String backupState1 =
-	runTestGetAuState(GOOD_AUID_1, AU_ADMIN, HttpStatus.OK);
+	runTestGetAuState(AUID_1, AU_ADMIN, HttpStatus.OK);
 
     // Verify.
-    AuStateBean bean1 = stateManager.getAuStateBean(GOOD_AUID_1);
+    AuStateBean bean1 = stateManager.getAuStateBean(AUID_1);
     assertEquals(bean1.toJson(), backupState1);
 
     // Get the current state of the second AU.
-    String backupState2 =
-	runTestGetAuState(GOOD_AUID_2, USER_ADMIN, HttpStatus.OK);
+    String backupState2 = runTestGetAuState(AUID_2, USER_ADMIN, HttpStatus.OK);
 
     // Verify.
-    AuStateBean bean2 = stateManager.getAuStateBean(GOOD_AUID_2);
+    AuStateBean bean2 = stateManager.getAuStateBean(AUID_2);
     assertEquals(bean2.toJson(), backupState2);
 
     // Patch first AU.
-    runTestPatchAuState(GOOD_AUID_1, bean.toJson(),
-	MediaType.APPLICATION_JSON, AU_ADMIN, HttpStatus.OK);
+    runTestPatchAuState(AUID_1, bean.toJson(), MediaType.APPLICATION_JSON,
+	AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(creationTime,
-	stateManager.getAuStateBean(GOOD_AUID_1).getAuCreationTime());
+	stateManager.getAuStateBean(AUID_1).getAuCreationTime());
 
     // Verify that the current state of the second AU has not been affected.
     assertEquals(backupState2,
-	runTestGetAuState(GOOD_AUID_2, USER_ADMIN, HttpStatus.OK));
+	runTestGetAuState(AUID_2, USER_ADMIN, HttpStatus.OK));
 
     // Restore the original state of the first AU.
-    runTestPatchAuState(GOOD_AUID_1, backupState1, MediaType.APPLICATION_JSON,
+    runTestPatchAuState(AUID_1, backupState1, MediaType.APPLICATION_JSON,
 	AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupState1,
-	runTestGetAuState(GOOD_AUID_1, USER_ADMIN, HttpStatus.OK));
+	runTestGetAuState(AUID_1, USER_ADMIN, HttpStatus.OK));
 
     // Verify that the current state of the second AU has not been affected.
     assertEquals(backupState2,
-	runTestGetAuState(GOOD_AUID_2, AU_ADMIN, HttpStatus.OK));
+	runTestGetAuState(AUID_2, AU_ADMIN, HttpStatus.OK));
 
     // Patch second AU.
-    runTestPatchAuState(GOOD_AUID_2, bean.toJson(),
-	MediaType.APPLICATION_JSON, USER_ADMIN, HttpStatus.OK);
+    runTestPatchAuState(AUID_2, bean.toJson(), MediaType.APPLICATION_JSON,
+	USER_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(creationTime,
-	stateManager.getAuStateBean(GOOD_AUID_2).getAuCreationTime());
+	stateManager.getAuStateBean(AUID_2).getAuCreationTime());
 
     // Verify that the current state of the first AU has not been affected.
     assertEquals(backupState1,
-	runTestGetAuState(GOOD_AUID_1, AU_ADMIN, HttpStatus.OK));
+	runTestGetAuState(AUID_1, AU_ADMIN, HttpStatus.OK));
 
     // Restore the original state of the second AU.
-    runTestPatchAuState(GOOD_AUID_2, backupState2, MediaType.APPLICATION_JSON,
+    runTestPatchAuState(AUID_2, backupState2, MediaType.APPLICATION_JSON,
 	USER_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupState2,
-	runTestGetAuState(GOOD_AUID_2, AU_ADMIN, HttpStatus.OK));
+	runTestGetAuState(AUID_2, AU_ADMIN, HttpStatus.OK));
 
     // Verify that the current state of the first AU has not been affected.
     assertEquals(backupState1,
-	runTestGetAuState(GOOD_AUID_1, USER_ADMIN, HttpStatus.OK));
+	runTestGetAuState(AUID_1, USER_ADMIN, HttpStatus.OK));
 
-    // Patch fourth non-existent AU.
-    runTestPatchAuState(UNKNOWN_AUID_4, bean.toJson(),
-	MediaType.APPLICATION_JSON, AU_ADMIN, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(creationTime,
-	stateManager.getAuStateBean(UNKNOWN_AUID_4).getAuCreationTime());
-
-    // Patch fifth non-existent AU.
-    runTestPatchAuState(UNKNOWN_AUID_5, bean.toJson(),
-	MediaType.APPLICATION_JSON, USER_ADMIN, HttpStatus.OK);
+    // Patch fourth AU.
+    runTestPatchAuState(AUID_4, bean.toJson(), MediaType.APPLICATION_JSON,
+	AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(creationTime,
-	stateManager.getAuStateBean(UNKNOWN_AUID_5).getAuCreationTime());
+	stateManager.getAuStateBean(AUID_4).getAuCreationTime());
 
     // Verify that the current state of the first AU has not been affected.
     assertEquals(backupState1,
-	runTestGetAuState(GOOD_AUID_1, USER_ADMIN, HttpStatus.OK));
+	runTestGetAuState(AUID_1, USER_ADMIN, HttpStatus.OK));
 
     // Verify that the current state of the second AU has not been affected.
     assertEquals(backupState2,
-	runTestGetAuState(GOOD_AUID_2, USER_ADMIN, HttpStatus.OK));
+	runTestGetAuState(AUID_2, AU_ADMIN, HttpStatus.OK));
 
     log.debug2("Done");
   }
