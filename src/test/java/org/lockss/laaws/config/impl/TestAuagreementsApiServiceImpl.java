@@ -49,7 +49,6 @@ import org.lockss.log.L4JLogger;
 import org.lockss.protocol.AgreementType;
 import org.lockss.protocol.AuAgreements;
 import org.lockss.protocol.IdentityManager;
-import org.lockss.protocol.MockIdentityManager;
 import org.lockss.protocol.MockPeerIdentity;
 import org.lockss.protocol.PeerAgreement;
 import org.lockss.protocol.PeerIdentity;
@@ -57,6 +56,7 @@ import org.lockss.state.StateManager;
 import org.lockss.test.MockLockssDaemon;
 import org.lockss.test.SpringLockssTestCase;
 import org.lockss.util.ListUtil;
+import org.lockss.util.StringUtil;
 import org.lockss.util.time.TimeBase;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -133,6 +133,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
   ApplicationContext appCtx;
 
   MockLockssDaemon daemon = null;
+  IdentityManager idMgr;
 
   /**
    * Set up code to be run before each test.
@@ -150,7 +151,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     setUpUiPort(UI_PORT_CONFIGURATION_TEMPLATE, UI_PORT_CONFIGURATION_FILE);
 
     daemon = getMockLockssDaemon();
-
+    idMgr = daemon.getIdentityManager();
     log.debug2("Done");
   }
 
@@ -631,14 +632,14 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	null, HttpStatus.BAD_REQUEST);
 
     AuAgreements auAgreements = createAuAgreements(AUID_1,
-	badPeerIdentityIdStringList, AgreementType.POR, 0.0625f);
+	goodPeerIdentityIdStringList1, AgreementType.POR, 0.0625f);
 
     // No Content-Type header.
-    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(), null, ANYBODY,
+    runTestPatchAuAgreements(AUID_1, toJsonWithBadPids(auAgreements), null, ANYBODY,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Bad peer agreement ID.
-    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(),
+    runTestPatchAuAgreements(AUID_1, toJsonWithBadPids(auAgreements),
 	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
     // Get the current poll agreements of the second AU.
@@ -816,10 +817,10 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
     AuAgreements auAgreements = createAuAgreements(AUID_1,
-	badPeerIdentityIdStringList, AgreementType.SYMMETRIC_POR_HINT, 0.125f);
+	goodPeerIdentityIdStringList1, AgreementType.SYMMETRIC_POR_HINT, 0.125f);
 
     // No Content-Type header.
-    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(), null, null,
+    runTestPatchAuAgreements(AUID_1, toJsonWithBadPids(auAgreements), null, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad peer agreement ID.
@@ -882,18 +883,15 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	MediaType.APPLICATION_JSON, USER_ADMIN, HttpStatus.BAD_REQUEST);
 
     AuAgreements auAgreements = createAuAgreements(AUID_1,
-	badPeerIdentityIdStringList, AgreementType.SYMMETRIC_POP_HINT, 0.9375f);
+	goodPeerIdentityIdStringList1, AgreementType.SYMMETRIC_POP_HINT, 0.9375f);
 
     // No Content-Type header.
-    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(), null,
+    runTestPatchAuAgreements(AUID_1, toJsonWithBadPids(auAgreements), null,
 	USER_ADMIN, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     // Bad peer agreement ID.
-    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(),
+    runTestPatchAuAgreements(AUID_1, toJsonWithBadPids(auAgreements),
 	MediaType.APPLICATION_JSON, AU_ADMIN, HttpStatus.BAD_REQUEST);
-
-    // Set the identity manager.
-    createIdentityManager(goodPeerIdentityIdStringList2);
 
     // Get the current poll agreements of the second AU.
     AuAgreements auAgreements2 = AuAgreements.fromJson(AUID_2,
@@ -1095,9 +1093,6 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     log.debug2("agreementType = {}", agreementType);
     log.debug2("agreementPercent = {}", agreementPercent);
 
-    // Create the identity manager.
-    IdentityManager idMgr = createIdentityManager(peerIdentityIdStringList);
-
     // Create the agreements.
     AuAgreements auAgreements = AuAgreements.make(auId, idMgr);
 
@@ -1113,37 +1108,6 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
   }
 
   /**
-   * Creates an identity manager.
-   * 
-   * @param peerIdentityIdStringList
-   *          A {@code Collection<String>} with peer identities identifiers.
-   * @return An IdentityManager with the identity manager.
-   */
-  private IdentityManager createIdentityManager(
-      Collection<String> peerIdentityIdStringList) {
-    log.debug2("peerIdentityList = {}", peerIdentityIdStringList);
-
-    // Create the identity manager.
-    MockIdentityManager idMgr = new MockIdentityManager();
-
-    // Populate the identity manager with the passed peer identities.
-    for (String pid : peerIdentityIdStringList) {
-      log.trace("pid = {}", pid);
-      PeerIdentity pi = idMgr.findPeerIdentity(pid);
-      log.trace("pi = {}", pi);
-
-      if (pi == null) {
-	idMgr.addPeerIdentity(pid, new MockPeerIdentity(pid));
-      }
-    }
-
-    daemon.setIdentityManager(idMgr);
-
-    log.debug2("idMgr = {}", idMgr);
-    return idMgr;
-  }
-
-  /**
    * Verifies that two AuAgreements objects match in their PeerAgreements.
    * 
    * @param aua1
@@ -1152,67 +1116,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
    *          An AuAgreements with the second object to be matched.
    */
   private void assertAuAgreementsMatch(AuAgreements aua1, AuAgreements aua2) {
-    for (AgreementType type : AgreementType.allTypes()) {
-      assertAuAgreementsMatch(aua1, aua2, type);
-    }
-  }
-
-  /**
-   * Verifies that two AuAgreements objects match in their PeerAgreements.
-   * 
-   * @param aua1
-   *          An AuAgreements with the first object to be matched.
-   * @param aua2
-   *          An AuAgreements with the second object to be matched.
-   * @param type
-   *          An AgreementType with the type of agreements to verify.
-   */
-  private void assertAuAgreementsMatch(AuAgreements aua1, AuAgreements aua2,
-      AgreementType type) {
-    log.debug2("type = {}", type);
-
-    // Get the AuAgreements objects maps.
-    Map<PeerIdentity, PeerAgreement> aua1Map = aua1.getAgreements(type);
-    log.trace("aua1Map = {}", aua1Map);
-
-    Map<PeerIdentity, PeerAgreement> aua2Map = aua2.getAgreements(type);
-    log.trace("aua2Map = {}", aua2Map);
-
-    // Verify that they have the same number of entries.
-    assertEquals(aua1Map.size(), aua2Map.size());
-
-    // Iterate through the first object map entries.
-    Iterator<PeerIdentity> aua1Iterator = aua1Map.keySet().iterator();
-
-    while (aua1Iterator.hasNext()) {
-      // Assume that there is no match.
-      boolean matched = false;
-
-      // Get this first object peer identity.
-      PeerIdentity aua1pid = aua1Iterator.next();
-
-      // Iterate through the second object map entries.
-      Iterator<PeerIdentity> aua2Iterator = aua2Map.keySet().iterator();
-
-      while (aua2Iterator.hasNext()) {
-	// Get this second object peer identity.
-	PeerIdentity aua2pid = aua2Iterator.next();
-
-	// Check whether the peer identities from both iterators match.
-	if (aua2pid.getIdString().equals(aua1pid.getIdString())) {
-	  // Yes: Verify that the poll agreements match.
-	  assertEquals(aua1Map.get(aua1pid), aua2Map.get(aua2pid));
-
-	  // Remember the match.
-	  matched = true;
-	  break;
-	}
-      }
-
-      // Verify that this first object map entry has a match in the second
-      // object map.
-      assertTrue(matched);
-    }
+    assertEquals(aua1.getAllPeerAgreements(), aua2.getAllPeerAgreements());
   }
 
   /**
@@ -1234,122 +1138,25 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     String auId = original.getAuid();
     log.trace("auId = {}", auId);
 
-    Set<String> originalPeerIdentityIdStringSet = new HashSet<>();
-    Set<String> partialPeerIdentityIdStringSet = new HashSet<>();
-
-    // Loop through all the poll agreements types.
-    for (AgreementType type : AgreementType.allTypes()) {
-      log.trace("type = {}", type);
-
-      // Get this type map of poll agreements in the original poll agreements.
-      Map<PeerIdentity, PeerAgreement> originalMap =
-	  original.getAgreements(type);
-      log.trace("originalMap = {}", originalMap);
-
-      // Update the set of peer identities in the original poll agreements.
-      for (PeerIdentity pi : originalMap.keySet()) {
-	originalPeerIdentityIdStringSet.add(pi.getIdString());
-      }
-
-      // Get this type map of poll agreements in the partial poll agreements.
-      Map<PeerIdentity, PeerAgreement> partialMap =
-	  partial.getAgreements(type);
-      log.trace("partialMap = {}", partialMap);
-
-      // Update the set of peer identities in the partial poll agreements.
-      //partialPeerIdentitySet.addAll(partialMap.keySet());
-      for (PeerIdentity pi : partialMap.keySet()) {
-	partialPeerIdentityIdStringSet.add(pi.getIdString());
-      }
-    }
-
-    log.trace("originalPeerIdentityIdStringSet = {}",
-	originalPeerIdentityIdStringSet);
-    log.trace("partialPeerIdentityIdStringSet = {}",
-	partialPeerIdentityIdStringSet);
-
-    // Get the set of peer identities in the merged poll agreements.
-    Set<String> peerIdentityIdStringSet =
-	new HashSet<>(originalPeerIdentityIdStringSet);
-    peerIdentityIdStringSet.addAll(partialPeerIdentityIdStringSet);
-    log.trace("peerIdentityIdStringSet = {}", peerIdentityIdStringSet);
-
-    IdentityManager idMgr = createIdentityManager(peerIdentityIdStringSet);
-
-    // Create the agreements.
-    AuAgreements auAgreements =
-	AuAgreements.make(auId, idMgr);
-
-    // Loop through all the merged peer identities identifiers.
-    for (String pid : peerIdentityIdStringSet) {
-      log.trace("pid = {}", pid);
-
-      // Check whether this peer identity appears in the partial poll agreements
-      // to be merged.
-      if (partialPeerIdentityIdStringSet.contains(pid)) {
-	// Yes: Incorporate into the merged poll agreements only the partial
-	// poll agreements for this peer identity.
-	log.trace("pid from partial");
-	copyAuPeerAgreements(partial, pid, auAgreements);
-      } else {
-	// No: Incorporate into the merged poll agreements the original poll
-	// agreements for this peer identity.
-	log.trace("pid from original");
-	copyAuPeerAgreements(original, pid, auAgreements);
-      }
-    }
-
-    log.debug2("auAgreements = {}", auAgreements);
+    // Create an empty AuAgreements
+    AuAgreements auAgreements = AuAgreements.make(auId, idMgr);
+    // Merge original in first, then partial
+    auAgreements.updateFromJson(original.toJson(), daemon);
+    auAgreements.updateFromJson(partial.toJson(), daemon);
     return auAgreements;
   }
 
   /**
-   * Copies peer agreements from a source to a target.
-   * 
-   * @param source
-   *          An AuAgreements with the peer agreements to be copied.
-   * @param pid
-   *          A String with the peer identity identifier of the peer agreements
-   *          to be copied.
-   * @param target
-   *          An AuAgreements where to copy the peer agreements.
+   * Returns a json string representing the AuAgreements, but with
+   * malformed PeerIdentity s.
+   * @param aua An AuAgreements to serialize
+   * @return json string with all PeerIdentity strings replaced with a
+   * malformed one
    */
-  private void copyAuPeerAgreements(AuAgreements source, String pid,
-      AuAgreements target) {
-    log.debug2("source = {}", source);
-    log.debug2("pid = {}", pid);
-    log.debug2("target = {}", target);
-
-    // Loop through all the poll agreements types.
-    for (AgreementType type : AgreementType.allTypes()) {
-      log.trace("type = {}", type);
-
-      // Get this type's peer agreements in the source poll agreements.
-      Map<PeerIdentity, PeerAgreement> paMap = source.getAgreements(type);
-      log.trace("paMap = {}", paMap);
-
-      // Loop through all the peer identifies.
-      for (PeerIdentity pi : paMap.keySet()) {
-	log.trace("pi = {}", pi);
-
-	// Check whether its identifier matches the passed one.
-	if (pid.equals(pi.getIdString())) {
-	  // Yes: Get the peer agreement.
-	  PeerAgreement pa = source.getAgreements(type).get(pi);
-	  log.trace("pa = {}", pa);
-
-	  // Check whether it exists.
-	  if (pa != null) {
-	    // Yes: Populate the agreements details in the target.
-	    target.signalPartialAgreement(pi, type, pa.getPercentAgreement(),
-		pa.getPercentAgreementTime());
-	    log.trace("Added agreement to target.");
-	  }
-
-	  break;
-	}
-      }
-    }
+  String toJsonWithBadPids(AuAgreements aua) throws Exception {
+    String json = aua.toJson();
+    json = StringUtil.replaceString(json, "TCP:[", "NOPROTO:[");
+    return json;
   }
 
   /**
