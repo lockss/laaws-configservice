@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2019 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -50,6 +50,7 @@ import org.lockss.config.HttpRequestPreconditions;
 import org.lockss.config.RestConfigClient;
 import org.lockss.config.RestConfigSection;
 import org.lockss.log.L4JLogger;
+import org.lockss.rs.RestUtil;
 import org.lockss.rs.multipart.MimeMultipartHttpMessageConverter;
 import org.lockss.rs.multipart.NamedByteArrayResource;
 import org.lockss.rs.multipart.MultipartResponse;
@@ -133,7 +134,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
    */
   @Before
   public void setUpBeforeEachTest() throws IOException {
-    log.debug2("port = {}", () -> port);
+    log.debug2("port = {}", port);
 
     // Set up the temporary directory where the test data will reside.
     setUpTempDirectory(TestConfigApiServiceImpl.class.getCanonicalName());
@@ -238,6 +239,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     getSwaggerDocsTest();
     getStatusTest();
+    runMethodsNotAllowedUnAuthenticatedTest();
     getConfigSectionUnAuthenticatedTest();
     getConfigUrlUnAuthenticatedTest();
     getLastUpdateTimeUnAuthenticatedTest();
@@ -268,6 +270,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     getSwaggerDocsTest();
     getStatusTest();
+    runMethodsNotAllowedAuthenticatedTest();
     getConfigSectionAuthenticatedTest();
     getConfigUrlAuthenticatedTest();
     getLastUpdateTimeAuthenticatedTest();
@@ -294,7 +297,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     File folder =
 	new File(new File(new File(getTempDirPath()), "tdbxml"), "prod");
-    log.trace("folder = {}", () -> folder);
+    log.trace("folder = {}", folder);
 
     cmdLineArgs.add("-x");
     cmdLineArgs.add(folder.getAbsolutePath());
@@ -305,7 +308,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     cmdLineArgs.add("-p");
     cmdLineArgs.add("test/config/lockss.opt");
 
-    log.debug2("cmdLineArgs = {}", () -> cmdLineArgs);
+    log.debug2("cmdLineArgs = {}", cmdLineArgs);
     return cmdLineArgs;
   }
 
@@ -335,11 +338,8 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
   /**
    * Runs the status-related tests.
-   * 
-   * @throws Exception
-   *           if there are problems.
    */
-  private void getStatusTest() throws Exception {
+  private void getStatusTest() {
     log.debug2("Invoked");
 
     ResponseEntity<String> successResponse = new TestRestTemplate().exchange(
@@ -353,6 +353,172 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     JSONAssert.assertEquals(expectedBody, successResponse.getBody(), false);
 
     log.debug2("Done");
+  }
+
+  /**
+   * Runs the invalid method-related un-authenticated-specific tests.
+   */
+  private void runMethodsNotAllowedUnAuthenticatedTest() {
+    log.debug2("Invoked");
+
+    // No section: Spring reports it cannot find a match to an endpoint.
+    runTestMethodNotAllowed(null, null, HttpMethod.POST, HttpStatus.NOT_FOUND);
+
+    // Empty section: Spring reports it cannot find a match to an endpoint.
+    runTestMethodNotAllowed(EMPTY_STRING, ANYBODY, HttpMethod.PATCH,
+	HttpStatus.NOT_FOUND);
+
+    // Bad section.
+    runTestMethodNotAllowed(BAD_SN, ANYBODY, HttpMethod.POST,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runTestMethodNotAllowed(BAD_SN, null, HttpMethod.PATCH,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    // Good section.
+    runTestMethodNotAllowed(UIIPACCESS, null, HttpMethod.PATCH,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runTestMethodNotAllowed(CLUSTER, ANYBODY, HttpMethod.POST,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runMethodsNotAllowedCommonTest();
+
+    log.debug2("Done");
+  }
+
+  /**
+   * Runs the invalid method-related authenticated-specific tests.
+   */
+  private void runMethodsNotAllowedAuthenticatedTest() {
+    log.debug2("Invoked");
+
+    // No section.
+    runTestMethodNotAllowed(null, ANYBODY, HttpMethod.POST,
+	HttpStatus.UNAUTHORIZED);
+
+    // Empty section.
+    runTestMethodNotAllowed(EMPTY_STRING, null, HttpMethod.PATCH,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad section.
+    runTestMethodNotAllowed(BAD_SN, ANYBODY, HttpMethod.POST,
+	HttpStatus.UNAUTHORIZED);
+
+    // No credentials.
+    runTestMethodNotAllowed(UIIPACCESS, null, HttpMethod.PATCH,
+	HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials.
+    runTestMethodNotAllowed(CLUSTER, ANYBODY, HttpMethod.POST,
+	HttpStatus.UNAUTHORIZED);
+
+    runMethodsNotAllowedCommonTest();
+
+    log.debug2("Done");
+  }
+
+  /**
+   * Runs the invalid method-related authentication-independent tests.
+   */
+  private void runMethodsNotAllowedCommonTest() {
+    log.debug2("Invoked");
+
+    // No section: Spring reports it cannot find a match to an endpoint.
+    runTestMethodNotAllowed(null, USER_ADMIN, HttpMethod.POST,
+	HttpStatus.NOT_FOUND);
+
+    // Empty section: Spring reports it cannot find a match to an endpoint.
+    runTestMethodNotAllowed(EMPTY_STRING, USER_ADMIN, HttpMethod.PATCH,
+	HttpStatus.NOT_FOUND);
+
+    // Bad section.
+    runTestMethodNotAllowed(BAD_SN, USER_ADMIN, HttpMethod.PATCH,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runTestMethodNotAllowed(BAD_SN, USER_ADMIN, HttpMethod.POST,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    // Good section.
+    runTestMethodNotAllowed(UIIPACCESS, USER_ADMIN, HttpMethod.PATCH,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    runTestMethodNotAllowed(CLUSTER, USER_ADMIN, HttpMethod.POST,
+	HttpStatus.METHOD_NOT_ALLOWED);
+
+    log.debug2("Done");
+  }
+
+  /**
+   * Performs an operation using a method that is not allowed.
+   * 
+   * @param snId
+   *          A String with the configuration section name.
+   * @param credentials
+   *          A Credentials with the request credentials.
+   * @param method
+   *          An HttpMethod with the request method.
+   * @param expectedStatus
+   *          An HttpStatus with the HTTP status of the result.
+   */
+  private void runTestMethodNotAllowed(String snId, Credentials credentials,
+      HttpMethod method, HttpStatus expectedStatus) {
+    log.debug2("snId = {}", snId);
+    log.debug2("credentials = {}", credentials);
+    log.debug2("method = {}", method);
+    log.debug2("expectedStatus = {}", expectedStatus);
+
+    // Get the test URL template.
+    String template = getTestUrlTemplate("/config/file/{snid}");
+
+    // Create the URI of the request to the REST service.
+    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
+	.build().expand(Collections.singletonMap("snid", snId));
+
+    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
+	.build().encode().toUri();
+    log.trace("uri = {}", uri);
+
+    // Initialize the request to the REST service.
+    RestTemplate restTemplate = new RestTemplate();
+
+    HttpEntity<String> requestEntity = null;
+
+    // Get the individual credentials elements.
+    String user = null;
+    String password = null;
+
+    if (credentials != null) {
+      user = credentials.getUser();
+      password = credentials.getPassword();
+    }
+
+    // Check whether there are any custom headers to be specified in the
+    // request.
+    if (user != null || password != null) {
+
+      // Initialize the request headers.
+      HttpHeaders headers = new HttpHeaders();
+
+      // Set up the authentication credentials, if necessary.
+      if (credentials != null) {
+	credentials.setUpBasicAuthentication(headers);
+      }
+
+      log.trace("requestHeaders = {}", () -> headers.toSingleValueMap());
+
+      // Create the request entity.
+      requestEntity = new HttpEntity<String>(null, headers);
+    }
+
+    // Make the request and get the response. 
+    ResponseEntity<String> response = new TestRestTemplate(restTemplate)
+	.exchange(uri, method, requestEntity, String.class);
+
+    // Get the response status.
+    HttpStatus statusCode = response.getStatusCode();
+    assertFalse(RestUtil.isSuccess(statusCode));
+    assertEquals(expectedStatus, statusCode);
   }
 
   /**
@@ -1157,11 +1323,11 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
   private MultipartResponse runTestGetConfigSection(String snId,
       MediaType acceptContentType, HttpRequestPreconditions preconditions,
       Credentials credentials, HttpStatus expectedStatus) throws Exception {
-    log.debug2("snId = {}", () -> snId);
-    log.debug2("acceptContentType = {}", () -> acceptContentType);
-    log.debug2("preconditions = {}", () -> preconditions);
-    log.debug2("credentials = {}", () -> credentials);
-    log.debug2("expectedStatus = {}", () -> expectedStatus);
+    log.debug2("snId = {}", snId);
+    log.debug2("acceptContentType = {}", acceptContentType);
+    log.debug2("preconditions = {}", preconditions);
+    log.debug2("credentials = {}", credentials);
+    log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
     String template = getTestUrlTemplate("/config/file/{snid}");
@@ -1172,7 +1338,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
 	.build().encode().toUri();
-    log.trace("uri = {}", () -> uri);
+    log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
     RestTemplate restTemplate = new RestTemplate();
@@ -1306,8 +1472,8 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
    *          have matching timestamps.
    */
   private void verifyPartModificationTimestamps(Part part, Part matchingPart) {
-    log.debug2("part = {}", () -> part);
-    log.debug2("matchingPart = {}", () -> matchingPart);
+    log.debug2("part = {}", part);
+    log.debug2("matchingPart = {}", matchingPart);
 
     // Verify the part last modified header.
     long lastModified = Long.parseLong(part.getLastModified());
@@ -1348,12 +1514,11 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
   private MultipartResponse runTestGetConfigSectionClient(String snId,
       HttpRequestPreconditions preconditions, Credentials credentials,
       HttpStatus expectedStatus, String expectedErrorMessagePrefix) {
-    log.debug2("snId = {}", () -> snId);
-    log.debug2("preconditions = {}", () -> preconditions);
-    log.debug2("credentials = {}", () -> credentials);
-    log.debug2("expectedStatus = {}", () -> expectedStatus);
-    log.debug2("expectedErrorMessagePrefix = {}",
-	() -> expectedErrorMessagePrefix);
+    log.debug2("snId = {}", snId);
+    log.debug2("preconditions = {}", preconditions);
+    log.debug2("credentials = {}", credentials);
+    log.debug2("expectedStatus = {}", expectedStatus);
+    log.debug2("expectedErrorMessagePrefix = {}", expectedErrorMessagePrefix);
 
     RestConfigSection input = new RestConfigSection();
     input.setSectionName(snId);
@@ -1379,7 +1544,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     MultipartResponse parsedResponse = output.getResponse();
 
     // Return the parsed response.
-    log.debug2("parsedResponse = {}", () -> parsedResponse);
+    log.debug2("parsedResponse = {}", parsedResponse);
     return parsedResponse;
   }
 
@@ -1401,9 +1566,9 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
   private Part verifyMultipartResponse(MultipartResponse response,
       MediaType expectedContentType, List<String> expectedPayloads)
 	  throws Exception {
-    log.debug2("response = {}", () -> response);
-    log.debug2("expectedContentType = {}", () -> expectedContentType);
-    log.debug2("expectedPayloads = {}", () -> expectedPayloads);
+    log.debug2("response = {}", response);
+    log.debug2("expectedContentType = {}", expectedContentType);
+    log.debug2("expectedPayloads = {}", expectedPayloads);
 
     // Validate the response content type.
     HttpHeaders responseHeaders = response.getResponseHeaders();
@@ -1445,7 +1610,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     assertTrue(partHeaders.containsKey(HttpHeaders.LAST_MODIFIED));
     assertTrue(partHeaders.containsKey(HttpHeaders.ETAG));
 
-    log.debug2("part = {}", () -> part);
+    log.debug2("part = {}", part);
     return part;
   }
 
@@ -1457,7 +1622,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
    * @return a String with the parsed ETag.
    */
   private String parseEtag(String eTag) {
-    log.debug2("eTag = {}", () -> eTag);
+    log.debug2("eTag = {}", eTag);
 
     String parsedEtag = eTag;
 
@@ -2280,11 +2445,11 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
   private MultipartResponse runTestGetConfigUrl(String url,
       MediaType acceptContentType, HttpRequestPreconditions preconditions,
       Credentials credentials, HttpStatus expectedStatus) throws Exception {
-    log.debug2("url = {}", () -> url);
-    log.debug2("acceptContentType = {}", () -> acceptContentType);
-    log.debug2("preconditions = {}", () -> preconditions);
-    log.debug2("credentials = {}", () -> credentials);
-    log.debug2("expectedStatus = {}", () -> expectedStatus);
+    log.debug2("url = {}", url);
+    log.debug2("acceptContentType = {}", acceptContentType);
+    log.debug2("preconditions = {}", preconditions);
+    log.debug2("credentials = {}", credentials);
+    log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
     String template = getTestUrlTemplate("/config/url");
@@ -2292,7 +2457,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     // Create the URI of the request to the REST service.
     URI uri = UriComponentsBuilder.fromUriString(template)
 	.queryParam("url", url).build().encode().toUri();
-    log.trace("uri = {}", () -> uri);
+    log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
     RestTemplate restTemplate = new RestTemplate();
@@ -2407,7 +2572,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
   /**
    * Runs the getLastUpdateTime()-related un-authenticated-specific tests.
    */
-  private void getLastUpdateTimeUnAuthenticatedTest() throws Exception {
+  private void getLastUpdateTimeUnAuthenticatedTest() {
     log.debug2("Invoked");
 
     runTestGetLastUpdateTime(null, HttpStatus.OK);
@@ -2421,7 +2586,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
   /**
    * Runs the getLastUpdateTime()-related authenticated-specific tests.
    */
-  private void getLastUpdateTimeAuthenticatedTest() throws Exception {
+  private void getLastUpdateTimeAuthenticatedTest() {
     log.debug2("Invoked");
 
     runTestGetLastUpdateTime(null, HttpStatus.UNAUTHORIZED);
@@ -2435,7 +2600,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
   /**
    * Runs the getLastUpdateTime()-related authentication-independent tests.
    */
-  private void getLastUpdateTimeCommonTest() throws Exception {
+  private void getLastUpdateTimeCommonTest() {
     log.debug2("Invoked");
 
     runTestGetLastUpdateTime(USER_ADMIN, HttpStatus.OK);
@@ -2454,9 +2619,9 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
    * @return a Date with the configuration last update time.
    */
   private void runTestGetLastUpdateTime(Credentials credentials,
-      HttpStatus expectedStatus) throws Exception {
-    log.debug2("credentials = {}", () -> credentials);
-    log.debug2("expectedStatus = {}", () -> expectedStatus);
+      HttpStatus expectedStatus) {
+    log.debug2("credentials = {}", credentials);
+    log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
     String template = getTestUrlTemplate("/config/lastupdatetime");
@@ -2467,7 +2632,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
 	.build().encode().toUri();
-    log.trace("uri = {}", () -> uri);
+    log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
     RestTemplate restTemplate = new RestTemplate();
@@ -2578,8 +2743,8 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
    */
   private void runTestGetLoadedUrlList(Credentials credentials,
       HttpStatus expectedStatus) throws Exception {
-    log.debug2("credentials = {}", () -> credentials);
-    log.debug2("expectedStatus = {}", () -> expectedStatus);
+    log.debug2("credentials = {}", credentials);
+    log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
     String template = getTestUrlTemplate("/config/loadedurls");
@@ -2590,7 +2755,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
 	.build().encode().toUri();
-    log.trace("uri = {}", () -> uri);
+    log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
     RestTemplate restTemplate = new RestTemplate();
@@ -3224,7 +3389,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     RestConfigSection output = runTestPutConfigSectionClient(
 	"testKey1=testValue1", SECTION_NAME_EXPERT, null, USER_ADMIN,
-	HttpStatus.OK, HttpStatus.OK.toString());
+	HttpStatus.OK, null);
 
     // Verify the REST web service configuration section last modification
     // timestamps.
@@ -3256,7 +3421,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     runTestPutConfigSectionClient("testKey2=testValue2",
 	SECTION_NAME_EXPERT, hrp, USER_ADMIN,
 	HttpStatus.PRECONDITION_FAILED,
-	HttpStatus.PRECONDITION_FAILED.toString());
+	HttpStatus.PRECONDITION_FAILED.getReasonPhrase());
 
     // Modified at different time than passed If-Match ETags.
     ifMatch = ListUtil.list(NUMERIC_PRECONDITION, ALPHA_PRECONDITION);
@@ -3270,7 +3435,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     runTestPutConfigSectionClient("testKey2=testValue2",
 	SECTION_NAME_EXPERT, hrp, USER_ADMIN,
 	HttpStatus.PRECONDITION_FAILED,
-	HttpStatus.PRECONDITION_FAILED.toString());
+	HttpStatus.PRECONDITION_FAILED.getReasonPhrase());
 
     // Modified at different time than passed If-Match ETag.
     ifMatch = ListUtil.list(ZERO_PRECONDITION);
@@ -3284,7 +3449,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     runTestPutConfigSectionClient("testKey2=testValue2",
 	SECTION_NAME_EXPERT, hrp, USER_ADMIN,
 	HttpStatus.PRECONDITION_FAILED,
-	HttpStatus.PRECONDITION_FAILED.toString());
+	HttpStatus.PRECONDITION_FAILED.getReasonPhrase());
 
     // Modified at different time than passed If-Match ETag and same time as
     // passed If-Unmodified-Since header.
@@ -3300,7 +3465,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     runTestPutConfigSectionClient("testKey2=testValue2",
 	SECTION_NAME_EXPERT, hrp, USER_ADMIN,
 	HttpStatus.PRECONDITION_FAILED,
-	HttpStatus.PRECONDITION_FAILED.toString());
+	HttpStatus.PRECONDITION_FAILED.getReasonPhrase());
 
     // Bad Accept header content type.
     List<String> ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
@@ -3337,7 +3502,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     runTestPutConfigSectionClient("testKey1=testValue1\ntestKey2=testValue2",
 	SECTION_NAME_EXPERT, hrp, USER_ADMIN,
 	HttpStatus.PRECONDITION_FAILED,
-	HttpStatus.PRECONDITION_FAILED.toString());
+	HttpStatus.PRECONDITION_FAILED.getReasonPhrase());
 
     // Modified at same time as passed If-Match ETag and different time than
     // passed If-Unmodified-Since header.
@@ -3351,7 +3516,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     runTestPutConfigSectionClient("testKey1=testValue1\ntestKey2=testValue2",
 	SECTION_NAME_EXPERT, hrp, USER_ADMIN,
 	HttpStatus.PRECONDITION_FAILED,
-	HttpStatus.PRECONDITION_FAILED.toString());
+	HttpStatus.PRECONDITION_FAILED.getReasonPhrase());
 
     // Verify that nothing was written when the preconditions failed.
     hrp = new HttpRequestPreconditions(ifMatch, null, null,
@@ -3403,8 +3568,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     output = runTestPutConfigSectionClient(
 	"testKey2=testValue2\ntestKey3=testValue3",
-	SECTION_NAME_EXPERT, hrp, USER_ADMIN, HttpStatus.OK,
-	HttpStatus.OK.toString());
+	SECTION_NAME_EXPERT, hrp, USER_ADMIN, HttpStatus.OK, null);
 
     // Verify the REST web service configuration section last modification
     // timestamps.
@@ -3463,7 +3627,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     // Using the REST service client.
     runTestPutConfigSectionClient("testKey=testValue",
 	SECTION_NAME_CLUSTER, hrp, USER_ADMIN, HttpStatus.BAD_REQUEST,
-	HttpStatus.BAD_REQUEST.toString());
+	HttpStatus.BAD_REQUEST.getReasonPhrase());
 
     // Bad section name.
     runTestPutConfig("testKey=testValue", BAD_SN, MediaType.MULTIPART_FORM_DATA,
@@ -3471,7 +3635,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     // Using the REST service client.
     runTestPutConfigSectionClient("testKey=testValue", BAD_SN, hrp, USER_ADMIN,
-	HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.toString());
+	HttpStatus.BAD_REQUEST, HttpStatus.BAD_REQUEST.getReasonPhrase());
 
     // Missing file.
     ifMatch = ListUtil.list(ASTERISK_PRECONDITION);
@@ -3485,7 +3649,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     runTestPutConfigSectionClient("testKey=testValue",
 	SECTION_NAME_ICP_SERVER, hrp, USER_ADMIN,
 	HttpStatus.PRECONDITION_FAILED,
-	HttpStatus.PRECONDITION_FAILED.toString());
+	HttpStatus.PRECONDITION_FAILED.getReasonPhrase());
 
     // Write non-existent file.
     ifNoneMatch = ListUtil.list(ASTERISK_PRECONDITION);
@@ -3516,7 +3680,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     output3 = runTestPutConfigSectionClient(
 	"testKey5=testValue5", SECTION_NAME_ACCESS_GROUPS, hrp,
-	USER_ADMIN, HttpStatus.OK, HttpStatus.OK.toString());
+	USER_ADMIN, HttpStatus.OK, null);
     assertEquals(HttpStatus.OK, output3.getStatusCode());
 
     // Verify the part last modification timestamps.
@@ -3554,7 +3718,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     runTestPutConfigSectionClient("testKey5a=testValue5a",
 	SECTION_NAME_ACCESS_GROUPS, hrp, USER_ADMIN,
 	HttpStatus.PRECONDITION_FAILED,
-	HttpStatus.PRECONDITION_FAILED.toString());
+	HttpStatus.PRECONDITION_FAILED.getReasonPhrase());
 
     // Cannot modify virtual sections.
     ifMatch = ListUtil.list(ASTERISK_PRECONDITION);
@@ -3565,7 +3729,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     // Using the REST service client.
     runTestPutConfigSectionClient("testKey=testValue",
 	SECTION_NAME_CLUSTER, hrp, USER_ADMIN, HttpStatus.BAD_REQUEST,
-	HttpStatus.BAD_REQUEST.toString());
+	HttpStatus.BAD_REQUEST.getReasonPhrase());
 
     log.debug2("Done");
   }
@@ -3590,12 +3754,12 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
   private void runTestPutConfig(String config, String snId,
       MediaType contentType, HttpRequestPreconditions preconditions,
       Credentials credentials, HttpStatus expectedStatus) {
-    log.debug2("config = {}", () -> config);
-    log.debug2("snId = {}", () -> snId);
-    log.debug2("contentType = {}", () -> contentType);
-    log.debug2("preconditions = {}", () -> preconditions);
-    log.debug2("credentials = {}", () -> credentials);
-    log.debug2("expectedStatus = {}", () -> expectedStatus);
+    log.debug2("config = {}", config);
+    log.debug2("snId = {}", snId);
+    log.debug2("contentType = {}", contentType);
+    log.debug2("preconditions = {}", preconditions);
+    log.debug2("credentials = {}", credentials);
+    log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
     String template = getTestUrlTemplate("/config/file/{snid}");
@@ -3606,7 +3770,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
 	.build().encode().toUri();
-    log.trace("uri = {}", () -> uri);
+    log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
     RestTemplate restTemplate = new RestTemplate();
@@ -3745,13 +3909,12 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
       String snId, HttpRequestPreconditions preconditions,
       Credentials credentials, HttpStatus expectedStatus,
       String expectedErrorMessagePrefix) throws Exception {
-    log.debug2("config = {}", () -> config);
-    log.debug2("snId = {}", () -> snId);
-    log.debug2("preconditions = {}", () -> preconditions);
-    log.debug2("credentials = {}", () -> credentials);
-    log.debug2("expectedStatus = {}", () -> expectedStatus);
-    log.debug2("expectedErrorMessagePrefix = {}",
-	() -> expectedErrorMessagePrefix);
+    log.debug2("config = {}", config);
+    log.debug2("snId = {}", snId);
+    log.debug2("preconditions = {}", preconditions);
+    log.debug2("credentials = {}", credentials);
+    log.debug2("expectedStatus = {}", expectedStatus);
+    log.debug2("expectedErrorMessagePrefix = {}", expectedErrorMessagePrefix);
 
     RestConfigSection input = new RestConfigSection();
     input.setSectionName(snId);
@@ -3788,7 +3951,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
       assertFalse(preconditions.getIfMatch().contains(output.getEtag()));
     }
 
-    log.debug2("output = {}", () -> output);
+    log.debug2("output = {}", output);
     return output;
   }
 
@@ -3806,8 +3969,8 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
    */
   private void verifyRestConfigSectionModificationTimestamps(
       RestConfigSection rcs, RestConfigSection matchingRcs) {
-    log.debug2("rcs = {}", () -> rcs);
-    log.debug2("matchingRcs = {}", () -> matchingRcs);
+    log.debug2("rcs = {}", rcs);
+    log.debug2("matchingRcs = {}", matchingRcs);
 
     // Verify the REST web service configuration section last modified header.
     long lastModified = Long.parseLong(rcs.getLastModified());
@@ -3878,8 +4041,8 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
    */
   private void runTestPutConfigReload(Credentials credentials,
       HttpStatus expectedStatus) {
-    log.debug2("credentials = {}", () -> credentials);
-    log.debug2("expectedStatus = {}", () -> expectedStatus);
+    log.debug2("credentials = {}", credentials);
+    log.debug2("expectedStatus = {}", expectedStatus);
 
     // Get the test URL template.
     String template = getTestUrlTemplate("/config/reload");
@@ -3890,7 +4053,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
 	.build().encode().toUri();
-    log.trace("uri = {}", () -> uri);
+    log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
     RestTemplate restTemplate = new RestTemplate();

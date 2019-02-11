@@ -40,7 +40,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.lockss.app.LockssDaemon;
+import org.lockss.config.RestConfigClient;
 import org.lockss.log.L4JLogger;
+import org.lockss.rs.RestUtil;
+import org.lockss.rs.exception.LockssRestException;
+import org.lockss.rs.exception.LockssRestHttpException;
 import org.lockss.state.AuStateBean;
 import org.lockss.state.StateManager;
 import org.lockss.test.SpringLockssTestCase;
@@ -195,11 +199,8 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 
   /**
    * Runs the Swagger-related tests.
-   * 
-   * @throws Exception
-   *           if there are problems.
    */
-  private void getSwaggerDocsTest() throws Exception {
+  private void getSwaggerDocsTest() {
     log.debug2("Invoked");
 
     ResponseEntity<String> successResponse = new TestRestTemplate().exchange(
@@ -219,11 +220,8 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 
   /**
    * Runs the invalid method-related un-authenticated-specific tests.
-   * 
-   * @throws Exception
-   *           if there are problems.
    */
-  private void runMethodsNotAllowedUnAuthenticatedTest() throws Exception {
+  private void runMethodsNotAllowedUnAuthenticatedTest() {
     log.debug2("Invoked");
 
     // No AUId: Spring reports it cannot find a match to an endpoint.
@@ -254,11 +252,8 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 
   /**
    * Runs the invalid method-related authenticated-specific tests.
-   * 
-   * @throws Exception
-   *           if there are problems.
    */
-  private void runMethodsNotAllowedAuthenticatedTest() throws Exception {
+  private void runMethodsNotAllowedAuthenticatedTest() {
     log.debug2("Invoked");
 
     // No AUId.
@@ -289,7 +284,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
   /**
    * Runs the invalid method-related authentication-independent tests.
    */
-  private void runMethodsNotAllowedCommonTest() throws Exception {
+  private void runMethodsNotAllowedCommonTest() {
     log.debug2("Invoked");
 
     // No AUId: Spring reports it cannot find a match to an endpoint.
@@ -330,7 +325,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
    *          An HttpStatus with the HTTP status of the result.
    */
   private void runTestMethodNotAllowed(String auId, Credentials credentials,
-      HttpMethod method, HttpStatus expectedStatus) throws Exception {
+      HttpMethod method, HttpStatus expectedStatus) {
     log.debug2("auId = {}", auId);
     log.debug2("credentials = {}", credentials);
     log.debug2("method = {}", method);
@@ -385,7 +380,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 
     // Get the response status.
     HttpStatus statusCode = response.getStatusCode();
-    assertFalse(isSuccess(statusCode));
+    assertFalse(RestUtil.isSuccess(statusCode));
     assertEquals(expectedStatus, statusCode);
   }
 
@@ -401,19 +396,37 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     // No AUId: Spring reports it cannot find a match to an endpoint.
     runTestGetAuState(null, null, HttpStatus.NOT_FOUND);
 
+    // No AUId using the REST service client.
+    assertNull(runTestGetAuStateClient(null, null, HttpStatus.NOT_FOUND));
+
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestGetAuState(EMPTY_STRING, ANYBODY, HttpStatus.NOT_FOUND);
+
+    // Empty AUId using the REST service client.
+    assertNull(runTestGetAuStateClient(EMPTY_STRING, ANYBODY,
+	HttpStatus.NOT_FOUND));
 
     // Bad AUId.
     runTestGetAuState(BAD_AUID, null, HttpStatus.BAD_REQUEST);
 
     // No credentials.
-    assertEquals(stateManager.getAuStateBean(AUID_1).toJson(),
-	runTestGetAuState(AUID_1, null, HttpStatus.OK));
+    String result = runTestGetAuState(AUID_1, null, HttpStatus.OK);
+
+    // Verify.
+    assertEquals(stateManager.getAuStateBean(AUID_1).toJson(), result);
+
+    // No credentials using the REST service client.
+    assertEquals(result, runTestGetAuStateClient(AUID_1, null, HttpStatus.OK));
 
     // Bad credentials.
-    assertEquals(stateManager.getAuStateBean(AUID_2).toJson(),
-	runTestGetAuState(AUID_2, ANYBODY, HttpStatus.OK));
+    result = runTestGetAuState(AUID_2, ANYBODY, HttpStatus.OK);
+
+    // Verify.
+    assertEquals(stateManager.getAuStateBean(AUID_2).toJson(), result);
+
+    // Bad credentials using the REST service client.
+    assertEquals(result,
+	runTestGetAuStateClient(AUID_2, ANYBODY, HttpStatus.OK));
 
     getAuStateCommonTest();
 
@@ -422,6 +435,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 
   /**
    * Runs the getAuState()-related authenticated-specific tests.
+   * 
    */
   private void getAuStateAuthenticatedTest() throws Exception {
     log.debug2("Invoked");
@@ -429,17 +443,36 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     // No AUId.
     runTestGetAuState(null, null, HttpStatus.UNAUTHORIZED);
 
+    // No AUId using the REST service client.
+    assertNull(runTestGetAuStateClient(null, null, HttpStatus.UNAUTHORIZED));
+
     // Empty AUId.
     runTestGetAuState(EMPTY_STRING, null, HttpStatus.UNAUTHORIZED);
+
+    // Empty AUId using the REST service client.
+    assertNull(runTestGetAuStateClient(EMPTY_STRING, null,
+	HttpStatus.UNAUTHORIZED));
 
     // Bad AUId.
     runTestGetAuState(BAD_AUID, ANYBODY, HttpStatus.UNAUTHORIZED);
 
+    // Bad AUId using the REST service client.
+    assertNull(runTestGetAuStateClient(BAD_AUID, null,
+	HttpStatus.UNAUTHORIZED));
+
     // No credentials.
     runTestGetAuState(AUID_1, null, HttpStatus.UNAUTHORIZED);
 
+    // No credentials using the REST service client.
+    assertNull(runTestGetAuStateClient(AUID_1, null,
+	HttpStatus.UNAUTHORIZED));
+
     // Bad credentials.
     runTestGetAuState(AUID_2, ANYBODY, HttpStatus.UNAUTHORIZED);
+
+    // Bad credentials using the REST service client.
+    assertNull(runTestGetAuStateClient(AUID_2, ANYBODY,
+	HttpStatus.UNAUTHORIZED));
 
     getAuStateCommonTest();
 
@@ -458,18 +491,46 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     // No AUId: Spring reports it cannot find a match to an endpoint.
     runTestGetAuState(null, USER_ADMIN, HttpStatus.NOT_FOUND);
 
+    // No AUId using the REST service client.
+    assertNull(runTestGetAuStateClient(null, USER_ADMIN, HttpStatus.NOT_FOUND));
+
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestGetAuState(EMPTY_STRING, AU_ADMIN, HttpStatus.NOT_FOUND);
+
+    // Empty AUId using the REST service client.
+    assertNull(runTestGetAuStateClient(EMPTY_STRING, AU_ADMIN,
+	HttpStatus.NOT_FOUND));
 
     // Bad AUId.
     runTestGetAuState(BAD_AUID, USER_ADMIN, HttpStatus.BAD_REQUEST);
 
-    // Good AUId.
-    assertEquals(stateManager.getAuStateBean(AUID_1).toJson(),
-	runTestGetAuState(AUID_1, AU_ADMIN, HttpStatus.OK));
+    // Bad AUId using the REST service client.
+    assertNull(runTestGetAuStateClient(BAD_AUID, USER_ADMIN,
+	HttpStatus.BAD_REQUEST));
 
-    assertEquals(stateManager.getAuStateBean(AUID_2).toJson(),
-	runTestGetAuState(AUID_2, USER_ADMIN, HttpStatus.OK));
+    // Good AUId.
+    log.error("Calling runTestGetAuState for " + AUID_1);
+    String result = runTestGetAuState(AUID_1, AU_ADMIN, HttpStatus.OK);
+    log.error("Back from calling runTestGetAuState for " + AUID_1);
+
+    // Verify
+    assertEquals(stateManager.getAuStateBean(AUID_1).toJson(), result);
+
+    // Good AUId using the REST service client.
+    log.error("Calling runTestGetAuStateClient for " + AUID_1);
+    assertEquals(result,
+	runTestGetAuStateClient(AUID_1, AU_ADMIN, HttpStatus.OK));
+    log.error("Back from calling runTestGetAuStateClient for " + AUID_1);
+
+    // Good AUId.
+    result = runTestGetAuState(AUID_2, USER_ADMIN, HttpStatus.OK);
+
+    // Verify
+    assertEquals(stateManager.getAuStateBean(AUID_2).toJson(), result);
+
+    // Good AUId using the REST service client.
+    assertEquals(result,
+	runTestGetAuStateClient(AUID_2, USER_ADMIN, HttpStatus.OK));
 
     log.debug2("Done");
   }
@@ -544,11 +605,49 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 
     String result = null;
 
-    if (isSuccess(statusCode)) {
+    if (RestUtil.isSuccess(statusCode)) {
       result = response.getBody();
     }
 
     log.debug2("result = {}", result);
+    return result;
+  }
+
+  /**
+   * Performs a GET operation using the REST service client.
+   * 
+   * @param auId
+   *          A String with the identifier of the Archival Unit.
+   * @param credentials
+   *          A Credentials with the request credentials.
+   * @param expectedStatus
+   *          An HttpStatus with the HTTP status of the result.
+   * @return a String with the stored Archival Unit state.
+   */
+  private String runTestGetAuStateClient(String auId, Credentials credentials,
+      HttpStatus expectedStatus) {
+    log.debug2("auId = {}", auId);
+    log.debug2("credentials = {}", credentials);
+    log.debug2("expectedStatus = {}", expectedStatus);
+
+    String result = null;
+
+    try {
+      // Make the request and get the result.
+      result = getRestConfigClient(credentials).getArchivalUnitState(auId);
+      log.debug2("result = {}", result);
+
+      if (!RestUtil.isSuccess(expectedStatus)) {
+	fail("Should have thrown LockssRestHttpException");
+      }
+    } catch (LockssRestHttpException lrhe) {
+      assertEquals(expectedStatus.value(), lrhe.getHttpStatusCode());
+      assertEquals(expectedStatus.getReasonPhrase(),
+	  lrhe.getHttpStatusMessage());
+    } catch (LockssRestException lre) {
+      fail("Should have thrown LockssRestHttpException");
+    }
+
     return result;
   }
 
@@ -564,26 +663,22 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     // No AUId: Spring reports it cannot find a match to an endpoint.
     runTestPatchAuState(null, null, null, null, HttpStatus.NOT_FOUND);
 
-    runTestPatchAuState(null, null, MediaType.APPLICATION_JSON, null,
-	HttpStatus.NOT_FOUND);
-
     runTestPatchAuState(null, null, MediaType.APPLICATION_JSON, ANYBODY,
 	HttpStatus.NOT_FOUND);
 
-    runTestPatchAuState(null, null, MediaType.APPLICATION_JSON, CONTENT_ADMIN,
-	HttpStatus.NOT_FOUND);
+    // No AUId using the REST service client.
+    runTestPatchAuStateClient(null, null, null, HttpStatus.NOT_FOUND);
 
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
-    runTestPatchAuState(EMPTY_STRING, null, null, null, HttpStatus.NOT_FOUND);
+    runTestPatchAuState(EMPTY_STRING, null, null, CONTENT_ADMIN,
+	HttpStatus.NOT_FOUND);
 
     runTestPatchAuState(EMPTY_STRING, null, MediaType.APPLICATION_JSON, null,
 	HttpStatus.NOT_FOUND);
 
-    runTestPatchAuState(EMPTY_STRING, null, MediaType.APPLICATION_JSON, ANYBODY,
+    // Empty AUId using the REST service client.
+    runTestPatchAuStateClient(EMPTY_STRING, null, ANYBODY,
 	HttpStatus.NOT_FOUND);
-
-    runTestPatchAuState(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
-	CONTENT_ADMIN, HttpStatus.NOT_FOUND);
 
     // Bad AUId.
     runTestPatchAuState(BAD_AUID, null, null, ANYBODY,
@@ -592,30 +687,28 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     runTestPatchAuState(BAD_AUID, null, MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
+    // Bad AUId using the REST service client.
+    runTestPatchAuStateClient(BAD_AUID, null, CONTENT_ADMIN,
+	HttpStatus.BAD_REQUEST);
+
     // No AU state.
     runTestPatchAuState(AUID_1, null, null, null,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, null,
-	HttpStatus.BAD_REQUEST);
-
     runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, ANYBODY,
 	HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, CONTENT_ADMIN,
-	HttpStatus.BAD_REQUEST);
-
-    runTestPatchAuState(AUID_1, EMPTY_STRING, null, null,
+    runTestPatchAuState(AUID_1, EMPTY_STRING, null, CONTENT_ADMIN,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON, null,
 	HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
-	ANYBODY, HttpStatus.BAD_REQUEST);
+    // No AU state using the REST service client.
+    runTestPatchAuStateClient(AUID_1, null, null, HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
-	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
+    runTestPatchAuStateClient(AUID_1, EMPTY_STRING, ANYBODY,
+	HttpStatus.BAD_REQUEST);
 
     AuStateBean bean = new AuStateBean();
     long creationTime = TimeBase.nowMs();
@@ -662,9 +755,9 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     assertEquals(backupState2,
 	runTestGetAuState(AUID_2, ANYBODY, HttpStatus.OK));
 
-    // Patch second AU.
-    runTestPatchAuState(AUID_2, bean.toJson(), MediaType.APPLICATION_JSON,
-	CONTENT_ADMIN, HttpStatus.OK);
+    // Patch second AU using the REST service client.
+    runTestPatchAuStateClient(AUID_2, bean.toJson(), CONTENT_ADMIN,
+	HttpStatus.OK);
 
     // Verify.
     assertEquals(creationTime,
@@ -714,9 +807,6 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     // No AUId.
     runTestPatchAuState(null, null, null, null, HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuState(null, null, MediaType.APPLICATION_JSON, null,
-	HttpStatus.UNAUTHORIZED);
-
     runTestPatchAuState(null, null, MediaType.APPLICATION_JSON, ANYBODY,
 	HttpStatus.UNAUTHORIZED);
 
@@ -724,11 +814,11 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     runTestPatchAuState(null, null, MediaType.APPLICATION_JSON, CONTENT_ADMIN,
 	HttpStatus.NOT_FOUND);
 
-    // Empty AUId.
-    runTestPatchAuState(EMPTY_STRING, null, null, null,
-	HttpStatus.UNAUTHORIZED);
+    // No AUId using the REST service client.
+    runTestPatchAuStateClient(null, null, null, HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuState(EMPTY_STRING, null, MediaType.APPLICATION_JSON, null,
+    // Empty AUId.
+    runTestPatchAuState(EMPTY_STRING, null, null, ANYBODY,
 	HttpStatus.UNAUTHORIZED);
 
     runTestPatchAuState(EMPTY_STRING, null, MediaType.APPLICATION_JSON, ANYBODY,
@@ -738,6 +828,10 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     runTestPatchAuState(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.NOT_FOUND);
 
+    // Empty AUId using the REST service client.
+    runTestPatchAuStateClient(EMPTY_STRING, null, ANYBODY,
+	HttpStatus.UNAUTHORIZED);
+
     // Bad AUId.
     runTestPatchAuState(BAD_AUID, null, MediaType.APPLICATION_JSON, null,
 	HttpStatus.UNAUTHORIZED);
@@ -745,11 +839,14 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     runTestPatchAuState(BAD_AUID, null, MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
+    // Bad AUId using the REST service client.
+    runTestPatchAuStateClient(BAD_AUID, null, ANYBODY, HttpStatus.UNAUTHORIZED);
+
+    runTestPatchAuStateClient(BAD_AUID, null, CONTENT_ADMIN,
+	HttpStatus.BAD_REQUEST);
+
     // No AU state.
     runTestPatchAuState(AUID_1, null, null, null, HttpStatus.UNAUTHORIZED);
-
-    runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, null,
-	HttpStatus.UNAUTHORIZED);
 
     runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, ANYBODY,
 	HttpStatus.UNAUTHORIZED);
@@ -761,13 +858,22 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	HttpStatus.UNAUTHORIZED);
 
     runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
-	null, HttpStatus.UNAUTHORIZED);
-
-    runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
 	ANYBODY, HttpStatus.UNAUTHORIZED);
 
     runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
+
+    // No AU state using the REST service client.
+    runTestPatchAuStateClient(AUID_1, null, null, HttpStatus.UNAUTHORIZED);
+
+    runTestPatchAuStateClient(AUID_1, null, CONTENT_ADMIN,
+	HttpStatus.BAD_REQUEST);
+
+    runTestPatchAuStateClient(AUID_1, EMPTY_STRING, ANYBODY,
+	HttpStatus.UNAUTHORIZED);
+
+    runTestPatchAuStateClient(AUID_1, EMPTY_STRING, CONTENT_ADMIN,
+	HttpStatus.BAD_REQUEST);
 
     AuStateBean bean = new AuStateBean();
     long creationTime = TimeBase.nowMs();
@@ -781,9 +887,17 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     runTestPatchAuState(AUID_1, bean.toJson(), MediaType.APPLICATION_JSON, null,
 	HttpStatus.UNAUTHORIZED);
 
+    // Patch first AU using the REST service client.
+    runTestPatchAuStateClient(AUID_1, bean.toJson(), ANYBODY,
+	HttpStatus.UNAUTHORIZED);
+
     // Patch second AU.
     runTestPatchAuState(AUID_2, bean.toJson(), MediaType.APPLICATION_JSON,
 	CONTENT_ADMIN, HttpStatus.FORBIDDEN);
+
+    // Patch second AU using the REST service client.
+    runTestPatchAuStateClient(AUID_2, bean.toJson(), CONTENT_ADMIN,
+	HttpStatus.FORBIDDEN);
 
     patchAuStateCommonTest();
 
@@ -801,26 +915,23 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 
     // No AUId: Spring reports it cannot find a match to an endpoint.
     runTestPatchAuState(null, null, null, AU_ADMIN, HttpStatus.NOT_FOUND);
-    runTestPatchAuState(null, null, null, USER_ADMIN, HttpStatus.NOT_FOUND);
-
-    runTestPatchAuState(null, null, MediaType.APPLICATION_JSON, AU_ADMIN,
-	HttpStatus.NOT_FOUND);
 
     runTestPatchAuState(null, null, MediaType.APPLICATION_JSON, USER_ADMIN,
 	HttpStatus.NOT_FOUND);
+
+    // No AUId using the REST service client.
+    runTestPatchAuStateClient(null, null, AU_ADMIN, HttpStatus.NOT_FOUND);
 
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestPatchAuState(EMPTY_STRING, null, null, AU_ADMIN,
 	HttpStatus.NOT_FOUND);
 
-    runTestPatchAuState(EMPTY_STRING, null, null, USER_ADMIN,
-	HttpStatus.NOT_FOUND);
-
-    runTestPatchAuState(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
-	AU_ADMIN, HttpStatus.NOT_FOUND);
-
     runTestPatchAuState(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
 	USER_ADMIN, HttpStatus.NOT_FOUND);
+
+    // Empty AUId using the REST service client.
+    runTestPatchAuStateClient(EMPTY_STRING, null, USER_ADMIN,
+	HttpStatus.NOT_FOUND);
 
     // Bad AUId.
     runTestPatchAuState(BAD_AUID, null, null, AU_ADMIN,
@@ -829,15 +940,12 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     runTestPatchAuState(BAD_AUID, null, MediaType.APPLICATION_JSON,
 	USER_ADMIN, HttpStatus.BAD_REQUEST);
 
+    // Bad AUId using the REST service client.
+    runTestPatchAuStateClient(BAD_AUID, null, AU_ADMIN, HttpStatus.BAD_REQUEST);
+
     // No AU state.
     runTestPatchAuState(AUID_1, null, null, AU_ADMIN,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-
-    runTestPatchAuState(AUID_1, null, null, USER_ADMIN,
-	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-
-    runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, AU_ADMIN,
-	HttpStatus.BAD_REQUEST);
 
     runTestPatchAuState(AUID_1, null, MediaType.APPLICATION_JSON, USER_ADMIN,
 	HttpStatus.BAD_REQUEST);
@@ -845,14 +953,14 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     runTestPatchAuState(AUID_1, EMPTY_STRING, null, AU_ADMIN,
 	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
-    runTestPatchAuState(AUID_1, EMPTY_STRING, null, USER_ADMIN,
-	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-
-    runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
-	AU_ADMIN, HttpStatus.BAD_REQUEST);
-
     runTestPatchAuState(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
 	USER_ADMIN, HttpStatus.BAD_REQUEST);
+
+    // No AU state using the REST service client.
+    runTestPatchAuStateClient(AUID_1, null, USER_ADMIN, HttpStatus.BAD_REQUEST);
+
+    runTestPatchAuStateClient(AUID_1, EMPTY_STRING, AU_ADMIN,
+	HttpStatus.BAD_REQUEST);
 
     AuStateBean bean = new AuStateBean();
     long creationTime = TimeBase.nowMs();
@@ -880,9 +988,8 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     AuStateBean bean2 = stateManager.getAuStateBean(AUID_2);
     assertEquals(bean2.toJson(), backupState2);
 
-    // Patch first AU.
-    runTestPatchAuState(AUID_1, bean.toJson(), MediaType.APPLICATION_JSON,
-	AU_ADMIN, HttpStatus.OK);
+    // Patch first AU using the REST service client.
+    runTestPatchAuStateClient(AUID_1, bean.toJson(), AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(creationTime,
@@ -916,9 +1023,9 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     assertEquals(backupState1,
 	runTestGetAuState(AUID_1, AU_ADMIN, HttpStatus.OK));
 
-    // Restore the original state of the second AU.
-    runTestPatchAuState(AUID_2, backupState2, MediaType.APPLICATION_JSON,
-	USER_ADMIN, HttpStatus.OK);
+    // Restore the original state of the second AU using the REST service
+    // client.
+    runTestPatchAuStateClient(AUID_2, backupState2, USER_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(backupState2,
@@ -961,7 +1068,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
    */
   private void runTestPatchAuState(String auId, String auState,
       MediaType contentType, Credentials credentials, HttpStatus expectedStatus)
-	  throws Exception {
+  {
     log.debug2("auId = {}", auId);
     log.debug2("auState = {}", auState);
     log.debug2("contentType = {}", contentType);
@@ -1027,15 +1134,39 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
   }
 
   /**
-   * Provides an indication of whether a successful response has been obtained.
+   * Performs a PATCH operation for an Archival Unit using the REST service
+   * client.
    * 
-   * @param statusCode
-   *          An HttpStatus with the response status code.
-   * @return a boolean with <code>true</code> if a successful response has been
-   *         obtained, <code>false</code> otherwise.
+   * @param auId
+   *          A String with the Archival Unit identifier.
+   * @param auState
+   *          A String with the parts of the Archival Unit state to be replaced.
+   * @param credentials
+   *          A Credentials with the request credentials.
+   * @param expectedStatus
+   *          An HttpStatus with the HTTP status of the result.
    */
-  private boolean isSuccess(HttpStatus statusCode) {
-    return statusCode.is2xxSuccessful();
+  private void runTestPatchAuStateClient(String auId, String auState,
+      Credentials credentials, HttpStatus expectedStatus) {
+    log.debug2("auId = {}", auId);
+    log.debug2("auState = {}", auState);
+    log.debug2("credentials = {}", credentials);
+    log.debug2("expectedStatus = {}", expectedStatus);
+
+    try {
+      // Make the request.
+      getRestConfigClient(credentials).patchArchivalUnitState(auId, auState);
+
+      if (!RestUtil.isSuccess(expectedStatus)) {
+	fail("Should have thrown LockssRestHttpException");
+      }
+    } catch (LockssRestHttpException lrhe) {
+      assertEquals(expectedStatus.value(), lrhe.getHttpStatusCode());
+      assertEquals(expectedStatus.getReasonPhrase(),
+	  lrhe.getHttpStatusMessage());
+    } catch (LockssRestException lre) {
+      fail("Should have thrown LockssRestHttpException");
+    }
   }
 
   /**
@@ -1048,5 +1179,24 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
    */
   private String getTestUrlTemplate(String pathAndQueryParams) {
     return "http://localhost:" + port + pathAndQueryParams;
+  }
+
+  /**
+   * Provides the REST Configuration service client to be tested.
+   * 
+   * @param credentials
+   *          A Credentials with the request credentials.
+   * @return a RestConfigClient with the REST Configuration service client.
+   */
+  private RestConfigClient getRestConfigClient(Credentials credentials) {
+    // Check whether there are any credentials to be specified in the request.
+    if (credentials != null) {
+      // Yes.
+      return new RestConfigClient("http://" + credentials.getUser() + ":"
+	  + credentials.getPassword() + "@localhost:" + port);
+    }
+
+    // No.
+    return new RestConfigClient("http://localhost:" + port);
   }
 }
