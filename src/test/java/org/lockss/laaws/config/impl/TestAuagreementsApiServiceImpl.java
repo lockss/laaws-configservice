@@ -116,6 +116,10 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
   private List<String> goodPeerIdentityIdStringList2 =
       ListUtil.list("TCP:[9.8.7.6]:999", "TCP:[8.7.6.5]:888");
 
+  // Request cookies.
+  private static final String COOKIE_1 = "xLockssRequestCookie_1";
+  private static final String COOKIE_2 = "xLockssRequestCookie_2";
+
   // The port that Tomcat is using during this test.
   @LocalServerPort
   private int port;
@@ -692,7 +696,8 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	HttpStatus.NOT_FOUND);
 
     // No AUId using the REST service client.
-    runTestPatchAuAgreementsClient(null, null, null, HttpStatus.NOT_FOUND);
+    runTestPatchAuAgreementsClient(null, null, null, null,
+	HttpStatus.NOT_FOUND);
 
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestPatchAuAgreements(EMPTY_STRING, null, null, CONTENT_ADMIN,
@@ -702,7 +707,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	null, HttpStatus.NOT_FOUND);
 
     // Empty AUId using the REST service client.
-    runTestPatchAuAgreementsClient(EMPTY_STRING, null, ANYBODY,
+    runTestPatchAuAgreementsClient(EMPTY_STRING, null, ANYBODY, EMPTY_STRING,
 	HttpStatus.NOT_FOUND);
 
     // Bad AUId.
@@ -713,7 +718,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
     // Bad AUId using the REST service client.
-    runTestPatchAuAgreementsClient(BAD_AUID, null, CONTENT_ADMIN,
+    runTestPatchAuAgreementsClient(BAD_AUID, null, CONTENT_ADMIN, COOKIE_1,
 	HttpStatus.BAD_REQUEST);
 
     // No AU poll agreements.
@@ -730,9 +735,10 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	null, HttpStatus.BAD_REQUEST);
 
     // No AU poll agreements using the REST service client.
-    runTestPatchAuAgreementsClient(AUID_1, null, null, HttpStatus.BAD_REQUEST);
+    runTestPatchAuAgreementsClient(AUID_1, null, null, COOKIE_2,
+	HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuAgreementsClient(AUID_1, EMPTY_STRING, ANYBODY,
+    runTestPatchAuAgreementsClient(AUID_1, EMPTY_STRING, ANYBODY, null,
 	HttpStatus.BAD_REQUEST);
 
     AuAgreements auAgreements = createAuAgreements(AUID_1,
@@ -748,7 +754,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 
     // Bad peer agreement ID using the REST service client.
     runTestPatchAuAgreementsClient(AUID_1, toJsonWithBadPids(auAgreements),
-	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
+	CONTENT_ADMIN, EMPTY_STRING, HttpStatus.BAD_REQUEST);
 
     // Get the current poll agreements of the second AU.
     AuAgreements auAgreements2 = stateManager.getAuAgreements(AUID_2);
@@ -777,7 +783,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	AgreementType.SYMMETRIC_POR, 0.250f);
 
     runTestPatchAuAgreementsClient(AUID_2, auAgreements.toJson(), ANYBODY,
-	HttpStatus.OK);
+	COOKIE_1, HttpStatus.OK);
 
     // Verify.
     assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_2));
@@ -815,7 +821,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	AgreementType.POR_HINT, 0.4375f);
 
     runTestPatchAuAgreementsClient(AUID_4, auAgreements.toJson(), ANYBODY,
-	HttpStatus.OK);
+	COOKIE_2, HttpStatus.OK);
 
     // Verify.
     assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_4));
@@ -827,7 +833,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	AgreementType.POR_HINT, 0.875f);
 
     runTestPatchAuAgreementsClient(AUID_4, auAgreements.toJson(),
-	CONTENT_ADMIN, HttpStatus.OK);
+	CONTENT_ADMIN, null, HttpStatus.OK);
 
     // Verify.
     assertAuAgreementsMatch(expectedMergedAuAgreements(auAgreements4,
@@ -887,7 +893,8 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	CONTENT_ADMIN, HttpStatus.NOT_FOUND);
 
     // No AUId using the REST service client.
-    runTestPatchAuAgreementsClient(null, null, null, HttpStatus.UNAUTHORIZED);
+    runTestPatchAuAgreementsClient(null, null, null, null,
+	HttpStatus.UNAUTHORIZED);
 
     // Empty AUId.
     runTestPatchAuAgreements(EMPTY_STRING, null, null, ANYBODY,
@@ -901,7 +908,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	CONTENT_ADMIN, HttpStatus.NOT_FOUND);
 
     // Empty AUId using the REST service client.
-    runTestPatchAuAgreementsClient(EMPTY_STRING, null, ANYBODY,
+    runTestPatchAuAgreementsClient(EMPTY_STRING, null, ANYBODY, EMPTY_STRING,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad AUId.
@@ -912,10 +919,10 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
     // Bad AUId using the REST service client.
-    runTestPatchAuAgreementsClient(BAD_AUID, null, ANYBODY,
+    runTestPatchAuAgreementsClient(BAD_AUID, null, ANYBODY, COOKIE_1,
 	HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuAgreementsClient(BAD_AUID, null, CONTENT_ADMIN,
+    runTestPatchAuAgreementsClient(BAD_AUID, null, CONTENT_ADMIN, COOKIE_2,
 	HttpStatus.BAD_REQUEST);
 
     // No AU poll agreements.
@@ -937,16 +944,17 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
     // No AU poll agreements using the REST service client.
-    runTestPatchAuAgreementsClient(AUID_1, null, null, HttpStatus.UNAUTHORIZED);
+    runTestPatchAuAgreementsClient(AUID_1, null, null, null,
+	HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuAgreementsClient(AUID_1, null, CONTENT_ADMIN,
+    runTestPatchAuAgreementsClient(AUID_1, null, CONTENT_ADMIN, EMPTY_STRING,
 	HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuAgreementsClient(AUID_1, EMPTY_STRING, ANYBODY,
+    runTestPatchAuAgreementsClient(AUID_1, EMPTY_STRING, ANYBODY, COOKIE_1,
 	HttpStatus.UNAUTHORIZED);
 
     runTestPatchAuAgreementsClient(AUID_1, EMPTY_STRING, CONTENT_ADMIN,
-	HttpStatus.BAD_REQUEST);
+	COOKIE_2, HttpStatus.BAD_REQUEST);
 
     AuAgreements auAgreements = createAuAgreements(AUID_1,
 	goodPeerIdentityIdStringList1, AgreementType.SYMMETRIC_POR_HINT,
@@ -965,10 +973,10 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 
     // Bad peer agreement ID using the REST service client.
     runTestPatchAuAgreementsClient(AUID_1, toJsonWithBadPids(auAgreements),
-	null, HttpStatus.UNAUTHORIZED);
+	null, null, HttpStatus.UNAUTHORIZED);
 
     runTestPatchAuAgreementsClient(AUID_1, toJsonWithBadPids(auAgreements),
-	CONTENT_ADMIN, HttpStatus.FORBIDDEN);
+	CONTENT_ADMIN, EMPTY_STRING, HttpStatus.FORBIDDEN);
 
     // Patch first AU.
     runTestPatchAuAgreements(AUID_1, auAgreements.toJson(),
@@ -976,7 +984,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 
     // Patch first AU using the REST service client.
     runTestPatchAuAgreementsClient(AUID_1, auAgreements.toJson(), ANYBODY,
-	HttpStatus.UNAUTHORIZED);
+	COOKIE_1, HttpStatus.UNAUTHORIZED);
 
     // Patch second AU.
     runTestPatchAuAgreements(AUID_2, auAgreements.toJson(),
@@ -984,7 +992,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 
     // Patch second AU using the REST service client.
     runTestPatchAuAgreementsClient(AUID_2, auAgreements.toJson(),
-	CONTENT_ADMIN, HttpStatus.FORBIDDEN);
+	CONTENT_ADMIN, COOKIE_2, HttpStatus.FORBIDDEN);
 
     patchAuAgreementsCommonTest();
 
@@ -1007,7 +1015,8 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	HttpStatus.NOT_FOUND);
 
     // No AUId using the REST service client.
-    runTestPatchAuAgreementsClient(null, null, AU_ADMIN, HttpStatus.NOT_FOUND);
+    runTestPatchAuAgreementsClient(null, null, AU_ADMIN, null,
+	HttpStatus.NOT_FOUND);
 
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestPatchAuAgreements(EMPTY_STRING, null, null, USER_ADMIN,
@@ -1017,7 +1026,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	AU_ADMIN, HttpStatus.NOT_FOUND);
 
     // Empty AUId using the REST service client.
-    runTestPatchAuAgreementsClient(EMPTY_STRING, null, USER_ADMIN,
+    runTestPatchAuAgreementsClient(EMPTY_STRING, null, USER_ADMIN, EMPTY_STRING,
 	HttpStatus.NOT_FOUND);
 
     // Bad AUId.
@@ -1028,7 +1037,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	USER_ADMIN, HttpStatus.BAD_REQUEST);
 
     // Bad AUId using the REST service client.
-    runTestPatchAuAgreementsClient(BAD_AUID, null, AU_ADMIN,
+    runTestPatchAuAgreementsClient(BAD_AUID, null, AU_ADMIN, COOKIE_1,
 	HttpStatus.BAD_REQUEST);
 
     // No AU poll agreements.
@@ -1045,10 +1054,10 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	MediaType.APPLICATION_JSON, USER_ADMIN, HttpStatus.BAD_REQUEST);
 
     // No AU poll agreements using the REST service client.
-    runTestPatchAuAgreementsClient(AUID_1, null, USER_ADMIN,
+    runTestPatchAuAgreementsClient(AUID_1, null, USER_ADMIN, COOKIE_2,
 	HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuAgreementsClient(AUID_1, EMPTY_STRING, AU_ADMIN,
+    runTestPatchAuAgreementsClient(AUID_1, EMPTY_STRING, AU_ADMIN, null,
 	HttpStatus.BAD_REQUEST);
 
     AuAgreements auAgreements = createAuAgreements(AUID_1,
@@ -1065,7 +1074,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 
     // Bad peer agreement ID using the REST service client.
     runTestPatchAuAgreementsClient(AUID_1, toJsonWithBadPids(auAgreements),
-	USER_ADMIN, HttpStatus.BAD_REQUEST);
+	USER_ADMIN, EMPTY_STRING, HttpStatus.BAD_REQUEST);
 
     // Get the current poll agreements of the second AU.
     AuAgreements auAgreements2 = AuAgreements.fromJson(AUID_2,
@@ -1080,7 +1089,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	AgreementType.SYMMETRIC_POR_HINT, 0.875f);
 
     runTestPatchAuAgreementsClient(AUID_1, auAgreements.toJson(), AU_ADMIN,
-	HttpStatus.OK);
+	COOKIE_1, HttpStatus.OK);
 
     // Verify.
     assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_1));
@@ -1112,7 +1121,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	AgreementType.POR_HINT, 0.625f);
 
     runTestPatchAuAgreementsClient(AUID_6, auAgreements.toJson(), USER_ADMIN,
-	HttpStatus.OK);
+	COOKIE_2, HttpStatus.OK);
 
     // Verify.
     assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_6));
@@ -1124,7 +1133,7 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
 	AgreementType.POP, 0.5f);
 
     runTestPatchAuAgreementsClient(AUID_6, auAgreements.toJson(), AU_ADMIN,
-	HttpStatus.OK);
+	null, HttpStatus.OK);
 
     // Verify.
     assertAuAgreementsMatch(expectedMergedAuAgreements(auAgreements6,
@@ -1257,20 +1266,24 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
    *          A String with the Archival Unit poll agreements.
    * @param credentials
    *          A Credentials with the request credentials.
+   * @param xLockssRequestCookie
+   *          A String with the request cookie.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    */
   private void runTestPatchAuAgreementsClient(String auId, String auAgreements,
-      Credentials credentials, HttpStatus expectedStatus) {
+      Credentials credentials, String xLockssRequestCookie,
+      HttpStatus expectedStatus) {
     log.debug2("auId = {}", auId);
     log.debug2("auAgreements = {}", auAgreements);
     log.debug2("credentials = {}", credentials);
+    log.debug2("xLockssRequestCookie = {}", xLockssRequestCookie);
     log.debug2("expectedStatus = {}", expectedStatus);
 
     try {
       // Make the request.
       getRestConfigClient(credentials).patchArchivalUnitAgreements(auId,
-		auAgreements);
+	  auAgreements, xLockssRequestCookie);
 
       if (!RestUtil.isSuccess(expectedStatus)) {
 	fail("Should have thrown LockssRestHttpException");

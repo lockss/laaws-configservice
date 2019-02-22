@@ -98,14 +98,18 @@ public class AuagreementsApiServiceImpl implements AuagreementsApiDelegate {
    *          A String with the AU identifier.
    * @param auAgreements
    *          A String with the Archival Unit poll agreements changes.
+   * @param xLockssRequestCookie
+   *          A String with "X-Lockss-Request-Cookie" request header.
    * @return a {@code ResponseEntity<Void>} if successful, or a
    *         {@code ResponseEntity<String>} with the error information
    *         otherwise.
    */
   @Override
-  public ResponseEntity patchAuAgreements(String auid, String auAgreements) {
+  public ResponseEntity patchAuAgreements(String auid, String auAgreements,
+      String xLockssRequestCookie) {
     log.debug2("auid = {}", auid);
     log.debug2("auAgreements = {}", auAgreements);
+    log.debug2("xLockssRequestCookie = {}", xLockssRequestCookie);
 
     // Check authorization.
     try {
@@ -125,7 +129,8 @@ public class AuagreementsApiServiceImpl implements AuagreementsApiDelegate {
       }
 
       // Update the Archival Unit poll agreements.
-      getStateManager().updateAuAgreementsFromJson(auid, auAgreements);
+      getStateManager().updateAuAgreementsFromJson(auid, auAgreements,
+	  xLockssRequestCookie);
 
       return new ResponseEntity<Void>(HttpStatus.OK);
     } catch (IllegalArgumentException iae) {

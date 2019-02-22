@@ -94,6 +94,10 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
   private final Credentials ANYBODY =
       new Credentials("someUser", "somePassword");
 
+  // Request cookies.
+  private static final String COOKIE_1 = "xLockssRequestCookie_1";
+  private static final String COOKIE_2 = "xLockssRequestCookie_2";
+
   // The port that Tomcat is using during this test.
   @LocalServerPort
   private int port;
@@ -667,7 +671,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	HttpStatus.NOT_FOUND);
 
     // No AUId using the REST service client.
-    runTestPatchAuStateClient(null, null, null, HttpStatus.NOT_FOUND);
+    runTestPatchAuStateClient(null, null, null, null, HttpStatus.NOT_FOUND);
 
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestPatchAuState(EMPTY_STRING, null, null, CONTENT_ADMIN,
@@ -677,7 +681,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	HttpStatus.NOT_FOUND);
 
     // Empty AUId using the REST service client.
-    runTestPatchAuStateClient(EMPTY_STRING, null, ANYBODY,
+    runTestPatchAuStateClient(EMPTY_STRING, null, ANYBODY, EMPTY_STRING,
 	HttpStatus.NOT_FOUND);
 
     // Bad AUId.
@@ -688,7 +692,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
     // Bad AUId using the REST service client.
-    runTestPatchAuStateClient(BAD_AUID, null, CONTENT_ADMIN,
+    runTestPatchAuStateClient(BAD_AUID, null, CONTENT_ADMIN, COOKIE_1,
 	HttpStatus.BAD_REQUEST);
 
     // No AU state.
@@ -705,9 +709,10 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	HttpStatus.BAD_REQUEST);
 
     // No AU state using the REST service client.
-    runTestPatchAuStateClient(AUID_1, null, null, HttpStatus.BAD_REQUEST);
+    runTestPatchAuStateClient(AUID_1, null, null, COOKIE_2,
+	HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuStateClient(AUID_1, EMPTY_STRING, ANYBODY,
+    runTestPatchAuStateClient(AUID_1, EMPTY_STRING, ANYBODY, null,
 	HttpStatus.BAD_REQUEST);
 
     AuStateBean bean = new AuStateBean();
@@ -757,7 +762,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 
     // Patch second AU using the REST service client.
     runTestPatchAuStateClient(AUID_2, bean.toJson(), CONTENT_ADMIN,
-	HttpStatus.OK);
+	EMPTY_STRING, HttpStatus.OK);
 
     // Verify.
     assertEquals(creationTime,
@@ -815,7 +820,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	HttpStatus.NOT_FOUND);
 
     // No AUId using the REST service client.
-    runTestPatchAuStateClient(null, null, null, HttpStatus.UNAUTHORIZED);
+    runTestPatchAuStateClient(null, null, null, null, HttpStatus.UNAUTHORIZED);
 
     // Empty AUId.
     runTestPatchAuState(EMPTY_STRING, null, null, ANYBODY,
@@ -829,7 +834,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	CONTENT_ADMIN, HttpStatus.NOT_FOUND);
 
     // Empty AUId using the REST service client.
-    runTestPatchAuStateClient(EMPTY_STRING, null, ANYBODY,
+    runTestPatchAuStateClient(EMPTY_STRING, null, ANYBODY, EMPTY_STRING,
 	HttpStatus.UNAUTHORIZED);
 
     // Bad AUId.
@@ -840,9 +845,10 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
     // Bad AUId using the REST service client.
-    runTestPatchAuStateClient(BAD_AUID, null, ANYBODY, HttpStatus.UNAUTHORIZED);
+    runTestPatchAuStateClient(BAD_AUID, null, ANYBODY, COOKIE_1,
+	HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuStateClient(BAD_AUID, null, CONTENT_ADMIN,
+    runTestPatchAuStateClient(BAD_AUID, null, CONTENT_ADMIN, COOKIE_2,
 	HttpStatus.BAD_REQUEST);
 
     // No AU state.
@@ -864,15 +870,16 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
 
     // No AU state using the REST service client.
-    runTestPatchAuStateClient(AUID_1, null, null, HttpStatus.UNAUTHORIZED);
-
-    runTestPatchAuStateClient(AUID_1, null, CONTENT_ADMIN,
-	HttpStatus.BAD_REQUEST);
-
-    runTestPatchAuStateClient(AUID_1, EMPTY_STRING, ANYBODY,
+    runTestPatchAuStateClient(AUID_1, null, null, null,
 	HttpStatus.UNAUTHORIZED);
 
-    runTestPatchAuStateClient(AUID_1, EMPTY_STRING, CONTENT_ADMIN,
+    runTestPatchAuStateClient(AUID_1, null, CONTENT_ADMIN, EMPTY_STRING,
+	HttpStatus.BAD_REQUEST);
+
+    runTestPatchAuStateClient(AUID_1, EMPTY_STRING, ANYBODY, COOKIE_1,
+	HttpStatus.UNAUTHORIZED);
+
+    runTestPatchAuStateClient(AUID_1, EMPTY_STRING, CONTENT_ADMIN, COOKIE_2,
 	HttpStatus.BAD_REQUEST);
 
     AuStateBean bean = new AuStateBean();
@@ -888,7 +895,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	HttpStatus.UNAUTHORIZED);
 
     // Patch first AU using the REST service client.
-    runTestPatchAuStateClient(AUID_1, bean.toJson(), ANYBODY,
+    runTestPatchAuStateClient(AUID_1, bean.toJson(), ANYBODY, null,
 	HttpStatus.UNAUTHORIZED);
 
     // Patch second AU.
@@ -897,7 +904,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 
     // Patch second AU using the REST service client.
     runTestPatchAuStateClient(AUID_2, bean.toJson(), CONTENT_ADMIN,
-	HttpStatus.FORBIDDEN);
+	EMPTY_STRING, HttpStatus.FORBIDDEN);
 
     patchAuStateCommonTest();
 
@@ -920,7 +927,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	HttpStatus.NOT_FOUND);
 
     // No AUId using the REST service client.
-    runTestPatchAuStateClient(null, null, AU_ADMIN, HttpStatus.NOT_FOUND);
+    runTestPatchAuStateClient(null, null, AU_ADMIN, null, HttpStatus.NOT_FOUND);
 
     // Empty AUId: Spring reports it cannot find a match to an endpoint.
     runTestPatchAuState(EMPTY_STRING, null, null, AU_ADMIN,
@@ -930,7 +937,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	USER_ADMIN, HttpStatus.NOT_FOUND);
 
     // Empty AUId using the REST service client.
-    runTestPatchAuStateClient(EMPTY_STRING, null, USER_ADMIN,
+    runTestPatchAuStateClient(EMPTY_STRING, null, USER_ADMIN, EMPTY_STRING,
 	HttpStatus.NOT_FOUND);
 
     // Bad AUId.
@@ -941,7 +948,8 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	USER_ADMIN, HttpStatus.BAD_REQUEST);
 
     // Bad AUId using the REST service client.
-    runTestPatchAuStateClient(BAD_AUID, null, AU_ADMIN, HttpStatus.BAD_REQUEST);
+    runTestPatchAuStateClient(BAD_AUID, null, AU_ADMIN, COOKIE_1,
+	HttpStatus.BAD_REQUEST);
 
     // No AU state.
     runTestPatchAuState(AUID_1, null, null, AU_ADMIN,
@@ -957,9 +965,10 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 	USER_ADMIN, HttpStatus.BAD_REQUEST);
 
     // No AU state using the REST service client.
-    runTestPatchAuStateClient(AUID_1, null, USER_ADMIN, HttpStatus.BAD_REQUEST);
+    runTestPatchAuStateClient(AUID_1, null, USER_ADMIN, COOKIE_2,
+	HttpStatus.BAD_REQUEST);
 
-    runTestPatchAuStateClient(AUID_1, EMPTY_STRING, AU_ADMIN,
+    runTestPatchAuStateClient(AUID_1, EMPTY_STRING, AU_ADMIN, null,
 	HttpStatus.BAD_REQUEST);
 
     AuStateBean bean = new AuStateBean();
@@ -989,7 +998,8 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     assertEquals(bean2.toJson(), backupState2);
 
     // Patch first AU using the REST service client.
-    runTestPatchAuStateClient(AUID_1, bean.toJson(), AU_ADMIN, HttpStatus.OK);
+    runTestPatchAuStateClient(AUID_1, bean.toJson(), AU_ADMIN, EMPTY_STRING,
+	HttpStatus.OK);
 
     // Verify.
     assertEquals(creationTime,
@@ -1025,7 +1035,8 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 
     // Restore the original state of the second AU using the REST service
     // client.
-    runTestPatchAuStateClient(AUID_2, backupState2, USER_ADMIN, HttpStatus.OK);
+    runTestPatchAuStateClient(AUID_2, backupState2, USER_ADMIN, COOKIE_1,
+	HttpStatus.OK);
 
     // Verify.
     assertEquals(backupState2,
@@ -1143,19 +1154,24 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
    *          A String with the parts of the Archival Unit state to be replaced.
    * @param credentials
    *          A Credentials with the request credentials.
+   * @param xLockssRequestCookie
+   *          A String with the request cookie.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    */
   private void runTestPatchAuStateClient(String auId, String auState,
-      Credentials credentials, HttpStatus expectedStatus) {
+      Credentials credentials, String xLockssRequestCookie,
+      HttpStatus expectedStatus) {
     log.debug2("auId = {}", auId);
     log.debug2("auState = {}", auState);
     log.debug2("credentials = {}", credentials);
+    log.debug2("xLockssRequestCookie = {}", xLockssRequestCookie);
     log.debug2("expectedStatus = {}", expectedStatus);
 
     try {
       // Make the request.
-      getRestConfigClient(credentials).patchArchivalUnitState(auId, auState);
+      getRestConfigClient(credentials).patchArchivalUnitState(auId, auState,
+	  xLockssRequestCookie);
 
       if (!RestUtil.isSuccess(expectedStatus)) {
 	fail("Should have thrown LockssRestHttpException");

@@ -453,6 +453,11 @@ paths:
           required: true
           schema:
             type: string
+        - name: 'X-Lockss-Request-Cookie'
+          in: header
+          description: The LOCKSS-specific request cookie header
+          required: false
+          type: string
       responses:
         '200':
           description: OK
@@ -521,6 +526,11 @@ paths:
           required: true
           schema:
             type: string
+        - name: 'X-Lockss-Request-Cookie'
+          in: header
+          description: The LOCKSS-specific request cookie header
+          required: false
+          type: string
       responses:
         '200':
           description: OK

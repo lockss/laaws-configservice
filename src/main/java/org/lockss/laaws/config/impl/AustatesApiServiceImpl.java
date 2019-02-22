@@ -97,14 +97,18 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
    *          A String with the AU identifier.
    * @param auState
    *          A String with the Archival Unit state changes.
+   * @param xLockssRequestCookie
+   *          A String with "X-Lockss-Request-Cookie" request header.
    * @return a {@code ResponseEntity<Void>} if successful, or a
    *         {@code ResponseEntity<String>} with the error information
    *         otherwise.
    */
   @Override
-  public ResponseEntity patchAuState(String auid, String auState) {
+  public ResponseEntity patchAuState(String auid, String auState,
+      String xLockssRequestCookie) {
     log.debug2("auid = {}", auid);
     log.debug2("auState = {}", auState);
+    log.debug2("xLockssRequestCookie = {}", xLockssRequestCookie);
 
     // Check authorization.
     try {
@@ -124,7 +128,8 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
       }
 
       // Update the Archival Unit state.
-      getStateManager().updateAuStateFromJson(auid, auState);
+      getStateManager().updateAuStateFromJson(auid, auState,
+	  xLockssRequestCookie);
 
       return new ResponseEntity<Void>(HttpStatus.OK);
     } catch (IllegalArgumentException iae) {
