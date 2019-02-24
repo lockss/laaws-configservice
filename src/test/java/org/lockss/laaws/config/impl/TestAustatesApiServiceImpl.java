@@ -189,8 +189,6 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     cmdLineArgs.add("-p");
     cmdLineArgs.add(getPlatformDiskSpaceConfigPath());
     cmdLineArgs.add("-p");
-    cmdLineArgs.add("config/common.xml");
-    cmdLineArgs.add("-p");
     cmdLineArgs.add(getUiPortConfigFile().getAbsolutePath());
     cmdLineArgs.add("-p");
     cmdLineArgs.add("test/config/lockss.txt");

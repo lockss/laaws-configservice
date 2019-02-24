@@ -216,8 +216,6 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     List<String> cmdLineArgs = new ArrayList<String>();
     cmdLineArgs.add("-p");
     cmdLineArgs.add(getPlatformDiskSpaceConfigPath());
-    cmdLineArgs.add("-p");
-    cmdLineArgs.add("config/common.xml");
 
     File folder =
 	new File(new File(new File(getTempDirPath()), "tdbxml"), "prod");
