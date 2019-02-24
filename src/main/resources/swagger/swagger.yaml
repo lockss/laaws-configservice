@@ -1,4 +1,4 @@
-# Copyright (c) 2000-2018, Board of Trustees of Leland Stanford Jr. University
+# Copyright (c) 2000-2019, Board of Trustees of Leland Stanford Jr. University
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -331,11 +331,7 @@ paths:
             $ref: '#/definitions/auConfiguration'
       responses:
         '200':
-          description: "The key under which the Archival Unit configuration has\
-            \ been stored"
-          schema:
-            type: "integer"
-            format: "int64"
+          description: OK
         '400':
           description: Bad Request
         '401':
@@ -404,6 +400,150 @@ paths:
           description: Forbidden
         '404':
           description: Not Found
+        '500':
+          description: Internal Server Error
+  '/austates/{auid}':
+    get:
+      tags:
+        - aus
+      summary: Get the state of an AU
+      description: Get the state of an AU given the AU identifier
+      operationId: getAuState
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the state is requested
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The state of the specified AU
+          schema:
+            type: string
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+        '500':
+          description: Internal Server Error
+    patch:
+      tags:
+        - aus
+      summary: Upate the state of an AU
+      description: Update the state of an AU given the AU identifier
+      operationId: patchAuState
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the state is to be\
+            \ updated
+          required: true
+          type: string
+        - name: 'auState'
+          in: body
+          description: The parts of the Archival Unit state to be updated
+          required: true
+          schema:
+            type: string
+        - name: 'X-Lockss-Request-Cookie'
+          in: header
+          description: The LOCKSS-specific request cookie header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '415':
+          description: Unsupported Media Type
+        '500':
+          description: Internal Server Error
+  '/auagreements/{auid}':
+    get:
+      tags:
+        - aus
+      summary: Get the poll agreements of an AU
+      description: Get the poll agreements of an AU given the AU identifier
+      operationId: getAuAgreements
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the poll agreements\
+            \ are requested
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The poll agreements of the specified AU
+          schema:
+            type: string
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+        '500':
+          description: Internal Server Error
+    patch:
+      tags:
+        - aus
+      summary: Upate the poll agreements of an AU
+      description: Update the poll agreements of an AU given the AU identifier
+      operationId: patchAuAgreements
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the poll agreements\
+            \ are to be updated
+          required: true
+          type: string
+        - name: 'auAgreements'
+          in: body
+          description: The parts of the Archival Unit poll agreements to be\
+            \ updated
+          required: true
+          schema:
+            type: string
+        - name: 'X-Lockss-Request-Cookie'
+          in: header
+          description: The LOCKSS-specific request cookie header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '415':
+          description: Unsupported Media Type
         '500':
           description: Internal Server Error
   /status:
