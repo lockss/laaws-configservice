@@ -33,6 +33,7 @@ import org.lockss.app.LockssApp;
 import org.lockss.app.LockssApp.AppSpec;
 import org.lockss.app.LockssApp.ManagerDesc;
 import org.lockss.app.LockssDaemon;
+import org.lockss.app.ServiceDescr;
 import org.lockss.plugin.PluginManager;
 import org.lockss.spring.base.BaseSpringBootApplication;
 import org.slf4j.Logger;
@@ -100,7 +101,7 @@ public class ConfigApplication extends BaseSpringBootApplication
       logger.info("Starting the LOCKSS Configuration Service");
 
       AppSpec spec = new AppSpec()
-	.setName("Config Service")
+	.setService(ServiceDescr.SVC_CONFIG)
 	.setArgs(args)
         .addAppConfig(org.lockss.jms.JMSManager.PARAM_START_BROKER, "true")
 	.addAppConfig(org.lockss.config.ConfigManager.PARAM_ENABLE_JMS_SEND,
