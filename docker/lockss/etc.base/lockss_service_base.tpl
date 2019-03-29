@@ -40,4 +40,4 @@ org.lockss.ui.port=${LOCKSS_UI_PORT}
 
 # Enable crawls of plugin registries only
 org.lockss.crawler.enabled=true
-org.lockss.crawler.crawlPriorituAuidMap=RegitryPlugin,1;.,-10000
+org.lockss.crawler.crawlPriorityAuidMap=RegitryPlugin,1;.,-10000
