@@ -61,6 +61,7 @@ import org.lockss.util.HeaderUtil;
 import org.lockss.util.ListUtil;
 import org.lockss.util.StringUtil;
 import org.lockss.util.time.TimeBase;
+import org.json.JSONObject;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -346,9 +347,13 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     HttpStatus statusCode = successResponse.getStatusCode();
     assertEquals(HttpStatus.OK, statusCode);
 
-    String expectedBody = "{\"version\":\"1.0.0\",\"ready\":true}}";
-
-    JSONAssert.assertEquals(expectedBody, successResponse.getBody(), false);
+    JSONObject expected = new JSONObject().put("apiVersion", "1.0.0") // FIXME
+                                          .put("componentName", JSONObject.NULL) // FIXME
+                                          .put("componentVersion", JSONObject.NULL) // FIXME
+                                          .put("lockssVersion", JSONObject.NULL) // FIXME
+                                          .put("ready", true)
+                                          .put("serviceName", JSONObject.NULL); // FIXME
+    JSONAssert.assertEquals(expected.toString(), successResponse.getBody(), false);
 
     log.debug2("Done");
   }
