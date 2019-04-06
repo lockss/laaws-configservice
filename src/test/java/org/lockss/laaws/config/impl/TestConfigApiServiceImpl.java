@@ -326,7 +326,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     assertEquals(HttpStatus.OK, statusCode);
 
     String expectedBody = "{'swagger':'2.0',"
-	+ "'info':{'description':'API of the LOCKSS Configuration REST Service'"
+	+ "'info':{'description':'REST API of the LOCKSS Configuration Service'"
 	+ "}}";
 
     JSONAssert.assertEquals(expectedBody, successResponse.getBody(), false);
