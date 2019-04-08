@@ -347,12 +347,12 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     HttpStatus statusCode = successResponse.getStatusCode();
     assertEquals(HttpStatus.OK, statusCode);
 
-    JSONObject expected = new JSONObject().put("apiVersion", "1.0.0") // FIXME
-                                          .put("componentName", JSONObject.NULL) // FIXME
-                                          .put("componentVersion", JSONObject.NULL) // FIXME
-                                          .put("lockssVersion", JSONObject.NULL) // FIXME
+    JSONObject expected = new JSONObject().put("apiVersion", "2.0.0")
+                                          .put("componentName", "laaws-configuration-service")
+                                          .put("componentVersion", "1.1.0-SNAPSHOT")
+                                          .put("lockssVersion", "1.75.0")
                                           .put("ready", true)
-                                          .put("serviceName", JSONObject.NULL); // FIXME
+                                          .put("serviceName", "LOCKSS Configuration Service REST API");
     JSONAssert.assertEquals(expected.toString(), successResponse.getBody(), false);
 
     log.debug2("Done");
