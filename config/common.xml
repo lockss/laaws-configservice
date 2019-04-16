@@ -80,6 +80,17 @@ in this Software without prior written authorization from Stanford University.
     <!-- Allow backup files up to 1MB to be uploaded -->
     <property name="ui.maxUploadFileSize" value="1048576" />
 
+    <!-- Default bindings of service to UI port in dev environment -->
+    <property name="app.serviceBindings">
+      <list>
+        <value>cfg=:24621</value>
+        <value>poller=:24631</value>
+        <value>crawler=:24631</value>
+        <value>mdx=:24641</value>
+        <value>mdq=:24651</value>
+      </list>
+    </property>
+
     <!-- Automatically load (list in the UI) plugins named .*Plugin in these
 	 jars -->
     <property name="plugin.registryJars">
