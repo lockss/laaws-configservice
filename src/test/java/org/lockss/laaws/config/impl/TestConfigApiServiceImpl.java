@@ -3488,7 +3488,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     // Independent verification.
     String filePath =
-	getTempDirPath() + "/cache/config/" + ConfigManager.CONFIG_FILE_EXPERT;
+	getTempDirPath() + "/cache/config/" + ConfigManager.CONFIG_FILE_EXPERT_CLUSTER;
 
     assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
 	.conditionallyReadCacheConfigFile(filePath, null)
