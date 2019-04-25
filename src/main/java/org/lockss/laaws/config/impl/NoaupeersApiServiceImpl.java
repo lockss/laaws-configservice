@@ -34,7 +34,7 @@ package org.lockss.laaws.config.impl;
 import java.io.IOException;
 import java.security.AccessControlException;
 import org.lockss.app.LockssDaemon;
-import org.lockss.laaws.config.api.NoaupeersetApiDelegate;
+import org.lockss.laaws.config.api.NoaupeersApiDelegate;
 import org.lockss.log.L4JLogger;
 import org.lockss.plugin.AuUtil;
 import org.lockss.spring.auth.Roles;
@@ -49,7 +49,7 @@ import org.springframework.stereotype.Service;
  * Service for accessing Archival Unit NoAuPeerSet object.
  */
 @Service
-public class NoaupeersetApiServiceImpl implements NoaupeersetApiDelegate {
+public class NoaupeersApiServiceImpl implements NoaupeersApiDelegate {
   private static L4JLogger log = L4JLogger.getLogger();
 
   /**
@@ -62,7 +62,7 @@ public class NoaupeersetApiServiceImpl implements NoaupeersetApiDelegate {
    *         error information otherwise.
    */
   @Override
-  public ResponseEntity<String> getNoAuPeerSet(String auid) {
+  public ResponseEntity<String> getNoAuPeers(String auid) {
     log.debug2("auid = {}", auid);
 
     try {
@@ -106,7 +106,7 @@ public class NoaupeersetApiServiceImpl implements NoaupeersetApiDelegate {
    *         otherwise.
    */
   @Override
-  public ResponseEntity patchNoAuPeerSet(String auid, String noAuPeerSet,
+  public ResponseEntity putNoAuPeers(String auid, String noAuPeerSet,
       String xLockssRequestCookie) {
     log.debug2("auid = {}", auid);
     log.debug2("noAuPeerSet = {}", noAuPeerSet);

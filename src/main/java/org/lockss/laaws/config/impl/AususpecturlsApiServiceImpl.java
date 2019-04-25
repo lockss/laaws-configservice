@@ -106,7 +106,7 @@ public class AususpecturlsApiServiceImpl implements AususpecturlsApiDelegate {
    *         otherwise.
    */
   @Override
-  public ResponseEntity patchAuSuspectUrlVersions(String auid,
+  public ResponseEntity putAuSuspectUrlVersions(String auid,
       String auSuspectUrlVersions, String xLockssRequestCookie) {
     log.debug2("auid = {}", auid);
     log.debug2("auSuspectUrlVersions = {}", auSuspectUrlVersions);

@@ -433,7 +433,7 @@ paths:
     patch:
       tags:
         - aus
-      summary: Upate the state of an AU
+      summary: Update the state of an AU
       description: Update the state of an AU given the AU identifier
       operationId: patchAuState
       consumes:
@@ -505,7 +505,7 @@ paths:
     patch:
       tags:
         - aus
-      summary: Upate the poll agreements of an AU
+      summary: Update the poll agreements of an AU
       description: Update the poll agreements of an AU given the AU identifier
       operationId: patchAuAgreements
       consumes:
@@ -575,13 +575,13 @@ paths:
           description: Not Found
         '500':
           description: Internal Server Error
-    patch:
+    put:
       tags:
         - aus
-      summary: Upate the suspect URL versions of an AU
+      summary: Update the suspect URL versions of an AU
       description: Update the suspect URL versions of an AU given the AU\
         \ identifier
-      operationId: patchAuSuspectUrlVersions
+      operationId: putAuSuspectUrlVersions
       consumes:
         - application/json
       produces:
@@ -620,13 +620,13 @@ paths:
           description: Unsupported Media Type
         '500':
           description: Internal Server Error
-  '/noaupeerset/{auid}':
+  '/noaupeers/{auid}':
     get:
       tags:
         - aus
       summary: Get the NoAuPeerSet object of an AU
       description: Get the NoAuPeerSet object of an AU given the AU identifier
-      operationId: getNoAuPeerSet
+      operationId: getNoAuPeers
       produces:
         - application/json
       parameters:
@@ -649,13 +649,13 @@ paths:
           description: Not Found
         '500':
           description: Internal Server Error
-    patch:
+    put:
       tags:
         - aus
-      summary: Upate the NoAuPeerSet object of an AU
+      summary: Update the NoAuPeerSet object of an AU
       description: Update the NoAuPeerSet object of an AU given the AU\
         \ identifier
-      operationId: patchNoAuPeerSet
+      operationId: putNoAuPeers
       consumes:
         - application/json
       produces:
