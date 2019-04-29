@@ -37,9 +37,6 @@ org.lockss.ui.allowPluginConfig=true
 org.lockss.ui.start=yes
 org.lockss.proxy.start=no
 
-# Turn off V1 -- This will be the default some day.
-org.lockss.comm.enabled=false
-
 # Identity
 org.lockss.platform.v3.identity=TCP:[127.0.0.1]:9720
 
@@ -57,6 +54,9 @@ org.lockss.proxy.icp.port=3131
 
 # Crawl starter interval
 org.lockss.crawler.startCrawlsInterval=5m
+
+# ConfigService should crawl only plugins
+org.lockss.crawler.crawlPriorityAuidMap=RegistryPlugin,1;.*,-10000
 
 org.lockss.crawlStatus.keepUrls=all
 
