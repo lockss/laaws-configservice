@@ -107,7 +107,7 @@ public class ConfigApplication extends BaseSpringBootApplication
 	.addAppConfig(org.lockss.config.ConfigManager.PARAM_ENABLE_JMS_SEND,
 		      "true")
 	.addAppConfig(PARAM_START_PLUGINS, "true")
-	.addAppConfig(PluginManager.PARAM_START_ALL_AUS, "false")
+	.addAppDefault(PluginManager.PARAM_START_ALL_AUS, "false")
 	.setAppManagers(myManagerDescs);
       LockssApp.startStatic(LockssDaemon.class, spec);
     } else {
