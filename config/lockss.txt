@@ -35,7 +35,6 @@ org.lockss.config.reloadInterval = 5m
 org.lockss.ui.allowPluginConfig=true
 
 org.lockss.ui.start=yes
-org.lockss.proxy.start=no
 
 # Identity
 org.lockss.platform.v3.identity=TCP:[127.0.0.1]:9720
@@ -47,10 +46,6 @@ org.lockss.scomm.maxMessageSize=33554430
 org.lockss.poll.v3.quorum=2
 org.lockss.poll.v3.pollStarterInitialDelay=5m
 org.lockss.poll.v3.pollStarterInterval=5m
-
-# Turn on ICP on port 3131
-org.lockss.proxy.icp.enabled=true
-org.lockss.proxy.icp.port=3131
 
 # Crawl starter interval
 org.lockss.crawler.startCrawlsInterval=5m
