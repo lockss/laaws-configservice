@@ -357,7 +357,6 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
     log.debug2("Invoked");
 
     try {
-      @SuppressWarnings("unchecked")
       List<String> result = (List<String>)getConfigManager().getLoadedUrlList();
       log.debug2("result = {}", () -> result);
       return new ResponseEntity<List<String>>(result, HttpStatus.OK);

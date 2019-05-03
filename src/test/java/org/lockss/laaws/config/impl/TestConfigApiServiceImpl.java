@@ -2619,7 +2619,6 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
    *          A Credentials with the request credentials.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
-   * @return a Date with the configuration last update time.
    */
   private void runTestGetLastUpdateTime(Credentials credentials,
       HttpStatus expectedStatus) {
@@ -2739,7 +2738,6 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
    *          A Credentials with the request credentials.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
-   * @return a List<String> with the loaded URLs.
    * 
    * @throws Exception
    *           if there are problems.
