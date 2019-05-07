@@ -1,6 +1,6 @@
 <!--
 
-Copyright (c) 2000-2018 Board of Trustees of Leland Stanford Jr. University,
+Copyright (c) 2000-2019 Board of Trustees of Leland Stanford Jr. University,
 all rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -41,6 +41,8 @@ ongoing development
 The LOCKSS cluster, including this project, is normally built and deployed using
 the LOCKSS Installer, which uses `docker`.
 
+You can find more information about the installation of the LOCKSS system in the
+[LOCKSS system manual](https://lockss.github.io/software/manual).
 ## Development build and deployment
 ### Clone the repo
 `git clone -b develop ssh://github.com/lockss/laaws-configservice.git`
@@ -61,17 +63,16 @@ link at
 `./target/current-with-deps.jar`
 
 ### Run the web service:
-Run the LOCKSS Development Scripts project `bin/runService` script in the home
-directory of this project, where this `README.md` file resides.
-
-This will use port 24620. To use another port, edit the value of the
-`server.port` property in file
-`src/main/resources/application.properties` and re-build the project.
+Run the
+[LOCKSS Development Scripts](https://github.com/lockss/laaws-dev-scripts)
+project `bin/runservice` script in the home directory of this project, where
+this `README.md` file resides.
 
 The log is at `./logs/app.log`
 
-### The API is documented at:
-#### http://localhost:24620/swagger-ui.html
+The API is documented at <http://127.0.0.1:24620/swagger-ui.html>.
 
-### The status of the web service may be obtained at:
-#### http://localhost:24620/status
+The status of the web service may be obtained at
+<http://127.0.0.1:24620/status>.
+
+The administration UI of the web service is at <http://127.0.0.1:24621>.
