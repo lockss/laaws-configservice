@@ -35,7 +35,7 @@ other REST Web Services in the LOCKSS cluster.
 
 ## Note on branches
 The `master` branch is for stable releases and the `develop` branch is for
-ongoing development
+ongoing development.
 
 ## Standard build and deployment
 The LOCKSS cluster, including this project, is normally built and deployed using
@@ -43,6 +43,7 @@ the LOCKSS Installer, which uses `docker`.
 
 You can find more information about the installation of the LOCKSS system in the
 [LOCKSS system manual](https://lockss.github.io/software/manual).
+
 ## Development build and deployment
 ### Clone the repo
 `git clone -b develop ssh://github.com/lockss/laaws-configservice.git`
@@ -52,7 +53,7 @@ You can find more information about the installation of the LOCKSS system in the
 
 ### Build the web service:
 In the home directory of this project, where this `README.md` file resides,
-run `mvn clean install`
+run `mvn clean install`.
 
 This will run the tests as a pre-requisite for the build.
 
@@ -68,7 +69,7 @@ Run the
 project `bin/runservice` script in the home directory of this project, where
 this `README.md` file resides.
 
-The log is at `./logs/app.log`
+The log is at `./logs/app.log`.
 
 The API is documented at <http://127.0.0.1:24620/swagger-ui.html>.
 
