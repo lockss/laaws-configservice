@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2018 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,52 +28,35 @@
 package org.lockss.laaws.config.client;
 
 import java.net.URI;
-import java.util.Arrays;
-import java.util.Collections;
+import org.lockss.laaws.status.model.ApiStatus;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
-/**
- * Client for the getConfigSnid() operation.
- */
-public class GetConfigSnidClient extends BaseClient {
+public class GetStatusClient extends BaseClient {
+
   public static void main(String[] args) throws Exception {
-    for (int i = 0; i < args.length; i++) {
-      System.out.println("args[" + i + "] = " + args[i]);
-    }
-
-    if (args.length < 1) {
-      System.err.println("ERROR: Missing command line argument with the name "
-	  + "of the section for which its configuration is to be retrieved.");
-    }
-
-    String template = baseUri + "/config/file/{snid}";
+    String template = baseUri + "/status";
 
     // Create the URI of the request to the REST service.
-    UriComponents uriComponents = UriComponentsBuilder.fromUriString(template)
-	.build().expand(Collections.singletonMap("snid",
-	    args[0].toLowerCase()));
+    UriComponents uriComponents =
+	UriComponentsBuilder.fromUriString(template).build();
 
-    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
-	.build().encode().toUri();
+    UriComponentsBuilder builder =
+	UriComponentsBuilder.newInstance().uriComponents(uriComponents);
+
+    URI uri = builder.build().encode().toUri();
     System.out.println("uri = " + uri);
 
-    HttpHeaders headers = getHttpHeaders();
-    headers.setAccept(Arrays.asList(MediaType.MULTIPART_FORM_DATA,
-	    MediaType.APPLICATION_JSON));
-
-    ResponseEntity<String> response = getRestTemplate().exchange(uri,
-	HttpMethod.GET, new HttpEntity<String>(null, headers),
-	String.class);
+    ResponseEntity<ApiStatus> response = getRestTemplate().exchange(uri,
+	HttpMethod.GET, new HttpEntity<String>(null, getHttpHeaders()),
+	ApiStatus.class);
 
     int status = response.getStatusCodeValue();
     System.out.println("status = " + status);
-    String result = response.getBody();
+    ApiStatus result = response.getBody();
     System.out.println("result = " + result);
   }
 }

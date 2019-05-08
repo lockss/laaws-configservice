@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+# Copyright (c) 2017-2019 Board of Trustees of Leland Stanford Jr. University,
 # all rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,7 @@
 #
 # Don't make local changes in this file; put local settings in lockss.opt
 
-org.lockss.log.default.level=debug
+#org.lockss.log.default.level=debug
 
 org.lockss.ui.access.ip.logForbidden=true
 org.lockss.proxy.access.ip.logForbidden=true
@@ -62,6 +62,16 @@ org.lockss.crawlStatus.keepUrls=all
 org.lockss.platform.ui.username=lockss-u
 org.lockss.platform.ui.password=SHA1:ac4fc8fa9930a24c8d002d541c37ca993e1bc40f
 
+# UI username-passwd = content-admin/I'mContentAdmin
+org.lockss.ui.users.1.user=content-admin
+org.lockss.ui.users.1.password=SHA1:3edf8dd2b96a6a344bf70a2cc7794a3baffbbc7c
+org.lockss.ui.users.1.roles=contentAdminRole
+
+# UI username-passwd = au-admin/I'mAuAdmin
+org.lockss.ui.users.2.user=au-admin
+org.lockss.ui.users.2.password=SHA1:d80a88b9abe5bbea6759eb86e88d648b405447ef
+org.lockss.ui.users.2.roles=auAdminRole
+
 # So that we don't hash on no-longer-relevant URLs
 org.lockss.blockHasher.ignoreFilesOutsideCrawlSpec=true
 
@@ -78,5 +88,3 @@ org.lockss.ws.enabled=false
 
 # No Repository Manager.
 org.lockss.plugin.auContentFromWs=true
-
-org.lockss.ui.port=54421

@@ -27,22 +27,27 @@
  */
 package org.lockss.laaws.config;
 
+import static org.lockss.app.LockssApp.PARAM_START_PLUGINS;
 import static org.lockss.app.ManagerDescs.*;
 import org.lockss.app.LockssApp;
 import org.lockss.app.LockssApp.AppSpec;
 import org.lockss.app.LockssApp.ManagerDesc;
 import org.lockss.app.LockssDaemon;
-import org.lockss.rs.base.BaseSpringBootApplication;
+import org.lockss.app.ServiceDescr;
+import org.lockss.plugin.PluginManager;
+import org.lockss.spring.base.BaseSpringBootApplication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 /**
  * The Spring-Boot application.
  */
 @SpringBootApplication
+@EnableSwagger2
 public class ConfigApplication extends BaseSpringBootApplication
 	implements CommandLineRunner {
   private static final Logger logger =
@@ -52,9 +57,21 @@ public class ConfigApplication extends BaseSpringBootApplication
   // which managers are initialized and started.
   private static final ManagerDesc[] myManagerDescs = {
     ACCOUNT_MANAGER_DESC,
+    CONFIG_DB_MANAGER_DESC,
     PLUGIN_MANAGER_DESC,
+    STATE_MANAGER_DESC,
+    IDENTITY_MANAGER_DESC,
+    CRAWL_MANAGER_DESC,
+    REPOSITORY_MANAGER_DESC,
+    REMOTE_API_DESC,
     COUNTER_REPORTS_MANAGER_DESC,
+    SUBSCRIPTION_MANAGER_DESC,
     SERVLET_MANAGER_DESC,
+    ROUTER_MANAGER_DESC,
+    PLATFORM_CONFIG_STATUS_DESC,
+    CONFIG_STATUS_DESC,
+    ARCHIVAL_UNIT_STATUS_DESC,
+    OVERVIEW_STATUS_DESC
   };
 
   /**
@@ -81,10 +98,16 @@ public class ConfigApplication extends BaseSpringBootApplication
     // Check whether there are command line arguments available.
     if (args != null && args.length > 0) {
       // Yes: Start the LOCKSS daemon.
-      logger.info("Starting the LOCKSS daemon");
+      logger.info("Starting the LOCKSS Configuration Service");
+
       AppSpec spec = new AppSpec()
-	.setName("Config Service")
+	.setService(ServiceDescr.SVC_CONFIG)
 	.setArgs(args)
+        .addAppConfig(org.lockss.jms.JMSManager.PARAM_START_BROKER, "true")
+	.addAppConfig(org.lockss.config.ConfigManager.PARAM_ENABLE_JMS_SEND,
+		      "true")
+	.addAppConfig(PARAM_START_PLUGINS, "true")
+	.addAppDefault(PluginManager.PARAM_START_ALL_AUS, "false")
 	.setAppManagers(myManagerDescs);
       LockssApp.startStatic(LockssDaemon.class, spec);
     } else {

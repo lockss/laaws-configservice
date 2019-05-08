@@ -6,4 +6,10 @@ org.lockss.au.org|lockss|plugin|pensoft|oai|PensoftOaiPlugin.au_oai_date~2014&au
 org.lockss.au.org|lockss|plugin|pensoft|oai|PensoftOaiPlugin.au_oai_date~2014&au_oai_set~biorisk&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F.reserved.disabled=false
 org.lockss.au.org|lockss|plugin|pensoft|oai|PensoftOaiPlugin.au_oai_date~2014&au_oai_set~biorisk&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F.reserved.displayName=BioRisk Volume 2014
 org.lockss.au.org|lockss|plugin|pensoft|oai|PensoftOaiPlugin.au_oai_date~2014&au_oai_set~biorisk&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F.reserved.repository=local\:./cache
+org.lockss.au.org|lockss|plugin|pensoft|oai|PensoftOaiPlugin.au_oai_date~2015&au_oai_set~biorisk&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F.au_oai_date=2015
+org.lockss.au.org|lockss|plugin|pensoft|oai|PensoftOaiPlugin.au_oai_date~2015&au_oai_set~biorisk&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F.au_oai_set=biorisk
+org.lockss.au.org|lockss|plugin|pensoft|oai|PensoftOaiPlugin.au_oai_date~2015&au_oai_set~biorisk&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F.base_url=http\://biorisk.pensoft.net/
+org.lockss.au.org|lockss|plugin|pensoft|oai|PensoftOaiPlugin.au_oai_date~2015&au_oai_set~biorisk&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F.reserved.disabled=false
+org.lockss.au.org|lockss|plugin|pensoft|oai|PensoftOaiPlugin.au_oai_date~2015&au_oai_set~biorisk&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F.reserved.displayName=BioRisk Volume 2015
+org.lockss.au.org|lockss|plugin|pensoft|oai|PensoftOaiPlugin.au_oai_date~2015&au_oai_set~biorisk&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F.reserved.repository=local\:./cache
 org.lockss.config.fileVersion.au=1

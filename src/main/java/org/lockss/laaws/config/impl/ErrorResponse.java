@@ -25,32 +25,19 @@
  in this Software without prior written authorization from Stanford University.
 
  */
-package org.lockss.laaws.config.client;
-
-import java.util.Collection;
-import org.lockss.config.AuConfiguration;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+package org.lockss.laaws.config.impl;
 
 /**
- * Client for the getAus() operation.
+ * Error response definition for JSON conversion.
  */
-public class GetAusClient extends BaseClient {
-  public static void main(String[] args) throws Exception {
-    String url = baseUri + "/aus";
+public class ErrorResponse {
+  private String message;
 
-    ResponseEntity<?> response = getRestTemplate().exchange(url, HttpMethod.GET,
-	new HttpEntity<Collection<AuConfiguration>>(null, getHttpHeaders()),
-	String.class);
+  public ErrorResponse(String message) {
+    this.message = message;
+  }
 
-    int status = response.getStatusCodeValue();
-    System.out.println("status = " + status);
-    Collection<AuConfiguration> result =
-	new ObjectMapper().readValue((String)response.getBody(),
-	    new TypeReference<Collection<AuConfiguration>>(){});
-    System.out.println("result = " + result);
+  public String getMessage() {
+    return message;
   }
 }
