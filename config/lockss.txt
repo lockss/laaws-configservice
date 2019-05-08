@@ -24,7 +24,7 @@
 #
 # Don't make local changes in this file; put local settings in lockss.opt
 
-org.lockss.log.default.level=debug
+#org.lockss.log.default.level=debug
 
 org.lockss.ui.access.ip.logForbidden=true
 org.lockss.proxy.access.ip.logForbidden=true
@@ -35,10 +35,6 @@ org.lockss.config.reloadInterval = 5m
 org.lockss.ui.allowPluginConfig=true
 
 org.lockss.ui.start=yes
-org.lockss.proxy.start=no
-
-# Turn off V1 -- This will be the default some day.
-org.lockss.comm.enabled=false
 
 # Identity
 org.lockss.platform.v3.identity=TCP:[127.0.0.1]:9720
@@ -51,12 +47,11 @@ org.lockss.poll.v3.quorum=2
 org.lockss.poll.v3.pollStarterInitialDelay=5m
 org.lockss.poll.v3.pollStarterInterval=5m
 
-# Turn on ICP on port 3131
-org.lockss.proxy.icp.enabled=true
-org.lockss.proxy.icp.port=3131
-
 # Crawl starter interval
 org.lockss.crawler.startCrawlsInterval=5m
+
+# ConfigService should crawl only plugins
+org.lockss.crawler.crawlPriorityAuidMap=RegistryPlugin,1;.*,-10000
 
 org.lockss.crawlStatus.keepUrls=all
 
@@ -71,7 +66,7 @@ org.lockss.baseau.minFetchDelay=3000
 org.lockss.plugin.restartAusWithNewPlugin=true
 
 # Disable crawler, poller and voter
-org.lockss.crawler.enabled=false
+org.lockss.crawler.enabled=true
 org.lockss.poll.v3.enableV3Poller=false
 org.lockss.poll.v3.enableV3Voter=false
 
@@ -81,5 +76,5 @@ org.lockss.ws.enabled=false
 # No Repository Manager.
 org.lockss.plugin.auContentFromWs=true
 
-org.lockss.ui.port=54421
+org.lockss.ui.port=24621
 org.lockss.platform.propsLockssXmlUrl=http://props.lockss.org:8001/content-testing/lockss.xml

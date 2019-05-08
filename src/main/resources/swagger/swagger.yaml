@@ -1,0 +1,748 @@
+# Copyright (c) 2000-2019, Board of Trustees of Leland Stanford Jr. University
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission. 
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+swagger: "2.0"
+info:
+  title: "LOCKSS Configuration Service REST API"
+  version: "2.0.0"
+  description: "REST API of the LOCKSS Configuration Service"
+  contact:
+    name: "LOCKSS Support"
+    url: "https://www.lockss.org/"
+    email: "lockss-support@lockss.org"
+  license:
+    name: "BSD-3-Clause"
+    url: "https://opensource.org/licenses/BSD-3-Clause"
+host: 'laaws.lockss.org:443'
+basePath: /
+tags:
+  - name: Default
+    description: Default section
+  - name: config
+    description: Tasks on the configuration
+  - name: aus
+    description: Tasks on the archival units (AUs)
+schemes:
+  - https
+produces:
+  - application/json
+security:
+  - basicAuth: []
+paths:
+  '/config/file/{sectionName}':
+    put:
+      tags:
+        - config
+      summary: Store the named configuration file
+      description: Store the configuration file for a given name
+      operationId: putConfig
+      consumes:
+        - multipart/form-data
+      produces:
+        - application/json
+      parameters:
+        - name: 'sectionName'
+          in: path
+          description: The name of the section for which the configuration file\
+            \ is to be stored
+          required: true
+          type: string
+        - name: 'configFile'
+          in: formData
+          description: The configuration file to be stored
+          required: true
+          type: file
+        - name: 'If-Match'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-Modified-Since'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-None-Match'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-Unmodified-Since'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '412':
+          description: Precondition failed
+        '415':
+          description: Unsupported Media Type
+        '500':
+          description: Internal Server Error
+    get:
+      tags:
+        - config
+      summary: Get the named configuration file
+      description: Get the configuration file stored for a given name
+      operationId: getSectionConfig
+      produces:
+        - multipart/form-data
+      parameters:
+        - name: 'sectionName'
+          in: path
+          description: The name of the section for which the configuration file\
+            \ is requested
+          required: true
+          type: string
+        - name: 'Accept'
+          in: header
+          description: The Accept header
+          required: true
+          type: string
+        - name: 'If-Match'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-Modified-Since'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-None-Match'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-Unmodified-Since'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: The named configuration file
+          schema:
+            type: file
+        '304':
+          description: Not Modified
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+        '406':
+          description: Not Acceptable
+        '412':
+          description: Precondition failed
+        '500':
+          description: Internal Server Error
+  '/config/url':
+    get:
+      tags:
+        - config
+      summary: Get the configuration file for a URL
+      description: Get the configuration file stored for a given URL
+      operationId: getUrlConfig
+      produces:
+        - multipart/form-data
+      parameters:
+        - name: 'url'
+          in: 'query'
+          description: The URL for which the configuration is requested
+          required: true
+          type: string
+        - name: 'Accept'
+          in: header
+          description: The Accept header
+          required: true
+          type: string
+        - name: 'If-Match'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-Modified-Since'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-None-Match'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+        - name: 'If-Unmodified-Since'
+          in: header
+          description: The If-Match header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: The configuration file for the URL
+          schema:
+            type: file
+        '304':
+          description: Not Modified
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+        '406':
+          description: Not Acceptable
+        '412':
+          description: Precondition failed
+        '500':
+          description: Internal Server Error
+  '/config/loadedurls':
+    get:
+      tags:
+        - config
+      summary: Get the URLs from which the configuration was loaded
+      description: Get the URLs from which the configuration was actually\
+        \ loaded, reflecting any failover to local copies
+      operationId: getLoadedUrlList
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: The URLs from which the configuration was loaded
+          schema:
+            type: array
+            items:
+              type: string
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal Server Error
+  '/config/lastupdatetime':
+    get:
+      tags:
+        - config
+      summary: Get the timestamp when the configuration was last updated
+      description: Get the timestamp when the configuration was last updated
+      operationId: getLastUpdateTime
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: The timestamp when the configuration was last updated
+          schema:
+            type: string
+            format: date-time
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal Server Error
+  '/config/reload':
+    put:
+      tags:
+        - config
+      summary: Request a configuration reload
+      description: Request that the stored configuration is reloaded
+      operationId: putConfigReload
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '500':
+          description: Internal Server Error
+  '/aus':
+    get:
+      tags:
+        - aus
+      summary: Get the configurations of all AUs
+      description: Get the configuration of all AUs
+      operationId: getAllAuConfig
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: The configuration of all AUs
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/auConfiguration'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal Server Error
+  '/aus/{auid}':
+    put:
+      tags:
+        - aus
+      summary: Store the configuration of an AU
+      description: Store the configuration of an AU given the AU identifier
+      operationId: putAuConfig
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'auConfiguration'
+          in: body
+          description: The Archival Unit configuration to be stored
+          required: true
+          schema:
+            $ref: '#/definitions/auConfiguration'
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '415':
+          description: Unsupported Media Type
+        '500':
+          description: Internal Server Error
+    get:
+      tags:
+        - aus
+      summary: Get the configuration of an AU
+      description: Get the configuration of an AU given the AU identifier
+      operationId: getAuConfig
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the configuration is\
+            \ requested
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The configuration of the specified AU
+          schema:
+            $ref: '#/definitions/auConfiguration'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+        '500':
+          description: Internal Server Error
+    delete:
+      tags:
+        - aus
+      summary: Delete the configuration of an AU
+      description: Delete the configuration of an AU given the AU identifier
+      operationId: deleteAuConfig
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the configuration is\
+            \ to be deleted
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The deleted configuration of the specified AU
+          schema:
+            $ref: '#/definitions/auConfiguration'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '500':
+          description: Internal Server Error
+  '/austates/{auid}':
+    get:
+      tags:
+        - aus
+      summary: Get the state of an AU
+      description: Get the state of an AU given the AU identifier
+      operationId: getAuState
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the state is requested
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The state of the specified AU
+          schema:
+            type: string
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+        '500':
+          description: Internal Server Error
+    patch:
+      tags:
+        - aus
+      summary: Update the state of an AU
+      description: Update the state of an AU given the AU identifier
+      operationId: patchAuState
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the state is to be\
+            \ updated
+          required: true
+          type: string
+        - name: 'auState'
+          in: body
+          description: The parts of the Archival Unit state to be updated
+          required: true
+          schema:
+            type: string
+        - name: 'X-Lockss-Request-Cookie'
+          in: header
+          description: The LOCKSS-specific request cookie header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '415':
+          description: Unsupported Media Type
+        '500':
+          description: Internal Server Error
+  '/auagreements/{auid}':
+    get:
+      tags:
+        - aus
+      summary: Get the poll agreements of an AU
+      description: Get the poll agreements of an AU given the AU identifier
+      operationId: getAuAgreements
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the poll agreements\
+            \ are requested
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The poll agreements of the specified AU
+          schema:
+            type: string
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+        '500':
+          description: Internal Server Error
+    patch:
+      tags:
+        - aus
+      summary: Update the poll agreements of an AU
+      description: Update the poll agreements of an AU given the AU identifier
+      operationId: patchAuAgreements
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the poll agreements\
+            \ are to be updated
+          required: true
+          type: string
+        - name: 'auAgreements'
+          in: body
+          description: The parts of the Archival Unit poll agreements to be\
+            \ updated
+          required: true
+          schema:
+            type: string
+        - name: 'X-Lockss-Request-Cookie'
+          in: header
+          description: The LOCKSS-specific request cookie header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '415':
+          description: Unsupported Media Type
+        '500':
+          description: Internal Server Error
+  '/aususpecturls/{auid}':
+    get:
+      tags:
+        - aus
+      summary: Get the suspect URL versions of an AU
+      description: Get the suspect URL versions of an AU given the AU identifier
+      operationId: getAuSuspectUrlVersions
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the suspect URL\
+            \ versions are requested
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The suspect URL versions of the specified AU
+          schema:
+            type: string
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+        '500':
+          description: Internal Server Error
+    put:
+      tags:
+        - aus
+      summary: Update the suspect URL versions of an AU
+      description: Update the suspect URL versions of an AU given the AU\
+        \ identifier
+      operationId: putAuSuspectUrlVersions
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the suspect URL\
+            \ versions are to be updated
+          required: true
+          type: string
+        - name: 'auSuspectUrlVersions'
+          in: body
+          description: The parts of the Archival Unit suspect URL versions to\
+            \ be updated
+          required: true
+          schema:
+            type: string
+        - name: 'X-Lockss-Request-Cookie'
+          in: header
+          description: The LOCKSS-specific request cookie header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '415':
+          description: Unsupported Media Type
+        '500':
+          description: Internal Server Error
+  '/noaupeers/{auid}':
+    get:
+      tags:
+        - aus
+      summary: Get the NoAuPeerSet object of an AU
+      description: Get the NoAuPeerSet object of an AU given the AU identifier
+      operationId: getNoAuPeers
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the NoAuPeerSet\
+            \ object is requested
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The NoAuPeerSet object of the specified AU
+          schema:
+            type: string
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+        '500':
+          description: Internal Server Error
+    put:
+      tags:
+        - aus
+      summary: Update the NoAuPeerSet object of an AU
+      description: Update the NoAuPeerSet object of an AU given the AU\
+        \ identifier
+      operationId: putNoAuPeers
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the NoAuPeerSet\
+            \ object is to be updated
+          required: true
+          type: string
+        - name: 'noAuPeerSet'
+          in: body
+          description: The parts of the Archival Unit NoAuPeerSet object to be\
+            \ updated
+          required: true
+          schema:
+            type: string
+        - name: 'X-Lockss-Request-Cookie'
+          in: header
+          description: The LOCKSS-specific request cookie header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '415':
+          description: Unsupported Media Type
+        '500':
+          description: Internal Server Error
+  /status:
+    get:
+      tags:
+      - "status"
+      summary: "Get the status of the service"
+      description: "Get the status of the service"
+      operationId: "getStatus"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "The status of the service"
+          schema:
+            $ref: "#/definitions/apiStatus"
+        401:
+          description: "Unauthorized"
+        500:
+          description: "Internal Server Error"
+securityDefinitions:
+  basicAuth:
+    description: "HTTP Basic Authentication. Works over `HTTP` and `HTTPS`"
+    type: "basic"
+definitions:
+  auConfiguration:
+    type: "object"
+    required:
+      - "auId"
+      - "auConfig"
+    properties:
+      auId:
+        type: "string"
+        description: "The identifier of the Archival Unit"
+      auConfig:
+        type: "object"
+        description: "The map of Archival Unit configuration items"
+        additionalProperties:
+          type: "string"
+          description: "The value of the configuration for the key"
+    description: "The encapsulation of an Archival Unit configuration"
+  apiStatus:
+    type: "object"
+    required:
+    - "version"
+    - "ready"
+    properties:
+      version:
+        type: "string"
+        description: "The version of the service"
+      ready:
+        type: "boolean"
+        description: "The indication of whether the service is available"
+    description: "The status information of the service"

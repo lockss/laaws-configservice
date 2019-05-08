@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,7 +29,7 @@ package org.lockss.laaws.config.client;
 
 import java.net.URI;
 import java.util.Collections;
-import org.lockss.laaws.config.model.ConfigExchange;
+import org.lockss.config.AuConfiguration;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -61,13 +61,13 @@ public class GetAusAuidClient extends BaseClient {
 	.build().encode().toUri();
     System.out.println("uri = " + uri);
 
-    ResponseEntity<ConfigExchange> response = getRestTemplate().exchange(uri,
+    ResponseEntity<AuConfiguration> response = getRestTemplate().exchange(uri,
 	HttpMethod.GET, new HttpEntity<String>(null, getHttpHeaders()),
-	ConfigExchange.class);
+	AuConfiguration.class);
 
     int status = response.getStatusCodeValue();
     System.out.println("status = " + status);
-    ConfigExchange result = response.getBody();
+    AuConfiguration result = response.getBody();
     System.out.println("result = " + result);
   }
 }
