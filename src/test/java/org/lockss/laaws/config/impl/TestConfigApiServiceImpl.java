@@ -349,7 +349,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     JSONObject expected = new JSONObject().put("apiVersion", "2.0.0")
                                           .put("componentName", "laaws-configuration-service")
-                                          .put("componentVersion", "3.0.2.0-SNAPSHOT")
+                                          .put("componentVersion", "2.0.2.0-SNAPSHOT")
                                           .put("lockssVersion", "2.0-beta")
                                           .put("ready", true)
                                           .put("serviceName", "LOCKSS Configuration Service REST API");
