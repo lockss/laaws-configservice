@@ -29,6 +29,7 @@ package org.lockss.laaws.config.impl;
 
 import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
 import static org.lockss.laaws.config.impl.ConfigApiServiceImpl.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
@@ -49,6 +50,7 @@ import org.lockss.config.ConfigManager;
 import org.lockss.config.HttpRequestPreconditions;
 import org.lockss.config.RestConfigClient;
 import org.lockss.config.RestConfigSection;
+import org.lockss.laaws.status.model.ApiStatus;
 import org.lockss.log.L4JLogger;
 import org.lockss.rs.RestUtil;
 import org.lockss.rs.multipart.MimeMultipartHttpMessageConverter;
@@ -61,7 +63,6 @@ import org.lockss.util.HeaderUtil;
 import org.lockss.util.ListUtil;
 import org.lockss.util.StringUtil;
 import org.lockss.util.time.TimeBase;
-import org.json.JSONObject;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -337,8 +338,11 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
   /**
    * Runs the status-related tests.
+   * 
+   * @throws JsonProcessingException
+   *           if there are problems getting the expected status in JSON format.
    */
-  private void getStatusTest() {
+  private void getStatusTest() throws JsonProcessingException {
     log.debug2("Invoked");
 
     ResponseEntity<String> successResponse = new TestRestTemplate().exchange(
@@ -347,13 +351,12 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     HttpStatus statusCode = successResponse.getStatusCode();
     assertEquals(HttpStatus.OK, statusCode);
 
-    JSONObject expected = new JSONObject().put("apiVersion", "2.0.0")
-                                          .put("componentName", "laaws-configuration-service")
-                                          .put("componentVersion", "2.0.2.0-SNAPSHOT")
-                                          .put("lockssVersion", "2.0-beta")
-                                          .put("ready", true)
-                                          .put("serviceName", "LOCKSS Configuration Service REST API");
-    JSONAssert.assertEquals(expected.toString(), successResponse.getBody(), false);
+    // Get the expected result.
+    ApiStatus expected = new ApiStatus("swagger/swagger.yaml");
+    expected.setReady(true);
+
+    JSONAssert.assertEquals(expected.toJson(), successResponse.getBody(),
+	false);
 
     log.debug2("Done");
   }
