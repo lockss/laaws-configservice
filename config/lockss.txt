@@ -92,18 +92,19 @@ org.lockss.platform.propsLockssXmlUrl=http://props.lockss.org:8001/content-testi
 org.lockss.configDbManager.datasource.className=org.apache.derby.jdbc.ClientDataSource
 org.lockss.configDbManager.datasource.password=goodPassword
 ##org.lockss.configDbManager.datasource.createDatabase=create
-#org.lockss.configDbManager.datasource.databaseName=db/configDbManager
+#org.lockss.configDbManager.datasource.databaseName=LockssConfigDbManager
 ##org.lockss.configDbManager.datasource.portNumber=1527
 ##org.lockss.configDbManager.datasource.serverName=localhost
 ##org.lockss.configDbManager.datasource.user=LOCKSS
 
 # Using PostgreSQL.
 #org.lockss.configDbManager.datasource.className=org.postgresql.ds.PGSimpleDataSource
-##org.lockss.configDbManager.datasource.databaseName=ConfigDbManager
+##org.lockss.configDbManager.datasource.databaseName=LockssConfigDbManager
 ##org.lockss.configDbManager.datasource.password=goodPassword
 #org.lockss.configDbManager.datasource.portNumber=5432
 ##org.lockss.configDbManager.datasource.serverName=localhost
 ##org.lockss.configDbManager.datasource.user=LOCKSS
+##org.lockss.configDbManager.datasource.schemaName=LOCKSS
 
 # Using MySQL
 #org.lockss.configDbManager.datasource.className=com.mysql.jdbc.jdbc2.optional.MysqlDataSource
