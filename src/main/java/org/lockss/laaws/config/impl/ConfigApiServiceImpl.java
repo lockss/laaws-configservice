@@ -49,7 +49,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.lockss.alert.AlertManagerImpl;
-import org.lockss.app.LockssApp;
 import org.lockss.config.ConfigManager;
 import org.lockss.config.HttpRequestPreconditions;
 import org.lockss.config.ConfigFileReadWriteResult;
@@ -58,9 +57,7 @@ import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
 import org.lockss.laaws.config.api.ConfigApiDelegate;
 import org.lockss.laaws.rs.util.NamedInputStreamResource;
-import org.lockss.laaws.status.model.ApiStatus;
 import org.lockss.log.L4JLogger;
-import org.lockss.spring.status.SpringLockssBaseApiController;
 import org.lockss.util.AccessType;
 import org.lockss.util.StringUtil;
 import org.springframework.core.io.Resource;
@@ -78,23 +75,22 @@ import org.springframework.web.multipart.MultipartFile;
  * Service for accessing the system configuration.
  */
 @Service
-public class ConfigApiServiceImpl extends SpringLockssBaseApiController
-    implements ConfigApiDelegate {
-  public static final String SECTION_NAME_CLUSTER = "cluster";
-  public static final String SECTION_NAME_PROPSLOCKSS = "props_lockss";
-  public static final String SECTION_NAME_UI_IP_ACCESS = "ui_ip_access";
-  public static final String SECTION_NAME_PROXY_IP_ACCESS = "proxy_ip_access";
-  public static final String SECTION_NAME_PLUGIN = "plugin";
-  public static final String SECTION_NAME_AU = "au";
-  public static final String SECTION_NAME_TITLE_DB = "titledb";
-  public static final String SECTION_NAME_ICP_SERVER = "icp_server";
-  public static final String SECTION_NAME_AUDIT_PROXY = "audit_proxy";
-  public static final String SECTION_NAME_CONTENT_SERVERS = "content_servers";
-  public static final String SECTION_NAME_ACCESS_GROUPS = "access_groups";
-  public static final String SECTION_NAME_CRAWL_PROXY = "crawl_proxy";
-  public static final String SECTION_NAME_EXPERT = "expert";
-  public static final String SECTION_NAME_ALERT = "alert";
-  public static final String SECTION_NAME_CRONSTATE = "cronstate";
+public class ConfigApiServiceImpl implements ConfigApiDelegate {
+  static final String SECTION_NAME_CLUSTER = "cluster";
+  static final String SECTION_NAME_PROPSLOCKSS = "props_lockss";
+  static final String SECTION_NAME_UI_IP_ACCESS = "ui_ip_access";
+  static final String SECTION_NAME_PROXY_IP_ACCESS = "proxy_ip_access";
+  static final String SECTION_NAME_PLUGIN = "plugin";
+  static final String SECTION_NAME_AU = "au";
+  static final String SECTION_NAME_TITLE_DB = "titledb";
+  static final String SECTION_NAME_ICP_SERVER = "icp_server";
+  static final String SECTION_NAME_AUDIT_PROXY = "audit_proxy";
+  static final String SECTION_NAME_CONTENT_SERVERS = "content_servers";
+  static final String SECTION_NAME_ACCESS_GROUPS = "access_groups";
+  static final String SECTION_NAME_CRAWL_PROXY = "crawl_proxy";
+  static final String SECTION_NAME_EXPERT = "expert";
+  static final String SECTION_NAME_ALERT = "alert";
+  static final String SECTION_NAME_CRONSTATE = "cronstate";
 
   private static L4JLogger log = L4JLogger.getLogger();
 
@@ -505,17 +501,6 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
       log.error(message, e);
       return new ResponseEntity<Void>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
-  }
-
-  /**
-   * Provides the status object.
-   * 
-   * @return an ApiStatus with the status.
-   */
-  @Override
-  public ApiStatus getApiStatus() {
-    return new ApiStatus("swagger/swagger.yaml")
-      .setReady(LockssApp.getLockssApp().isAppRunning());
   }
 
   /**

@@ -85,13 +85,6 @@ POSSIBILITY OF SUCH DAMAGE.
       <version>${version.lockss.lockss-spring-bundle}</version>
     </dependency>
 
-<!--     <dependency> -->
-<!--       <groupId>org.lockss</groupId> -->
-<!--       <artifactId>lockss-core-bundle</artifactId> -->
-<!--       <version>${lockss.core.bundleVersion}</version> -->
-<!--       <type>pom</type> -->
-<!--     </dependency> -->
-
     <dependency>
       <groupId>org.lockss</groupId>
       <artifactId>lockss-core-tests-bundle</artifactId>

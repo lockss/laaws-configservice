@@ -29,7 +29,6 @@ package org.lockss.laaws.config.impl;
 
 import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
 import static org.lockss.laaws.config.impl.ConfigApiServiceImpl.*;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
@@ -50,7 +49,6 @@ import org.lockss.config.ConfigManager;
 import org.lockss.config.HttpRequestPreconditions;
 import org.lockss.config.RestConfigClient;
 import org.lockss.config.RestConfigSection;
-import org.lockss.laaws.status.model.ApiStatus;
 import org.lockss.log.L4JLogger;
 import org.lockss.rs.RestUtil;
 import org.lockss.rs.multipart.MimeMultipartHttpMessageConverter;
@@ -240,7 +238,6 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
     getSwaggerDocsTest();
-    getStatusTest();
     runMethodsNotAllowedUnAuthenticatedTest();
     getConfigSectionUnAuthenticatedTest();
     getConfigUrlUnAuthenticatedTest();
@@ -271,7 +268,6 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
     getSwaggerDocsTest();
-    getStatusTest();
     runMethodsNotAllowedAuthenticatedTest();
     getConfigSectionAuthenticatedTest();
     getConfigUrlAuthenticatedTest();
@@ -332,31 +328,6 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 	+ "}}";
 
     JSONAssert.assertEquals(expectedBody, successResponse.getBody(), false);
-
-    log.debug2("Done");
-  }
-
-  /**
-   * Runs the status-related tests.
-   * 
-   * @throws JsonProcessingException
-   *           if there are problems getting the expected status in JSON format.
-   */
-  private void getStatusTest() throws JsonProcessingException {
-    log.debug2("Invoked");
-
-    ResponseEntity<String> successResponse = new TestRestTemplate().exchange(
-	getTestUrlTemplate("/status"), HttpMethod.GET, null, String.class);
-
-    HttpStatus statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
-
-    // Get the expected result.
-    ApiStatus expected = new ApiStatus("swagger/swagger.yaml");
-    expected.setReady(true);
-
-    JSONAssert.assertEquals(expected.toJson(), successResponse.getBody(),
-	false);
 
     log.debug2("Done");
   }
