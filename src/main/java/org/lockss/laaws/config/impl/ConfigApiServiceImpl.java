@@ -59,6 +59,8 @@ import org.lockss.laaws.config.api.ConfigApiDelegate;
 import org.lockss.laaws.rs.util.NamedInputStreamResource;
 import org.lockss.log.L4JLogger;
 import org.lockss.util.AccessType;
+import org.lockss.util.Constants;
+import org.lockss.util.Deadline;
 import org.lockss.util.StringUtil;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
@@ -149,6 +151,11 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
     log.debug2("ifModifiedSince = {}", () -> ifModifiedSince);
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
+
+    if (!waitReady()) {
+      return new ResponseEntity<String>("Not Ready",
+					HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     try {
       HttpRequestPreconditions preconditions;
@@ -260,6 +267,11 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
     log.debug2("ifModifiedSince = {}", () -> ifModifiedSince);
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
+
+    if (!waitReady()) {
+      return new ResponseEntity<String>("Not Ready",
+					HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     try {
       HttpRequestPreconditions preconditions;
@@ -395,6 +407,10 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
     log.debug2("ifModifiedSince = {}", () -> ifModifiedSince);
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
+
+    if (!waitReady(0)) {
+      return new ResponseEntity<Void>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     // Check authorization.
     try {
@@ -577,6 +593,14 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
    */
   private ConfigManager getConfigManager() {
     return ConfigManager.getConfigManager();
+  }
+
+  private boolean waitReady() {
+    return waitReady(15 * Constants.SECOND);
+  }
+
+  private boolean waitReady(long wait) {
+    return getConfigManager().waitConfig(Deadline.in(wait));
   }
 
   /**
