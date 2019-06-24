@@ -478,8 +478,8 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
 
       // Return the new file entity tag in the response.
       HttpHeaders responseHeaders = new HttpHeaders();
-      responseHeaders.set(HttpHeaders.LAST_MODIFIED, lastModified);
-      responseHeaders.setETag(etag);
+      setLastModified(responseHeaders, lastModified);
+      setETag(responseHeaders, etag);
       log.trace("responseHeaders = {}", () -> responseHeaders);
 
       return new ResponseEntity<Void>(null, responseHeaders, HttpStatus.OK);
@@ -646,8 +646,8 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
 	  && !preconditions.getIfNoneMatch().isEmpty())) {
 	// Yes: Return no content, just a Not-Modified status.
 	HttpHeaders responseHeaders = new HttpHeaders();
-	responseHeaders.set(HttpHeaders.LAST_MODIFIED, lastModified);
-	responseHeaders.setETag(etag);
+	setLastModified(responseHeaders, lastModified);
+	setETag(responseHeaders, etag);
 	log.trace("responseHeaders = {}", () -> responseHeaders);
 
 	status = HttpStatus.NOT_MODIFIED;
@@ -665,8 +665,8 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
 
     // Save the version unique identifier header in the part of the response.
     HttpHeaders partHeaders = new HttpHeaders();
-    partHeaders.setETag(etag);
-    partHeaders.set(HttpHeaders.LAST_MODIFIED, lastModified);
+    setLastModified(partHeaders, lastModified);
+    setETag(partHeaders, etag);
 
     // Save the content type header in the part of the response.
     MediaType contentType = readResult.getContentType();
@@ -701,5 +701,17 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
 
     return new ResponseEntity<MultiValueMap<String, Object>>(parts,
 	  responseHeaders, status);
+  }
+
+  void setETag(HttpHeaders hdrs, String etag) {
+    if (etag != null) {
+      hdrs.setETag(etag);
+    }
+  }
+
+  void setLastModified(HttpHeaders hdrs, String last) {
+    if (last != null) {
+      hdrs.set(HttpHeaders.LAST_MODIFIED, last);
+    }
   }
 }
