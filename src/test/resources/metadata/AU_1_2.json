@@ -1,0 +1,34 @@
+{
+  "scalarMap": {
+    "date":"2013-08-08",
+    "coverage":"fulltext",
+    "volume":"8",
+    "publication_name":"BioRisk",
+    "publisher_name":"Pensoft Publishers",
+    "start_page":"3",
+    "au_id":"org|lockss|plugin|pensoft|oai|PensoftOaiPlugin&au_oai_date~2013&au_oai_set~biorisk&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F",
+    "provider_name":"Pensoft Publishers",
+    "fetch_time":"-1",
+    "item_title":"Tools for a scientifically rigorous and efficient monitoring of genetically modified organisms (GMOs) – VDI Guidelines to ensure high quality of GMO-monitoring data",
+    "doi":"10.3897/biorisk.8.4036"
+  },
+  "listMap": {
+    "author_name":[
+      "Wiebke Zueghart",
+      "Heike Beismann",
+      "Winfried Schroeder"
+    ]
+  },
+  "mapMap":{
+    "issn":{
+      "e_issn":"13132652",
+      "p_issn":"13132652"
+    },
+    "url":{
+      "Abstract":"http://biorisk.pensoft.net/articles.php?id=1902",
+      "Access":"https://biorisk.pensoft.net/articles.php?id=1902",
+      "FullTextPdfFile":"http://biorisk.pensoft.net/lib/ajax_srv/article_elements_srv.php?action=download_pdf&item_id=1902",
+      "ArticleMetadata":"http://biorisk.pensoft.net/articles.php?id=1902"
+    }
+  }
+}

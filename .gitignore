@@ -198,6 +198,5 @@ local.properties
 /tdbxml
 /derby.log
 /remoteCopy/
-/src/generated/
 
 .swagger-codegen/

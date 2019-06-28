@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-Copyright (c) 2017 Board of Trustees of Leland Stanford Jr. University,
+Copyright (c) 2019 Board of Trustees of Leland Stanford Jr. University,
 all rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -83,11 +83,11 @@ in this Software without prior written authorization from Stanford University.
     <!-- Default bindings of service to UI port in dev environment -->
     <property name="app.serviceBindings">
       <list>
-        <value>cfg=:24621</value>
-        <value>poller=:24631</value>
-        <value>crawler=:24631</value>
-        <value>mdx=:24641</value>
-        <value>mdq=:24651</value>
+        <value>cfg=:24691</value>
+        <value>poller=:24691</value>
+        <value>crawler=:24691</value>
+        <value>mdx=:24691</value>
+        <value>mdq=:24691</value>
       </list>
     </property>
 
@@ -116,3 +116,4 @@ in this Software without prior written authorization from Stanford University.
 
   <!-- End org.lockss -->
 </lockss-config>
+

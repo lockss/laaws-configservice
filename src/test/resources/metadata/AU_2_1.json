@@ -1,0 +1,39 @@
+{
+  "scalarMap": {
+    "date":"1954-04-02",
+    "coverage":"fulltext",
+    "volume":"3",
+    "publication_name":"Genealogy",
+    "publisher_name":"GL-U Publishers",
+    "start_page":"9",
+    "au_id":"org|lockss|plugin|pensoft|oai|PensoftOaiPlugin&au_oai_date~1954&au_oai_set~genealogy&base_url~http%3A%2F%2Fexample%2Ecom%2F",
+    "provider_name":"Some Provider Name",
+    "fetch_time":"-1",
+    "item_title":"Fernando García-Loygorri Uriarte"
+  },
+  "setMap": {
+    "proprietary_id":[
+      "Some Proprietary ID"
+    ],
+    "keyword":[
+      "Paloma",
+      "Sonsoles",
+      "Carolina"
+    ]
+  },
+  "listMap": {
+    "author_name":[
+      "Fernando García-Loygorri",
+      "Gloria Uriarte"
+    ]
+  },
+  "mapMap":{
+    "issn":{
+      "e_issn":"12345678",
+      "p_issn":"98765432"
+    },
+    "url":{
+      "Access":"https://example.com"
+    }
+  }
+}

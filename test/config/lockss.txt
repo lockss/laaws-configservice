@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2019 Board of Trustees of Leland Stanford Jr. University,
+# Copyright (c) 2019 Board of Trustees of Leland Stanford Jr. University,
 # all rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -72,6 +72,11 @@ org.lockss.ui.users.2.user=au-admin
 org.lockss.ui.users.2.password=SHA1:d80a88b9abe5bbea6759eb86e88d648b405447ef
 org.lockss.ui.users.2.roles=auAdminRole
 
+# UI username-passwd = access-content/I'mAccessContent
+org.lockss.ui.users.3.user=access-content
+org.lockss.ui.users.3.password=SHA1:3509beee5279f479d257178e8a0eddab4301d75a
+org.lockss.ui.users.3.roles=accessContentRole
+
 # So that we don't hash on no-longer-relevant URLs
 org.lockss.blockHasher.ignoreFilesOutsideCrawlSpec=true
 
@@ -88,3 +93,8 @@ org.lockss.ws.enabled=false
 
 # No Repository Manager.
 org.lockss.plugin.auContentFromWs=true
+
+org.lockss.jobManager.enabled=true
+org.lockss.jobManager.sleepDelaySeconds=1
+org.lockss.metadataManager.mandatoryFields=publisher;provider
+org.lockss.metadataManager.onDemandMetadataExtractionOnly=true

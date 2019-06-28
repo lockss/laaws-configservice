@@ -1,0 +1,39 @@
+{
+  "scalarMap": {
+    "date":"2013-08-08",
+    "coverage":"fulltext",
+    "volume":"8",
+    "publication_name":"BioRisk",
+    "publisher_name":"Pensoft Publishers",
+    "start_page":"39",
+    "au_id":"org|lockss|plugin|pensoft|oai|PensoftOaiPlugin&au_oai_date~2013&au_oai_set~biorisk&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F",
+    "provider_name":"Pensoft Publishers",
+    "fetch_time":"-1",
+    "item_title":"Amphibians as indicators of changes in aquatic and terrestrial ecosystems following GM crop cultivation: a monitoring guideline",
+    "doi":"10.3897/biorisk.8.3251"
+  },
+  "listMap": {
+    "author_name":[
+      "Susanne Böll",
+      "Benedikt Schmidt",
+      "Michael Veith",
+      "Norman Wagner",
+      "Dennis Rödder",
+      "Cathrin Weinmann",
+      "Tom Kirschey",
+      "Stefan Loetters"
+    ]
+  },
+  "mapMap":{
+    "issn":{
+      "e_issn":"13132652",
+      "p_issn":"13132652"
+    },
+    "url":{
+      "Abstract":"http://biorisk.pensoft.net/articles.php?id=1900",
+      "Access":"https://biorisk.pensoft.net/articles.php?id=1900",
+      "FullTextPdfFile":"http://biorisk.pensoft.net/lib/ajax_srv/article_elements_srv.php?action=download_pdf&item_id=1900",
+      "ArticleMetadata":"http://biorisk.pensoft.net/articles.php?id=1900"
+    }
+  }
+}

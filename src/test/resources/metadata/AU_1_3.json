@@ -1,0 +1,34 @@
+{
+  "scalarMap": {
+    "date":"2013-08-08",
+    "coverage":"fulltext",
+    "volume":"8",
+    "publication_name":"BioRisk",
+    "publisher_name":"Pensoft Publishers",
+    "start_page":"15",
+    "au_id":"org|lockss|plugin|pensoft|oai|PensoftOaiPlugin&au_oai_date~2013&au_oai_set~biorisk&base_url~http%3A%2F%2Fbiorisk%2Epensoft%2Enet%2F",
+    "provider_name":"Pensoft Publishers",
+    "fetch_time":"-1",
+    "item_title":"Standardised methods for the GMO monitoring of butterflies and moths: the whys and hows",
+    "doi":"10.3897/biorisk.8.3244"
+  },
+  "listMap": {
+    "author_name":[
+      "Andreas Lang",
+      "Bernhard Theißen",
+      "Matthias Dolek"
+    ]
+  },
+  "mapMap":{
+    "issn":{
+      "e_issn":"13132652",
+      "p_issn":"13132652"
+    },
+    "url":{
+      "Abstract":"http://biorisk.pensoft.net/articles.php?id=1901",
+      "Access":"https://biorisk.pensoft.net/articles.php?id=1901",
+      "FullTextPdfFile":"http://biorisk.pensoft.net/lib/ajax_srv/article_elements_srv.php?action=download_pdf&item_id=1901",
+      "ArticleMetadata":"http://biorisk.pensoft.net/articles.php?id=1901"
+    }
+  }
+}
