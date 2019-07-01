@@ -55,6 +55,7 @@ import org.lockss.config.ConfigFileReadWriteResult;
 import org.lockss.daemon.Cron;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
+import org.lockss.laaws.base.*;
 import org.lockss.laaws.config.api.ConfigApiDelegate;
 import org.lockss.laaws.rs.util.NamedInputStreamResource;
 import org.lockss.log.L4JLogger;
@@ -77,7 +78,10 @@ import org.springframework.web.multipart.MultipartFile;
  * Service for accessing the system configuration.
  */
 @Service
-public class ConfigApiServiceImpl implements ConfigApiDelegate {
+public class ConfigApiServiceImpl
+  extends BaseSpringApiServiceImpl
+  implements ConfigApiDelegate {
+
   static final String SECTION_NAME_CLUSTER = "cluster";
   static final String SECTION_NAME_PROPSLOCKSS = "props_lockss";
   static final String SECTION_NAME_UI_IP_ACCESS = "ui_ip_access";
@@ -152,7 +156,7 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
-    if (!waitReady()) {
+    if (!waitConfig()) {
       return new ResponseEntity<String>("Not Ready",
 					HttpStatus.SERVICE_UNAVAILABLE);
     }
@@ -268,7 +272,7 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
-    if (!waitReady()) {
+    if (!waitConfig()) {
       return new ResponseEntity<String>("Not Ready",
 					HttpStatus.SERVICE_UNAVAILABLE);
     }
@@ -398,7 +402,7 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
    * @return a {@code ResponseEntity<Void>}.
    */
   @Override
-  public ResponseEntity<Void> putConfig(String sectionName,
+  public ResponseEntity putConfig(String sectionName,
       MultipartFile configFile, String ifMatch, String ifModifiedSince,
       String ifNoneMatch, String ifUnmodifiedSince) {
     log.debug2("sectionName = {}", () -> sectionName);
@@ -408,8 +412,9 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
-    if (!waitReady(0)) {
-      return new ResponseEntity<Void>(HttpStatus.SERVICE_UNAVAILABLE);
+    if (!waitConfig(0)) {
+      return new ResponseEntity<String>("Not Ready",
+					HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     // Check authorization.
@@ -587,23 +592,6 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
   }
 
   /**
-   * Provides the configuration manager.
-   *
-   * @return a ConfigManager with the configuration manager.
-   */
-  private ConfigManager getConfigManager() {
-    return ConfigManager.getConfigManager();
-  }
-
-  private boolean waitReady() {
-    return waitReady(15 * Constants.SECOND);
-  }
-
-  private boolean waitReady(long wait) {
-    return getConfigManager().waitConfig(Deadline.in(wait));
-  }
-
-  /**
    * Provides the response for a request to get the content at a URL.
    * 
    * @param url
@@ -703,15 +691,16 @@ public class ConfigApiServiceImpl implements ConfigApiDelegate {
 	  responseHeaders, status);
   }
 
-  void setETag(HttpHeaders hdrs, String etag) {
+  protected void setETag(HttpHeaders hdrs, String etag) {
     if (etag != null) {
       hdrs.setETag(etag);
     }
   }
 
-  void setLastModified(HttpHeaders hdrs, String last) {
+  protected void setLastModified(HttpHeaders hdrs, String last) {
     if (last != null) {
       hdrs.set(HttpHeaders.LAST_MODIFIED, last);
     }
   }
+
 }
