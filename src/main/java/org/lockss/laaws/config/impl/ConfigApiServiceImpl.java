@@ -55,7 +55,7 @@ import org.lockss.config.ConfigFileReadWriteResult;
 import org.lockss.daemon.Cron;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
-import org.lockss.laaws.base.*;
+import org.lockss.spring.base.*;
 import org.lockss.laaws.config.api.ConfigApiDelegate;
 import org.lockss.laaws.rs.util.NamedInputStreamResource;
 import org.lockss.log.L4JLogger;
