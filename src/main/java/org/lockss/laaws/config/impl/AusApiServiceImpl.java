@@ -42,6 +42,7 @@ import org.lockss.log.L4JLogger;
 import org.lockss.plugin.PluginManager;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
+import org.lockss.spring.base.BaseSpringApiServiceImpl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -50,7 +51,8 @@ import org.springframework.stereotype.Service;
  * Service for accessing Archival Unit configurations.
  */
 @Service
-public class AusApiServiceImpl implements AusApiDelegate {
+public class AusApiServiceImpl extends BaseSpringApiServiceImpl
+    implements AusApiDelegate {
   private static L4JLogger log = L4JLogger.getLogger();
 
   /**
@@ -64,6 +66,12 @@ public class AusApiServiceImpl implements AusApiDelegate {
   @Override
   public ResponseEntity deleteAuConfig(String auid) {
     if (log.isDebugEnabled()) log.debug("auid = " + auid);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     // Check authorization.
     try {
@@ -109,6 +117,12 @@ public class AusApiServiceImpl implements AusApiDelegate {
   public ResponseEntity getAllAuConfig() {
     if (log.isDebugEnabled()) log.debug("Invoked");
 
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     try {
       Collection<AuConfiguration> result =
 	  getConfigManager().retrieveAllArchivalUnitConfiguration();
@@ -134,6 +148,12 @@ public class AusApiServiceImpl implements AusApiDelegate {
   @Override
   public ResponseEntity getAuConfig(String auid) {
     if (log.isDebugEnabled()) log.debug("auid = " + auid);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     try {
       if (auid == null || auid.isEmpty()) {
@@ -161,7 +181,7 @@ public class AusApiServiceImpl implements AusApiDelegate {
   /**
    * Stores the provided Archival Unit configuration.
    * 
-   * @param AuConfiguration
+   * @param auConfiguration
    *          An AuConfiguration with the Archival Unit configuration.
    * @return a {@code ResponseEntity<Void>} with the Archival Unit
    *         configuration.
@@ -169,6 +189,12 @@ public class AusApiServiceImpl implements AusApiDelegate {
   @Override
   public ResponseEntity putAuConfig(AuConfiguration auConfiguration) {
     if (log.isDebugEnabled()) log.debug("auConfiguration = " + auConfiguration);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     // Check authorization.
     try {

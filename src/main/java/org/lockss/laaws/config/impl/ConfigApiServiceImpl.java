@@ -60,8 +60,6 @@ import org.lockss.laaws.config.api.ConfigApiDelegate;
 import org.lockss.laaws.rs.util.NamedInputStreamResource;
 import org.lockss.log.L4JLogger;
 import org.lockss.util.AccessType;
-import org.lockss.util.Constants;
-import org.lockss.util.Deadline;
 import org.lockss.util.StringUtil;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
@@ -343,6 +341,12 @@ public class ConfigApiServiceImpl
   public ResponseEntity<OffsetDateTime> getLastUpdateTime() {
     log.debug2("Invoked");
 
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     try {
       long millis = getConfigManager().getLastUpdateTime();
       log.trace("millis = {}", () -> millis);
@@ -367,6 +371,12 @@ public class ConfigApiServiceImpl
   @Override
   public ResponseEntity<List<String>> getLoadedUrlList() {
     log.debug2("Invoked");
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     try {
       List<String> result = (List<String>)getConfigManager().getLoadedUrlList();
@@ -504,6 +514,12 @@ public class ConfigApiServiceImpl
   @Override
   public ResponseEntity<Void> putConfigReload() {
     log.debug2("Invoked");
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     // Check authorization.
     try {

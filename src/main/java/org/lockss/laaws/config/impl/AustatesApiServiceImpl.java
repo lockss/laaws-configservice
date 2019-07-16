@@ -39,6 +39,7 @@ import org.lockss.log.L4JLogger;
 import org.lockss.plugin.AuUtil;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
+import org.lockss.spring.base.BaseSpringApiServiceImpl;
 import org.lockss.state.AuStateBean;
 import org.lockss.state.StateManager;
 import org.lockss.util.JsonUtil;
@@ -50,7 +51,8 @@ import org.springframework.stereotype.Service;
  * Service for accessing Archival Unit states.
  */
 @Service
-public class AustatesApiServiceImpl implements AustatesApiDelegate {
+public class AustatesApiServiceImpl extends BaseSpringApiServiceImpl
+    implements AustatesApiDelegate {
   private static L4JLogger log = L4JLogger.getLogger();
 
   /**
@@ -65,6 +67,12 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
   @Override
   public ResponseEntity<String> getAuState(String auid) {
     log.debug2("auid = {}", auid);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     try {
       // Validate the AUId.
@@ -109,6 +117,12 @@ public class AustatesApiServiceImpl implements AustatesApiDelegate {
     log.debug2("auid = {}", auid);
     log.debug2("auState = {}", auState);
     log.debug2("xLockssRequestCookie = {}", xLockssRequestCookie);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     // Check authorization.
     try {
