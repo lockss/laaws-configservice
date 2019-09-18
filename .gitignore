@@ -201,3 +201,5 @@ local.properties
 /src/generated/
 
 .swagger-codegen/
+/remote_config_failover_info.xml
+
