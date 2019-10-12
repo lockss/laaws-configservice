@@ -29,11 +29,11 @@
 
 # Edit StatusApiDelegate.java.
 STATUS_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/StatusApiDelegate.java
-sed -i.backup "s/import org.lockss.laaws.config.model.ApiStatus/import org.lockss.laaws.status.model.ApiStatus/" $STATUS_API_DELEGATE && rm $STATUS_API_DELEGATE.backup
+sed -i.backup "s/import org.lockss.laaws.config.model.ApiStatus/import org.lockss.util.rest.status.ApiStatus/" $STATUS_API_DELEGATE && rm $STATUS_API_DELEGATE.backup
 
 # Edit StatusApi.java.
 STATUS_API=src/generated/java/org/lockss/laaws/config/api/StatusApi.java
-sed -i.backup "s/import org.lockss.laaws.config.model.ApiStatus/import org.lockss.laaws.status.model.ApiStatus/" $STATUS_API && rm $STATUS_API.backup
+sed -i.backup "s/import org.lockss.laaws.config.model.ApiStatus/import org.lockss.util.rest.status.ApiStatus/" $STATUS_API && rm $STATUS_API.backup
 
 # Edit AusApiDelegate.java.
 AUS_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/AusApiDelegate.java

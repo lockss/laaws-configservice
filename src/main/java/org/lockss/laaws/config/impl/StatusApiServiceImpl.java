@@ -33,7 +33,7 @@ package org.lockss.laaws.config.impl;
 
 import org.lockss.app.LockssApp;
 import org.lockss.laaws.config.api.StatusApiDelegate;
-import org.lockss.laaws.status.model.ApiStatus;
+import org.lockss.util.rest.status.ApiStatus;
 import org.lockss.spring.status.SpringLockssBaseApiController;
 import org.springframework.stereotype.Service;
 
