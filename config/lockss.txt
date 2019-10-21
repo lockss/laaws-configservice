@@ -51,7 +51,7 @@ org.lockss.poll.v3.pollStarterInterval=5m
 org.lockss.crawler.startCrawlsInterval=5m
 
 # ConfigService should crawl only plugins
-org.lockss.crawler.crawlPriorityAuidMap=RegistryPlugin,1;.*,-10000
+org.lockss.daemon.crawlMode=Plugins
 
 org.lockss.crawlStatus.keepUrls=all
 
