@@ -108,3 +108,7 @@ org.lockss.configDbManager.datasource.password=goodPassword
 
 # Using MySQL
 #org.lockss.configDbManager.datasource.className=com.mysql.jdbc.jdbc2.optional.MysqlDataSource
+
+#org.lockss.platform.ui.passwordfile=auth/RestClientPwd.txt
+#org.lockss.restAuth.authenticationType=basic
+
