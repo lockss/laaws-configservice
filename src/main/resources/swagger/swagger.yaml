@@ -1,4 +1,4 @@
-# Copyright (c) 2000-2019, Board of Trustees of Leland Stanford Jr. University
+# Copyright (c) 2000-2020, Board of Trustees of Leland Stanford Jr. University
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -291,6 +291,24 @@ paths:
           description: Forbidden
         '500':
           description: Internal Server Error
+  '/config/platform':
+    get:
+      tags:
+        - config
+      summary: Get the platform configuration
+      description: Get the platform configuration
+      operationId: getPlatformConfig
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: The platform configuration
+          schema:
+            $ref: '#/definitions/platformConfigurationWsResult'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal Server Error
   '/aus':
     get:
       tags:
@@ -400,6 +418,231 @@ paths:
           description: Forbidden
         '404':
           description: Not Found
+        '500':
+          description: Internal Server Error
+  '/aus/add':
+    post:
+      tags:
+        - aus
+      summary: Add AUs
+      description: Add a group of AUs given their identifiers
+      operationId: postAus
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'auIds'
+          in: body
+          description: The identifiers of the Archival Units to be added
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Information about the added AUs
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/contentConfigurationResult'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '415':
+          description: Unsupported Media Type
+        '500':
+          description: Internal Server Error
+  '/aus/deactivate':
+    put:
+      tags:
+        - aus
+      summary: Deactivate AUs
+      description: Deactivate a group of AUs given their identifiers
+      operationId: putAusDeactivate
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'auIds'
+          in: body
+          description: The identifiers of the Archival Units to be deactivated
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Information about the deactivated AUs
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/contentConfigurationResult'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '415':
+          description: Unsupported Media Type
+        '500':
+          description: Internal Server Error
+  '/aus/reactivate':
+    put:
+      tags:
+        - aus
+      summary: Reactivate AUs
+      description: Reactivate a group of AUs given their identifiers
+      operationId: putAusReactivate
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'auIds'
+          in: body
+          description: The identifiers of the Archival Units to be reactivated
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Information about the reactivated AUs
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/contentConfigurationResult'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '415':
+          description: Unsupported Media Type
+        '500':
+          description: Internal Server Error
+  '/aus/delete':
+    delete:
+      tags:
+        - aus
+      summary: Delete AUs
+      description: Delete a group of AUs given their identifiers
+      operationId: deleteAusDelete
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: 'auIds'
+          in: body
+          description: The identifiers of the Archival Units to be deleted
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Information about the deleted AUs
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/contentConfigurationResult'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '415':
+          description: Unsupported Media Type
+        '500':
+          description: Internal Server Error
+  '/aus/{auid}/mddisable':
+    put:
+      tags:
+        - aus
+      summary: Disable AU metadata extraction
+      description: Disable the metadata extraction for an AU given its\
+        \ identifier
+      operationId: putAusMdDisable
+      consumes:
+        - application/json    
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the Archival Units for which metadata\
+            \ extraction is to be disabled
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Information about the AU for which metadata extraction\
+            \ has been disabled
+          schema:
+            $ref: '#/definitions/requestAuControlResult'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '409':
+          description: Conflict
+        '415':
+          description: Unsupported Media Type
+        '500':
+          description: Internal Server Error
+  '/aus/{auid}/mdenable':
+    put:
+      tags:
+        - aus
+      summary: Enable AU metadata extraction
+      description: Enable the metadata extraction for an AU given its identifier
+      operationId: putAusMdEnable
+      consumes:
+        - application/json    
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the Archival Units for which metadata\
+            \ extraction is to be enabled
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Information about the AU for which metadata extraction\
+            \ has been enabled
+          schema:
+            $ref: '#/definitions/requestAuControlResult'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '409':
+          description: Conflict
+        '415':
+          description: Unsupported Media Type
         '500':
           description: Internal Server Error
   '/austates/{auid}':
@@ -694,6 +937,180 @@ paths:
           description: Unsupported Media Type
         '500':
           description: Internal Server Error
+  '/tdbaus':
+    get:
+      tags:
+        - tdb
+      summary: Query the TDB for AUs
+      description: Query the TDB for AUs that meet a set of specified conditions
+      operationId: getTdbAus
+      produces:
+        - application/json
+      parameters:
+        - name: 'tdbAuQuery'
+          in: query
+          description: The query that specifies the TDB AUs to be returned
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Information about the requested TDB AUs
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/tdbAuWsResult'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal Server Error
+  '/tdbtitles':
+    get:
+      tags:
+        - tdb
+      summary: Query the TDB for Titles
+      description: Query the TDB for Titles that meet a set of specified\
+        \ conditions
+      operationId: getTdbTitles
+      produces:
+        - application/json
+      parameters:
+        - name: 'tdbTitleQuery'
+          in: query
+          description: The query that specifies the TDB Titles to be returned
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Information about the requested TDB Titles
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/tdbTitleWsResult'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal Server Error
+  '/tdbpublishers':
+    get:
+      tags:
+        - tdb
+      summary: Query the TDB for Publishers
+      description: Query the TDB for Publishers that meet a set of specified\
+        \ conditions
+      operationId: getTdbPublishers
+      produces:
+        - application/json
+      parameters:
+        - name: 'tdbPublisherQuery'
+          in: query
+          description: The query that specifies the TDB Publishers to be\
+            \ returned
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Information about the requested TDB Publishers
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/tdbPublisherWsResult'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal Server Error
+  '/plugins':
+    get:
+      tags:
+        - plugins
+      summary: Query for plugin properties
+      description: Query for plugins that meet a set of specified conditions
+      operationId: getPlugins
+      produces:
+        - application/json
+      parameters:
+        - name: 'pluginQuery'
+          in: query
+          description: The query that specifies the plugins to be returned
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Information about the requested plugins
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/pluginWsResult'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal Server Error
+  '/auqueries':
+    get:
+      tags:
+        - aus
+      summary: Query for archival unit properties
+      description: Query for archival units that meet a set of specified\
+        \ conditions
+      operationId: getAuqueries
+      produces:
+        - application/json
+      parameters:
+        - name: 'auQuery'
+          in: query
+          description: The query that specifies the archival units to be\
+            \ returned
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Information about the requested archival units
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/auWsResult'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal Server Error
+  '/austatuses/{auid}':
+    get:
+      tags:
+        - aus
+      summary: Get the status of an AU
+      description: Get the status of an AU given the AU identifier
+      operationId: getAuStatus
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the status is\
+            \ requested
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The status of the specified AU
+          schema:
+            $ref: '#/definitions/auStatus'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+        '500':
+          description: Internal Server Error
   /status:
     get:
       tags:
@@ -717,6 +1134,15 @@ securityDefinitions:
     description: "HTTP Basic Authentication. Works over `HTTP` and `HTTPS`"
     type: "basic"
 definitions:
+  platformConfigurationWsResult:
+    type: "object"
+    required:
+      - "hostName"
+    properties:
+      hostName:
+        type: "string"
+        description: "name of the host server"
+    description: "The configuration of the platform"
   auConfiguration:
     type: "object"
     required:
@@ -733,6 +1159,223 @@ definitions:
           type: "string"
           description: "The value of the configuration for the key"
     description: "The encapsulation of an Archival Unit configuration"
+  contentConfigurationResult:
+    type: "object"
+    required:
+      - "auId"
+      - "name"
+      - "isSuccess"
+      - "message"
+    properties:
+      auId:
+        type: "string"
+        description: "The identifier of the Archival Unit"
+      name:
+        type: "string"
+        description: "The name of the Archival Unit"
+      isSuccess:
+        type: "boolean"
+        description: An indication of whether the AU was successfully added or\
+            \ not
+      message:
+        type: "string"
+        description: A descriptive message regarding the result of the operation
+    description: "The encapsulation of the result of adding an Archival Unit"
+  tdbAuWsResult:
+    type: "object"
+    required:
+      - "auId"
+      - "name"
+      - "pluginName"
+      - "tdbTitle"
+      - "tdbPublisher"
+      - "down"
+      - "active"
+      - "params"
+      - "attrs"
+      - "props"
+    properties:
+      auId:
+        type: "string"
+        description: "The identifier of the Archival Unit"
+      name:
+        type: "string"
+        description: "The name of the Archival Unit"
+      pluginName:
+        type: "string"
+        description: "The name of the Archival Unit plugin"
+      tdbTitle:
+        $ref: '#/definitions/tdbTitleWsResult'
+        description: "The properties of a TDB Title"
+      tdbPublisher:
+        $ref: '#/definitions/tdbPublisherWsResult'
+        description: "The properties of a TDB Publisher"
+      down:
+        type: "boolean"
+        description: An indication of whether the AU is marked as down or not
+      active:
+        type: "boolean"
+        description: An indication of whether the AU is active or not
+      params:
+        type: "object"
+        description: "The map of Archival Unit parameters"
+        additionalProperties:
+          type: "string"
+          description: "The value of the parameter for the key"
+      attrs:
+        type: "object"
+        description: "The map of Archival Unit attributes"
+        additionalProperties:
+          type: "string"
+          description: "The value of the attribute for the key"
+      props:
+        type: "object"
+        description: "The map of Archival Unit properties"
+        additionalProperties:
+          type: "string"
+          description: "The value of the property for the key"
+    description: "The properties of a TDB Archival Unit"
+  tdbTitleWsResult:
+    type: "object"
+    required:
+      - "name"
+      - "tdbPublisher"
+      - "id"
+      - "proprietaryid"
+      - "proprietaryids"
+      - "publicationtype"
+      - "issn"
+      - "issnl"
+      - "eissn"
+      - "printissn"
+      - "issns"
+    properties:
+      name:
+        type: "string"
+        description: "The name of the TDB Title"
+      tdbPublisher:
+        $ref: '#/definitions/tdbPublisherWsResult'
+        description: "The properties of a TDB Publisher"
+      id:
+        type: "string"
+        description: "The identifier of the TDB Title"
+      proprietaryid:
+        type: "string"
+        description: "The proprietary identifier of the TDB Title"
+      proprietaryids:
+        type: array
+        items:
+          type: string
+        description: "The proprietary identifiers of the TDB Title"
+      publicationtype:
+        type: "string"
+        description: The publication type of the TDB Title
+      issn:
+        type: "string"
+        description: The ISSN of the TDB Title
+      issnl:
+        type: "string"
+        description: The ISSNL of the TDB Title
+      eissn:
+        type: "string"
+        description: The eISSN of the TDB Title
+      printissn:
+        type: "string"
+        description: The print ISSN of the TDB Title
+      issns:
+        type: array
+        items:
+          type: string
+        description: The ISSNs of the TDB Title
+    description: "The properties of a TDB Title"
+  tdbPublisherWsResult:
+    type: "object"
+    required:
+      - "name"
+    properties:
+      name:
+        type: "string"
+        description: "The name of the TDB Publisher"
+    description: "The properties of a TDB Publisher"
+  pluginWsResult:
+    type: "object"
+    required:
+      - "pluginId"
+      - "name"
+      - "version"
+      - "type"
+      - "definition"
+      - "registry"
+      - "url"
+      - "auCount"
+      - "publishingPlatform"
+    properties:
+      pluginId:
+        type: "string"
+        description: "The identifier of the plugin"
+      name:
+        type: "string"
+        description: "The name of the plugin"
+      version:
+        type: "string"
+        description: "The version of the plugin"
+      type:
+        type: "string"
+        description: "The type of the plugin"
+      definition:
+        type: "object"
+        description: "The map of plugin definition properties"
+        additionalProperties:
+          type: "string"
+          description: "The value of the property for the key"
+      registry:
+        type: "string"
+        description: The registry of the plugin
+      url:
+        type: "string"
+        description: The URL of the plugin
+      auCount:
+        type: "int"
+        description: The count of Archival Units linked to the plugin
+      publishingPlatform:
+        type: "string"
+        description: The publishing platform of the plugin
+    description: "The properties of a plugin"
+  auWsResult:
+    type: "object"
+    required:
+      - "auId"
+    properties:
+      auId:
+        type: "string"
+        description: "The identifier of the archival unit"
+    description: "The properties of an archival unit"
+  requestAuControlResult:
+    type: "object"
+    required:
+      - "id"
+      - "success"
+      - "errorMessage"
+    properties:
+      id:
+        type: "string"
+        description: "The identifier of the archival unit"
+      success:
+        type: "boolean"
+        description: "An indication of whether the result is successful"
+      errorMessage:
+        type: "string"
+        description: "The error message as a result of the operation"
+    description: "The result of an archival unit generic control request"
+  auStatus:
+    type: "object"
+    required:
+      - "volume"
+    properties:
+      volume:
+        type: "string"
+        description: "The volume of the archival unit"
+    description: "The status of an archival unit"
   apiStatus:
     type: "object"
     required:

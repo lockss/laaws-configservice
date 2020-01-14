@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2000-2019 Board of Trustees of Leland Stanford Jr. University,
+Copyright (c) 2000-2020 Board of Trustees of Leland Stanford Jr. University,
 all rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -32,19 +32,33 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.lockss.laaws.config.impl;
 
 import java.security.AccessControlException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import org.lockss.account.UserAccount;
 import org.lockss.app.LockssDaemon;
 import org.lockss.config.AuConfiguration;
 import org.lockss.config.ConfigManager;
+import org.lockss.config.Configuration;
+import org.lockss.daemon.TitleConfig;
 import org.lockss.laaws.config.api.AusApiDelegate;
 import org.lockss.log.L4JLogger;
+import org.lockss.plugin.ArchivalUnit;
 import org.lockss.plugin.PluginManager;
+import org.lockss.remote.RemoteApi;
+import org.lockss.remote.RemoteApi.BatchAuStatus;
+import org.lockss.servlet.DebugPanel;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
+import org.lockss.util.StringUtil;
+import org.lockss.ws.entities.ContentConfigurationResult;
+import org.lockss.ws.entities.RequestAuControlResult;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 /**
@@ -54,6 +68,23 @@ import org.springframework.stereotype.Service;
 public class AusApiServiceImpl extends BaseSpringApiServiceImpl
     implements AusApiDelegate {
   private static L4JLogger log = L4JLogger.getLogger();
+
+  static final String MISSING_AU_ID_ERROR_MESSAGE = "Missing auId";
+  static final String NO_SUCH_AU_ERROR_MESSAGE = "No such Archival Unit";
+  static final String DISABLED_METADATA_PROCESSING_ERROR_MESSAGE =
+      "Metadata processing is not enabled";
+  static final String ACTION_DISABLE_METADATA_INDEXING = "Disable Indexing";
+  static final String DISABLE_METADATA_INDEXING_ERROR_MESSAGE =
+      "Cannot disable AU metadata indexing";
+  static final String ACTION_ENABLE_METADATA_INDEXING = "Enable Indexing";
+  static final String ENABLE_METADATA_INDEXING_ERROR_MESSAGE =
+      "Cannot enable AU metadata indexing";
+
+  // TODO: Avoid repeating here the values of the constants defined in
+  // the not accessible MetadataExtractorManager.
+  static final String PARAM_INDEXING_ENABLED =
+      "org.lockss.metadataManager.indexing_enabled";
+  static final boolean DEFAULT_INDEXING_ENABLED = false;
 
   /**
    * Deletes the configuration for an AU given the AU identifier.
@@ -240,6 +271,521 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
   }
 
   /**
+   * Configures the archival units defined by a list of their identifiers.
+   * 
+   * @param auIds A {@code List<String>} with the identifiers (auids) of the
+   *              archival units. The archival units to be added must already be
+   *              in the title db that's loaded into the daemon.
+   * @return a {@code ResponseEntity<List<ContentConfigurationResult>>} with the
+   *         results of the operation.
+   */
+  @Override
+  public ResponseEntity postAus(List<String> auIds) {
+    log.debug2("auIds = " + auIds);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    // Check authorization.
+    try {
+      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+    } catch (AccessControlException ace) {
+      log.warn(ace.getMessage());
+      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
+    }
+
+    try {
+      List<ContentConfigurationResult> results =
+	  new ArrayList<ContentConfigurationResult>(auIds.size());
+
+      RemoteApi remoteApi = LockssDaemon.getLockssDaemon().getRemoteApi();
+      String[] auIdArray = new String[auIds.size()];
+      int index = 0;
+
+      Map<String, Configuration> titleConfigs =
+	  new HashMap<String, Configuration>();
+
+      // Loop  through all the Archival Unit identifiers.
+      for (String auId : auIds) {
+	// Populate the array of Archival Unit identifiers.
+	auIdArray[index++] = auId;
+
+	// Get the configuration of the Archival Unit.
+	TitleConfig titleConfig = remoteApi.findTitleConfig(auId);
+
+	// Check whether the configuration was found.
+	if (titleConfig != null) {
+	  // Yes: Add it to the map.
+	  titleConfigs.put(auId,  titleConfig.getConfig());
+	}
+      }
+
+      // Add all the archival units.
+      BatchAuStatus status = remoteApi.batchAddAus(RemoteApi.BATCH_ADD_ADD,
+	  auIdArray, null, null, titleConfigs, new HashMap<String, String>(),
+	  null);
+
+      index = 0;
+
+      // Loop through all the results.
+      for (BatchAuStatus.Entry entry : status.getUnsortedStatusList()) {
+	BatchAuStatus entryStatus = new BatchAuStatus();
+	entryStatus.add(entry);
+
+	ContentConfigurationResult result = null;
+
+	if (entry.isOk()) {
+	  log.debug("Success configuring AU '" + entry.getName() + "': "
+	      + entry.getExplanation());
+
+	  result = new ContentConfigurationResult(auIdArray[index++],
+	      entry.getName(), Boolean.TRUE, entry.getExplanation());
+	} else {
+	  log.error("Error configuring AU '" + entry.getName() + "': "
+	      + entry.getExplanation());
+
+	  result = new ContentConfigurationResult(auIdArray[index++],
+	      entry.getName(), Boolean.FALSE, entry.getExplanation());
+	}
+
+	results.add(result);
+      }
+
+      log.debug2("results = " + results);
+      return new ResponseEntity<List<ContentConfigurationResult>>(results,
+	  HttpStatus.OK);
+    } catch (Exception e) {
+      String message = "Cannot postAus()";
+      log.error(message, e);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Deactivates the archival units defined by a list with their identifiers.
+   * 
+   * @param auIds A {@code List<String>} with the identifiers (auids) of the
+   *              archival units.
+   * @return a {@code ResponseEntity<List<ContentConfigurationResult>>} with the
+   *         results of the operation.
+   */
+  @Override
+  public ResponseEntity putAusDeactivate(List<String> auIds) {
+    log.debug2("auIds = " + auIds);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    // Check authorization.
+    try {
+      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+    } catch (AccessControlException ace) {
+      log.warn(ace.getMessage());
+      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
+    }
+
+    try {
+      List<ContentConfigurationResult> results =
+	  new ArrayList<ContentConfigurationResult>(auIds.size());
+
+      // Deactivate the archival units.
+      BatchAuStatus status =
+	  LockssDaemon.getLockssDaemon().getRemoteApi().deactivateAus(auIds);
+
+      // Loop through all the results.
+      for (int i = 0; i < status.getUnsortedStatusList().size(); i++) {
+	// Get the original Archival Unit identifier.
+	String auId = auIds.get(i);
+
+	// Handle the result.
+	BatchAuStatus.Entry statusEntry = status.getUnsortedStatusList().get(i);
+
+	if (statusEntry.isOk()
+	    || "Deactivated".equals(statusEntry.getStatus())) {
+	  log.debug("Success deactivating AU '" + statusEntry.getName() + "': "
+	      + statusEntry.getExplanation());
+
+	  String explanation = statusEntry.getExplanation();
+	  if (StringUtil.isNullString(explanation)) {
+	    explanation = "Deactivated Archival Unit '" + auId + "'";
+	  }
+
+	  results.add(new ContentConfigurationResult(auId,
+	      statusEntry.getName(), Boolean.TRUE,
+	      statusEntry.getExplanation()));
+	} else {
+	  log.error("Error deactivating AU '" + statusEntry.getName() + "': "
+	      + statusEntry.getExplanation());
+
+	  String explanation = statusEntry.getExplanation();
+	  if (StringUtil.isNullString(explanation)) {
+	    explanation = statusEntry.getStatus();
+	  }
+
+	  results.add(new ContentConfigurationResult(auId,
+	      statusEntry.getName(), Boolean.FALSE, explanation));
+	}
+      }
+
+      log.debug2("results = " + results);
+      return new ResponseEntity<List<ContentConfigurationResult>>(results,
+	  HttpStatus.OK);
+    } catch (Exception e) {
+      String message = "Cannot putAusDeactivate()";
+      log.error(message, e);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Reactivates the archival units defined by a list with their identifiers.
+   * 
+   * @param auIds
+   *          A {@code List<String>} with the identifiers (auids) of the
+   *          archival units.
+   * @return a {@code ResponseEntity<List<ContentConfigurationResult>>} with the
+   *         results of the operation.
+   */
+  @Override
+  public ResponseEntity putAusReactivate(List<String> auIds) {
+    log.debug2("auIds = " + auIds);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    // Check authorization.
+    try {
+      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+    } catch (AccessControlException ace) {
+      log.warn(ace.getMessage());
+      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
+    }
+
+    try {
+      List<ContentConfigurationResult> results =
+	  new ArrayList<ContentConfigurationResult>(auIds.size());
+
+      BatchAuStatus status = null;
+
+      // Reactivate the archival units.
+      status =
+	  LockssDaemon.getLockssDaemon().getRemoteApi().reactivateAus(auIds);
+
+      // Loop through all the results.
+      for (int i = 0; i < status.getUnsortedStatusList().size(); i++) {
+	// Get the original Archival Unit identifier.
+	String auId = auIds.get(i);
+
+	// Handle the result.
+	BatchAuStatus.Entry statusEntry = status.getUnsortedStatusList().get(i);
+
+	if (statusEntry.isOk() || "Added".equals(statusEntry.getStatus())) {
+	  log.debug("Success reactivating AU '" + statusEntry.getName()
+	  + "': " + statusEntry.getExplanation());
+
+	  String explanation = statusEntry.getExplanation();
+	  if (StringUtil.isNullString(explanation)) {
+	    explanation = "Reactivated Archival Unit '" + auId + "'";
+	  }
+
+	  results.add(new ContentConfigurationResult(auId,
+	      statusEntry.getName(), Boolean.TRUE,
+	      statusEntry.getExplanation()));
+	} else {
+	  log.error("Error reactivating AU '" + statusEntry.getName() + "': "
+	      + statusEntry.getExplanation());
+
+	  String explanation = statusEntry.getExplanation();
+	  if (StringUtil.isNullString(explanation)) {
+	    explanation = statusEntry.getStatus();
+	  }
+
+	  results.add(new ContentConfigurationResult(auId,
+	      statusEntry.getName(), Boolean.FALSE, explanation));
+	}
+      }
+
+      log.debug2("results = " + results);
+      return new ResponseEntity<List<ContentConfigurationResult>>(results,
+	  HttpStatus.OK);
+    } catch (Exception e) {
+      String message = "Cannot putAusReactivate()";
+      log.error(message, e);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Unconfigures the archival units defined by a list with their identifiers.
+   * 
+   * @param auIds
+   *          A {@code List<String>} with the identifiers (auids) of the
+   *          archival units.
+   * @return a {@code ResponseEntity<List<ContentConfigurationResult>>} with the
+   *           results of the operation.
+   */
+  @Override
+  public ResponseEntity deleteAusDelete(List<String> auIds) {
+    log.debug2("auIds = " + auIds);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    // Check authorization.
+    try {
+      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+    } catch (AccessControlException ace) {
+      log.warn(ace.getMessage());
+      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
+    }
+
+    try {
+      List<ContentConfigurationResult> results =
+	  new ArrayList<ContentConfigurationResult>(auIds.size());
+
+      // Delete the archival units.
+      BatchAuStatus status =
+	  LockssDaemon.getLockssDaemon().getRemoteApi().deleteAus(auIds);
+
+      // Loop through all the results.
+      for (int i = 0; i < status.getUnsortedStatusList().size(); i++) {
+	// Get the original Archival Unit identifier.
+	String auId = auIds.get(i);
+
+	// Handle the result.
+	BatchAuStatus.Entry statusEntry = status.getUnsortedStatusList().get(i);
+
+	if (statusEntry.isOk() || "Deleted".equals(statusEntry.getStatus())) {
+	  if (log.isDebugEnabled()) log.debug("Success unconfiguring AU '"
+	      + statusEntry.getName() + "': " + statusEntry.getExplanation());
+
+	  String explanation = statusEntry.getExplanation();
+	  if (StringUtil.isNullString(explanation)) {
+	    explanation = "Deleted Archival Unit '" + auId + "'";
+	  }
+
+	  results.add(new ContentConfigurationResult(auId, statusEntry.getName(),
+	      Boolean.TRUE, statusEntry.getExplanation()));
+	} else {
+	  log.error("Error unconfiguring AU '" + statusEntry.getName() + "': "
+	      + statusEntry.getExplanation());
+
+	  String explanation = statusEntry.getExplanation();
+	  if (StringUtil.isNullString(explanation)) {
+	    explanation = statusEntry.getStatus();
+	  }
+
+	  results.add(new ContentConfigurationResult(auId,
+	      statusEntry.getName(), Boolean.FALSE, explanation));
+	}
+      }
+
+      log.debug2("results = {}", results);
+      return new ResponseEntity<List<ContentConfigurationResult>>(results,
+	  HttpStatus.OK);
+    } catch (Exception e) {
+      String message = "Cannot putAusReactivate()";
+      log.error(message, e);
+      return new ResponseEntity<String>(message,
+	  HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Enables the metadata indexing of an archival unit.
+   * 
+   * @param auId A String with the identifier (auid) of the archival unit.
+   * @return a {@code ResponseEntity<RequestAuControlResult>} with the result of
+   *         the operation.
+   */
+  @Override
+  public ResponseEntity putAusMdEnable(String auId) {
+    log.debug2("auId = {}", auId);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    // Check authorization.
+    try {
+      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+    } catch (AccessControlException ace) {
+      log.warn(ace.getMessage());
+      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
+    }
+
+    // Add to the audit log a reference to this operation, if necessary.
+    try {
+      audit(ACTION_ENABLE_METADATA_INDEXING, auId);
+    } catch (AccessControlException ace) {
+      log.warn(ace.getMessage());
+      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
+    }
+
+    RequestAuControlResult result = null;
+
+    try {
+      if (!ConfigManager.getCurrentConfig().getBoolean(
+	  PARAM_INDEXING_ENABLED, DEFAULT_INDEXING_ENABLED)) {
+	result = new RequestAuControlResult(auId, false,
+	    DISABLED_METADATA_PROCESSING_ERROR_MESSAGE);
+	log.debug2("result = {}", result);
+	return new ResponseEntity<RequestAuControlResult>(result,
+	    HttpStatus.CONFLICT);
+      }
+
+      // Handle a missing auId.
+      if (StringUtil.isNullString(auId)) {
+	result = new RequestAuControlResult(auId, false,
+	    MISSING_AU_ID_ERROR_MESSAGE);
+	log.debug2("result = {}", result);
+	return new ResponseEntity<RequestAuControlResult>(result,
+	    HttpStatus.BAD_REQUEST);
+      }
+
+      // Get the Archival Unit to have its metadata indexing enabled.
+      ArchivalUnit au =
+	  LockssDaemon.getLockssDaemon().getPluginManager().getAuFromId(auId);
+      log.trace("au = {}", au);
+
+      // Handle a missing Archival Unit.
+      if (au == null) {
+	result =
+	    new RequestAuControlResult(auId, false, NO_SUCH_AU_ERROR_MESSAGE);
+	log.debug2("result = {}", result);
+	return new ResponseEntity<RequestAuControlResult>(result,
+	    HttpStatus.BAD_REQUEST);
+      }
+
+      try {
+	// TODO: Implement via AU state.
+	//metadataMgr.enableAuIndexing(au);
+	result = new RequestAuControlResult(auId, true, null);
+      } catch (Exception e) {
+	result = new RequestAuControlResult(auId, false,
+	    ENABLE_METADATA_INDEXING_ERROR_MESSAGE + ": " + e.getMessage());
+	return new ResponseEntity<RequestAuControlResult>(result,
+	    HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      log.debug2("result = {}", result);
+      return new ResponseEntity<RequestAuControlResult>(result, HttpStatus.OK);
+    } catch (Exception e) {
+      String message = "Cannot putAusReactivate()";
+      log.error(message, e);
+      return new ResponseEntity<String>(message,
+  	  HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Disables the metadata indexing of an archival unit.
+   * 
+   * @param auId
+   *          A String with the identifier (auid) of the archival unit.
+   * @return a {@code ResponseEntity<RequestAuControlResult>} with the result of
+   *         the operation.
+   */
+  @Override
+  public ResponseEntity putAusMdDisable(String auId) {
+    log.debug2("auId = {}", auId);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    // Check authorization.
+    try {
+      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+    } catch (AccessControlException ace) {
+      log.warn(ace.getMessage());
+      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
+    }
+
+    // Add to the audit log a reference to this operation, if necessary.
+    try {
+      audit(ACTION_DISABLE_METADATA_INDEXING, auId);
+    } catch (AccessControlException ace) {
+      log.warn(ace.getMessage());
+      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
+    }
+
+    RequestAuControlResult result = null;
+
+    try {
+      if (!ConfigManager.getCurrentConfig().getBoolean(
+	  PARAM_INDEXING_ENABLED, DEFAULT_INDEXING_ENABLED)) {
+	result = new RequestAuControlResult(auId, false,
+	    DISABLED_METADATA_PROCESSING_ERROR_MESSAGE);
+	log.debug2("result = {}", result);
+	return new ResponseEntity<RequestAuControlResult>(result,
+	    HttpStatus.CONFLICT);
+      }
+
+      // Handle a missing auId.
+      if (StringUtil.isNullString(auId)) {
+	result = new RequestAuControlResult(auId, false,
+	    MISSING_AU_ID_ERROR_MESSAGE);
+	log.debug2("result = {}", result);
+	return new ResponseEntity<RequestAuControlResult>(result,
+	    HttpStatus.BAD_REQUEST);
+      }
+
+      // Get the Archival Unit to have its metadata indexing disabled.
+      ArchivalUnit au =
+	  LockssDaemon.getLockssDaemon().getPluginManager().getAuFromId(auId);
+      log.trace("au = {}", au);
+
+      // Handle a missing Archival Unit.
+      if (au == null) {
+	result =
+	    new RequestAuControlResult(auId, false, NO_SUCH_AU_ERROR_MESSAGE);
+	log.debug2("result = {}", result);
+	return new ResponseEntity<RequestAuControlResult>(result,
+	    HttpStatus.BAD_REQUEST);
+      }
+
+      try {
+	// TODO: Implement via AU state.
+	//metadataMgr.disableAuIndexing(au);
+	result = new RequestAuControlResult(auId, true, null);
+      } catch (Exception e) {
+	result = new RequestAuControlResult(auId, false,
+	    DISABLE_METADATA_INDEXING_ERROR_MESSAGE + ": " + e.getMessage());
+	return new ResponseEntity<RequestAuControlResult>(result,
+	    HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      log.debug2("result = {}", result);
+      return new ResponseEntity<RequestAuControlResult>(result, HttpStatus.OK);
+    } catch (Exception e) {
+      String message = "Cannot putAusReactivate()";
+      log.error(message, e);
+      return new ResponseEntity<String>(message,
+  	  HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
    * Provides the configuration manager.
    *
    * @return a ConfigManager with the configuration manager.
@@ -255,5 +801,42 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
    */
   private PluginManager getPluginManager() {
     return LockssDaemon.getLockssDaemon().getPluginManager();
+  }
+
+  /**
+   * Adds to the audit log a reference to this operation, if necessary.
+   * 
+   * @param action
+   *          A String with the name of the operation.
+   * @param auId
+   *          A String with the identifier (auid) of the archival unit.
+   * @throws AccessControlException if the user cannot be validated.
+   */
+  private void audit(String action, String auId) throws AccessControlException {
+    log.debug2("action = {}", action);
+    log.debug2("auId = {}", auId);
+
+    String userName =
+	SecurityContextHolder.getContext().getAuthentication().getName();
+    log.trace("userName = {}", userName);
+
+    // Get the user account.
+    UserAccount userAccount = null;
+
+    try {
+      userAccount =
+          LockssDaemon.getLockssDaemon().getAccountManager().getUser(userName);
+      log.trace("userAccount = {}", userAccount);
+    } catch (Exception e) {
+      log.error("userName = {}", userName);
+      log.error("LockssDaemon.getLockssDaemon().getAccountManager()."
+          + "getUser(" + userName + ")", e);
+      throw new AccessControlException("Unable to get user '" + userName + "'");
+    }
+
+    if (userAccount != null && !DebugPanel.noAuditActions.contains(action)) {
+      userAccount.auditableEvent("Called AusApi web service operation '"
+	  + action + "' AU ID: " + auId);
+    }
   }
 }

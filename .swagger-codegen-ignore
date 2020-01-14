@@ -29,3 +29,12 @@ src/generated/java/org/lockss/laaws/*/api/ApiException.java
 src/generated/java/org/lockss/laaws/*/api/NotFoundException.java
 src/generated/java/org/lockss/laaws/*/model/ApiStatus.java
 src/generated/java/org/lockss/laaws/*/model/AuConfiguration.java
+src/generated/java/org/lockss/laaws/*/model/AuStatus.java
+src/generated/java/org/lockss/laaws/*/model/AuWsResult.java
+src/generated/java/org/lockss/laaws/*/model/ContentConfigurationResult.java
+src/generated/java/org/lockss/laaws/*/model/PlatformConfigurationWsResult.java
+src/generated/java/org/lockss/laaws/*/model/PluginWsResult.java
+src/generated/java/org/lockss/laaws/*/model/RequestAuControlResult.java
+src/generated/java/org/lockss/laaws/*/model/TdbAuWsResult.java
+src/generated/java/org/lockss/laaws/*/model/TdbPublisherWsResult.java
+src/generated/java/org/lockss/laaws/*/model/TdbTitleWsResult.java
