@@ -576,8 +576,9 @@ public class AuWsSource extends AuWsResult {
   @Override
   public Boolean getCurrentlyPolling() {
     if (!currentlyPollingPopulated) {
-      setCurrentlyPolling(Boolean.valueOf(getTheDaemon().getPollManager()
-	  .isPollRunning(au)));
+//      TBD: Implement when there is a way to get the information.
+//      setCurrentlyPolling(Boolean.valueOf(getTheDaemon().getPollManager()
+//	  .isPollRunning(au)));
       currentlyPollingPopulated = true;
     }
 
@@ -833,7 +834,15 @@ public class AuWsSource extends AuWsResult {
 	  urlResult.setUrl(url);
 	  cu = au.makeCachedUrl(url);
 	  urlResult.setVersionCount(cu.getCuVersions().length);
-	  urlResult.setCurrentVersionSize(Long.valueOf(cu.getContentSize()));
+
+	  try {
+	    urlResult.setCurrentVersionSize(Long.valueOf(cu.getContentSize()));
+	  } catch (UnsupportedOperationException uoe) {
+	    if (log.isDebug())
+	      log.debug("getUrls(): Ignored content size for no-content URL '"
+		  + url + "'");
+	  }
+
 	  if (includePollWeight) {
 	    urlResult.setPollWeight(getUrlResultWeight(url));
 	  }

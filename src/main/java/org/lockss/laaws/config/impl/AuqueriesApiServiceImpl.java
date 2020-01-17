@@ -71,8 +71,7 @@ implements AuqueriesApiDelegate {
     try {
       // Create the full query.
       String fullQuery = JosqlUtil.createFullQuery(auQuery,
-	  TdbTitleHelper.SOURCE_FQCN, AuHelper.PROPERTY_NAMES,
-	  TdbTitleHelper.RESULT_FQCN);
+	  AuHelper.SOURCE_FQCN, AuHelper.PROPERTY_NAMES, AuHelper.RESULT_FQCN);
       log.trace("fullQuery = {}", fullQuery);
 
       // Create a new JoSQL query.
@@ -87,7 +86,7 @@ implements AuqueriesApiDelegate {
 
 	// Get the query results.
 	results = (List<AuWsResult>)qr.getResults();
-	log.trace("results.size() = {}" + results.size());
+	log.trace("results.size() = {}", results.size());
 	log.trace("results = {}", auHelper.nonDefaultToString(results));
 	return new ResponseEntity<List<AuWsResult>>(results, HttpStatus.OK);
       } catch (QueryExecutionException qee) {
