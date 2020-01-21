@@ -334,7 +334,8 @@ public class AuHelper {
     result.setCurrentlyCrawling(theDaemon.getCrawlManager().getStatusSource()
 	.getStatus().isRunningNCCrawl(au));
 
-    result.setCurrentlyPolling(theDaemon.getPollManager().isPollRunning(au));
+//  TBD: Implement when there is a way to get the information.
+//    result.setCurrentlyPolling(theDaemon.getPollManager().isPollRunning(au));
 
     if (theDaemon.isDetectClockssSubscription()) {
       result.setSubscriptionStatus(AuUtil.getAuState(au)
