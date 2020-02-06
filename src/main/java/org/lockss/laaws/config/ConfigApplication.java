@@ -41,12 +41,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.solr.SolrAutoConfiguration;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 /**
  * The Spring-Boot application.
  */
-@SpringBootApplication
+@SpringBootApplication(exclude = {SolrAutoConfiguration.class})
 @EnableSwagger2
 public class ConfigApplication extends BaseSpringBootApplication
 	implements CommandLineRunner {
@@ -107,7 +108,7 @@ public class ConfigApplication extends BaseSpringBootApplication
 	.addAppConfig(org.lockss.config.ConfigManager.PARAM_ENABLE_JMS_SEND,
 		      "true")
 	.addAppConfig(PARAM_START_PLUGINS, "true")
-	.addAppDefault(PluginManager.PARAM_START_ALL_AUS, "false")
+	.addAppDefault(PluginManager.PARAM_START_ALL_AUS, "true")
 	.setAppManagers(myManagerDescs);
       LockssApp.startStatic(LockssDaemon.class, spec);
     } else {

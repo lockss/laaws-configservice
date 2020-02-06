@@ -42,14 +42,13 @@ import org.junit.runner.RunWith;
 import org.lockss.app.LockssDaemon;
 import org.lockss.config.RestConfigClient;
 import org.lockss.log.L4JLogger;
-import org.lockss.rs.RestUtil;
-import org.lockss.rs.exception.LockssRestException;
-import org.lockss.rs.exception.LockssRestHttpException;
+import org.lockss.util.rest.RestUtil;
+import org.lockss.util.rest.exception.LockssRestException;
+import org.lockss.util.rest.exception.LockssRestHttpException;
 import org.lockss.state.AuStateBean;
 import org.lockss.state.StateManager;
 import org.lockss.test.SpringLockssTestCase;
 import org.lockss.util.time.TimeBase;
-import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.context.embedded.LocalServerPort;
@@ -143,7 +142,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-    getSwaggerDocsTest();
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
     runMethodsNotAllowedUnAuthenticatedTest();
     getAuStateUnAuthenticatedTest();
     patchAuStateUnAuthenticatedTest();
@@ -169,7 +168,7 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-    getSwaggerDocsTest();
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
     runMethodsNotAllowedAuthenticatedTest();
     getAuStateAuthenticatedTest();
     patchAuStateAuthenticatedTest();
@@ -197,27 +196,6 @@ public class TestAustatesApiServiceImpl extends SpringLockssTestCase {
 
     log.debug2("cmdLineArgs = {}", cmdLineArgs);
     return cmdLineArgs;
-  }
-
-  /**
-   * Runs the Swagger-related tests.
-   */
-  private void getSwaggerDocsTest() {
-    log.debug2("Invoked");
-
-    ResponseEntity<String> successResponse = new TestRestTemplate().exchange(
-	getTestUrlTemplate("/v2/api-docs"), HttpMethod.GET, null, String.class);
-
-    HttpStatus statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
-
-    String expectedBody = "{'swagger':'2.0',"
-	+ "'info':{'description':'REST API of the LOCKSS Configuration Service'"
-	+ "}}";
-
-    JSONAssert.assertEquals(expectedBody, successResponse.getBody(), false);
-
-    log.debug2("Done");
   }
 
   /**

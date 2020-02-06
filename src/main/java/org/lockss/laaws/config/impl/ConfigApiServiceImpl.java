@@ -49,18 +49,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.lockss.alert.AlertManagerImpl;
-import org.lockss.app.LockssApp;
 import org.lockss.config.ConfigManager;
 import org.lockss.config.HttpRequestPreconditions;
 import org.lockss.config.ConfigFileReadWriteResult;
 import org.lockss.daemon.Cron;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
+import org.lockss.spring.base.*;
 import org.lockss.laaws.config.api.ConfigApiDelegate;
 import org.lockss.laaws.rs.util.NamedInputStreamResource;
-import org.lockss.laaws.status.model.ApiStatus;
 import org.lockss.log.L4JLogger;
-import org.lockss.spring.status.SpringLockssBaseApiController;
 import org.lockss.util.AccessType;
 import org.lockss.util.StringUtil;
 import org.springframework.core.io.Resource;
@@ -78,23 +76,25 @@ import org.springframework.web.multipart.MultipartFile;
  * Service for accessing the system configuration.
  */
 @Service
-public class ConfigApiServiceImpl extends SpringLockssBaseApiController
-    implements ConfigApiDelegate {
-  public static final String SECTION_NAME_CLUSTER = "cluster";
-  public static final String SECTION_NAME_PROPSLOCKSS = "props_lockss";
-  public static final String SECTION_NAME_UI_IP_ACCESS = "ui_ip_access";
-  public static final String SECTION_NAME_PROXY_IP_ACCESS = "proxy_ip_access";
-  public static final String SECTION_NAME_PLUGIN = "plugin";
-  public static final String SECTION_NAME_AU = "au";
-  public static final String SECTION_NAME_TITLE_DB = "titledb";
-  public static final String SECTION_NAME_ICP_SERVER = "icp_server";
-  public static final String SECTION_NAME_AUDIT_PROXY = "audit_proxy";
-  public static final String SECTION_NAME_CONTENT_SERVERS = "content_servers";
-  public static final String SECTION_NAME_ACCESS_GROUPS = "access_groups";
-  public static final String SECTION_NAME_CRAWL_PROXY = "crawl_proxy";
-  public static final String SECTION_NAME_EXPERT = "expert";
-  public static final String SECTION_NAME_ALERT = "alert";
-  public static final String SECTION_NAME_CRONSTATE = "cronstate";
+public class ConfigApiServiceImpl
+  extends BaseSpringApiServiceImpl
+  implements ConfigApiDelegate {
+
+  static final String SECTION_NAME_CLUSTER = "cluster";
+  static final String SECTION_NAME_PROPSLOCKSS = "props_lockss";
+  static final String SECTION_NAME_UI_IP_ACCESS = "ui_ip_access";
+  static final String SECTION_NAME_PROXY_IP_ACCESS = "proxy_ip_access";
+  static final String SECTION_NAME_PLUGIN = "plugin";
+  static final String SECTION_NAME_AU = "au";
+  static final String SECTION_NAME_TITLE_DB = "titledb";
+  static final String SECTION_NAME_ICP_SERVER = "icp_server";
+  static final String SECTION_NAME_AUDIT_PROXY = "audit_proxy";
+  static final String SECTION_NAME_CONTENT_SERVERS = "content_servers";
+  static final String SECTION_NAME_ACCESS_GROUPS = "access_groups";
+  static final String SECTION_NAME_CRAWL_PROXY = "crawl_proxy";
+  static final String SECTION_NAME_EXPERT = "expert";
+  static final String SECTION_NAME_ALERT = "alert";
+  static final String SECTION_NAME_CRONSTATE = "cronstate";
 
   private static L4JLogger log = L4JLogger.getLogger();
 
@@ -153,6 +153,11 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
     log.debug2("ifModifiedSince = {}", () -> ifModifiedSince);
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
+
+    if (!waitConfig()) {
+      return new ResponseEntity<String>("Not Ready",
+					HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     try {
       HttpRequestPreconditions preconditions;
@@ -265,6 +270,11 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
+    if (!waitConfig()) {
+      return new ResponseEntity<String>("Not Ready",
+					HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     try {
       HttpRequestPreconditions preconditions;
 
@@ -289,20 +299,14 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
 	return new ResponseEntity<String>(message, HttpStatus.NOT_ACCEPTABLE);
       }
 
+      String message1 = "Can't get the content for url '" + url + "': ";
       try {
 	return buildGetUrlResponse(url, preconditions, getConfigManager()
 	    .conditionallyReadCacheConfigFile(url, preconditions));
-      } catch (FileNotFoundException fnfe) {
+      } catch (FileNotFoundException | UnknownHostException
+	       | ConnectException e) {
 	String message = "Can't get the content for url '" + url + "'";
-	log.error(message, fnfe);
-	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
-      } catch (UnknownHostException uhe) {
-	String message = "Can't get the content for url '" + url + "'";
-	log.error(message, uhe);
-	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
-      } catch (ConnectException ce) {
-	String message = "Can't get the content for url '" + url + "'";
-	log.error(message, ce);
+	log.debug(message + ": " + e);
 	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
       } catch (UnsupportedOperationException uoe) {
 	String message = "Can't get the content for url '" + url + "'";
@@ -331,6 +335,12 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
   public ResponseEntity<OffsetDateTime> getLastUpdateTime() {
     log.debug2("Invoked");
 
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     try {
       long millis = getConfigManager().getLastUpdateTime();
       log.trace("millis = {}", () -> millis);
@@ -355,6 +365,12 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
   @Override
   public ResponseEntity<List<String>> getLoadedUrlList() {
     log.debug2("Invoked");
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     try {
       List<String> result = (List<String>)getConfigManager().getLoadedUrlList();
@@ -390,7 +406,7 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
    * @return a {@code ResponseEntity<Void>}.
    */
   @Override
-  public ResponseEntity<Void> putConfig(String sectionName,
+  public ResponseEntity putConfig(String sectionName,
       MultipartFile configFile, String ifMatch, String ifModifiedSince,
       String ifNoneMatch, String ifUnmodifiedSince) {
     log.debug2("sectionName = {}", () -> sectionName);
@@ -399,6 +415,11 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
     log.debug2("ifModifiedSince = {}", () -> ifModifiedSince);
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
+
+    if (!waitConfig(0)) {
+      return new ResponseEntity<String>("Not Ready",
+					HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     // Check authorization.
     try {
@@ -466,8 +487,8 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
 
       // Return the new file entity tag in the response.
       HttpHeaders responseHeaders = new HttpHeaders();
-      responseHeaders.set(HttpHeaders.LAST_MODIFIED, lastModified);
-      responseHeaders.setETag(etag);
+      setLastModified(responseHeaders, lastModified);
+      setETag(responseHeaders, etag);
       log.trace("responseHeaders = {}", () -> responseHeaders);
 
       return new ResponseEntity<Void>(null, responseHeaders, HttpStatus.OK);
@@ -488,6 +509,12 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
   public ResponseEntity<Void> putConfigReload() {
     log.debug2("Invoked");
 
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     // Check authorization.
     try {
       SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_USER_ADMIN);
@@ -505,17 +532,6 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
       log.error(message, e);
       return new ResponseEntity<Void>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
-  }
-
-  /**
-   * Provides the status object.
-   * 
-   * @return an ApiStatus with the status.
-   */
-  @Override
-  public ApiStatus getApiStatus() {
-    return new ApiStatus("swagger/swagger.yaml")
-      .setReady(LockssApp.getLockssApp().isAppRunning());
   }
 
   /**
@@ -586,15 +602,6 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
   }
 
   /**
-   * Provides the configuration manager.
-   *
-   * @return a ConfigManager with the configuration manager.
-   */
-  private ConfigManager getConfigManager() {
-    return ConfigManager.getConfigManager();
-  }
-
-  /**
    * Provides the response for a request to get the content at a URL.
    * 
    * @param url
@@ -637,8 +644,8 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
 	  && !preconditions.getIfNoneMatch().isEmpty())) {
 	// Yes: Return no content, just a Not-Modified status.
 	HttpHeaders responseHeaders = new HttpHeaders();
-	responseHeaders.set(HttpHeaders.LAST_MODIFIED, lastModified);
-	responseHeaders.setETag(etag);
+	setLastModified(responseHeaders, lastModified);
+	setETag(responseHeaders, etag);
 	log.trace("responseHeaders = {}", () -> responseHeaders);
 
 	status = HttpStatus.NOT_MODIFIED;
@@ -656,8 +663,8 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
 
     // Save the version unique identifier header in the part of the response.
     HttpHeaders partHeaders = new HttpHeaders();
-    partHeaders.setETag(etag);
-    partHeaders.set(HttpHeaders.LAST_MODIFIED, lastModified);
+    setLastModified(partHeaders, lastModified);
+    setETag(partHeaders, etag);
 
     // Save the content type header in the part of the response.
     MediaType contentType = readResult.getContentType();
@@ -693,4 +700,17 @@ public class ConfigApiServiceImpl extends SpringLockssBaseApiController
     return new ResponseEntity<MultiValueMap<String, Object>>(parts,
 	  responseHeaders, status);
   }
+
+  protected void setETag(HttpHeaders hdrs, String etag) {
+    if (etag != null) {
+      hdrs.setETag(etag);
+    }
+  }
+
+  protected void setLastModified(HttpHeaders hdrs, String last) {
+    if (last != null) {
+      hdrs.set(HttpHeaders.LAST_MODIFIED, last);
+    }
+  }
+
 }

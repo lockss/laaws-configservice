@@ -39,4 +39,4 @@
 
 # Enable crawls of plugin registries only
 org.lockss.crawler.enabled=true
-org.lockss.crawler.crawlPriorityAuidMap=RegistryPlugin,1;.*,-10000
+org.lockss.daemon.crawlMode=Plugins

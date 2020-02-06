@@ -50,19 +50,17 @@ import org.lockss.config.HttpRequestPreconditions;
 import org.lockss.config.RestConfigClient;
 import org.lockss.config.RestConfigSection;
 import org.lockss.log.L4JLogger;
-import org.lockss.rs.RestUtil;
-import org.lockss.rs.multipart.MimeMultipartHttpMessageConverter;
-import org.lockss.rs.multipart.NamedByteArrayResource;
-import org.lockss.rs.multipart.MultipartResponse;
-import org.lockss.rs.multipart.MultipartResponse.Part;
+import org.lockss.util.rest.RestUtil;
+import org.lockss.util.rest.multipart.MimeMultipartHttpMessageConverter;
+import org.lockss.util.rest.multipart.NamedByteArrayResource;
+import org.lockss.util.rest.multipart.MultipartResponse;
+import org.lockss.util.rest.multipart.MultipartResponse.Part;
 import org.lockss.test.SpringLockssTestCase;
 import org.lockss.util.AccessType;
 import org.lockss.util.HeaderUtil;
 import org.lockss.util.ListUtil;
 import org.lockss.util.StringUtil;
 import org.lockss.util.time.TimeBase;
-import org.json.JSONObject;
-import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.context.embedded.LocalServerPort;
@@ -238,8 +236,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-    getSwaggerDocsTest();
-    getStatusTest();
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
     runMethodsNotAllowedUnAuthenticatedTest();
     getConfigSectionUnAuthenticatedTest();
     getConfigUrlUnAuthenticatedTest();
@@ -269,8 +266,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-    getSwaggerDocsTest();
-    getStatusTest();
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
     runMethodsNotAllowedAuthenticatedTest();
     getConfigSectionAuthenticatedTest();
     getConfigUrlAuthenticatedTest();
@@ -309,53 +305,6 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
     log.debug2("cmdLineArgs = {}", cmdLineArgs);
     return cmdLineArgs;
-  }
-
-  /**
-   * Runs the Swagger-related tests.
-   * 
-   * @throws Exception
-   *           if there are problems.
-   */
-  private void getSwaggerDocsTest() throws Exception {
-    log.debug2("Invoked");
-
-    ResponseEntity<String> successResponse = new TestRestTemplate().exchange(
-	getTestUrlTemplate("/v2/api-docs"), HttpMethod.GET, null, String.class);
-
-    HttpStatus statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
-
-    String expectedBody = "{'swagger':'2.0',"
-	+ "'info':{'description':'REST API of the LOCKSS Configuration Service'"
-	+ "}}";
-
-    JSONAssert.assertEquals(expectedBody, successResponse.getBody(), false);
-
-    log.debug2("Done");
-  }
-
-  /**
-   * Runs the status-related tests.
-   */
-  private void getStatusTest() {
-    log.debug2("Invoked");
-
-    ResponseEntity<String> successResponse = new TestRestTemplate().exchange(
-	getTestUrlTemplate("/status"), HttpMethod.GET, null, String.class);
-
-    HttpStatus statusCode = successResponse.getStatusCode();
-    assertEquals(HttpStatus.OK, statusCode);
-
-    JSONObject expected = new JSONObject().put("apiVersion", "2.0.0")
-                                          .put("componentName", "laaws-configuration-service")
-                                          .put("componentVersion", "2.0.1.0")
-                                          .put("lockssVersion", "2.0-alpha")
-                                          .put("ready", true)
-                                          .put("serviceName", "LOCKSS Configuration Service REST API");
-    JSONAssert.assertEquals(expected.toString(), successResponse.getBody(), false);
-
-    log.debug2("Done");
   }
 
   /**

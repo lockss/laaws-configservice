@@ -39,6 +39,7 @@ import org.lockss.log.L4JLogger;
 import org.lockss.plugin.AuUtil;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
+import org.lockss.spring.base.BaseSpringApiServiceImpl;
 import org.lockss.state.StateManager;
 import org.lockss.util.JsonUtil;
 import org.springframework.http.HttpStatus;
@@ -49,7 +50,8 @@ import org.springframework.stereotype.Service;
  * Service for accessing Archival Unit suspect URL versions.
  */
 @Service
-public class AususpecturlsApiServiceImpl implements AususpecturlsApiDelegate {
+public class AususpecturlsApiServiceImpl extends BaseSpringApiServiceImpl
+    implements AususpecturlsApiDelegate {
   private static L4JLogger log = L4JLogger.getLogger();
 
   /**
@@ -64,6 +66,12 @@ public class AususpecturlsApiServiceImpl implements AususpecturlsApiDelegate {
   @Override
   public ResponseEntity<String> getAuSuspectUrlVersions(String auid) {
     log.debug2("auid = {}", auid);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     try {
       // Validate the AUId.
@@ -111,6 +119,12 @@ public class AususpecturlsApiServiceImpl implements AususpecturlsApiDelegate {
     log.debug2("auid = {}", auid);
     log.debug2("auSuspectUrlVersions = {}", auSuspectUrlVersions);
     log.debug2("xLockssRequestCookie = {}", xLockssRequestCookie);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
 
     // Check authorization.
     try {
