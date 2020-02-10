@@ -157,7 +157,7 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
     try {
       Collection<AuConfiguration> result =
 	  getConfigManager().retrieveAllArchivalUnitConfiguration();
-      if (log.isDebugEnabled()) log.debug("result = " + result);
+      log.debug2("result = {}", result);
       return new ResponseEntity<Collection<AuConfiguration>>(result,
 	  HttpStatus.OK);
     } catch (Exception e) {

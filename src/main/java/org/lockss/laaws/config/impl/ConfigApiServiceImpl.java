@@ -317,20 +317,14 @@ public class ConfigApiServiceImpl
 	return new ResponseEntity<String>(message, HttpStatus.NOT_ACCEPTABLE);
       }
 
+      String message1 = "Can't get the content for url '" + url + "': ";
       try {
 	return buildGetUrlResponse(url, preconditions, getConfigManager()
 	    .conditionallyReadCacheConfigFile(url, preconditions));
-      } catch (FileNotFoundException fnfe) {
+      } catch (FileNotFoundException | UnknownHostException
+	       | ConnectException e) {
 	String message = "Can't get the content for url '" + url + "'";
-	log.error(message, fnfe);
-	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
-      } catch (UnknownHostException uhe) {
-	String message = "Can't get the content for url '" + url + "'";
-	log.error(message, uhe);
-	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
-      } catch (ConnectException ce) {
-	String message = "Can't get the content for url '" + url + "'";
-	log.error(message, ce);
+	log.debug(message + ": " + e);
 	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
       } catch (UnsupportedOperationException uoe) {
 	String message = "Can't get the content for url '" + url + "'";
