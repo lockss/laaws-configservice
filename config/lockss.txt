@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2019 Board of Trustees of Leland Stanford Jr. University,
+# Copyright (c) 2017-2020 Board of Trustees of Leland Stanford Jr. University,
 # all rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -83,6 +83,7 @@ org.lockss.platform.propsLockssXmlUrl=http://props.lockss.org:8001/content-testi
 # The database manager used to store the Archival Unit configurations.
 #
 # Using Derby.
+org.lockss.db.startDerbyNetworkServerControl=true
 #org.lockss.configDbManager.derby.infologAppend=true
 ##org.lockss.configDbManager.derby.languageLogqueryplan=true
 #org.lockss.configDbManager.derby.languageLogstatementtext=true
