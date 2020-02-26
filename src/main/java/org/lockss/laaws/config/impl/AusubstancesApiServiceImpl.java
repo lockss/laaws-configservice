@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package org.lockss.laaws.config.impl;
 
-import static org.lockss.servlet.DebugPanel.ACTION_CHECK_SUBSTANCE;
 import java.security.AccessControlException;
 import org.lockss.account.UserAccount;
 import org.lockss.app.LockssDaemon;
@@ -80,14 +79,6 @@ implements AusubstancesApiDelegate {
     if (!waitReady()) {
       // Yes: Notify the client.
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
-    }
-
-    // Add to the audit log a reference to this operation, if necessary.
-    try {
-      audit(ACTION_CHECK_SUBSTANCE, auId);
-    } catch (AccessControlException ace) {
-      log.warn(ace.getMessage());
-      return new ResponseEntity<>(HttpStatus.FORBIDDEN);
     }
 
     // Input validation.
