@@ -31,6 +31,7 @@ src/generated/java/org/lockss/laaws/*/model/ApiStatus.java
 src/generated/java/org/lockss/laaws/*/model/AuConfiguration.java
 src/generated/java/org/lockss/laaws/*/model/AuStatus.java
 src/generated/java/org/lockss/laaws/*/model/AuWsResult.java
+src/generated/java/org/lockss/laaws/*/model/CheckSubstanceResult.java
 src/generated/java/org/lockss/laaws/*/model/ContentConfigurationResult.java
 src/generated/java/org/lockss/laaws/*/model/PlatformConfigurationWsResult.java
 src/generated/java/org/lockss/laaws/*/model/PluginWsResult.java

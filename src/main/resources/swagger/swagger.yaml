@@ -1111,6 +1111,35 @@ paths:
           description: Not Found
         '500':
           description: Internal Server Error
+  '/ausubstances/{auid}':
+    put:
+      tags:
+        - aus
+      summary: Update the substance of an AU
+      description: Update the substance of an AU given the AU identifier
+      operationId: putAuSubstanceCheck
+      produces:
+        - application/json
+      parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for which the substance check\
+            \ is requested
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The substance check of the specified AU
+          schema:
+            $ref: '#/definitions/checkSubstanceResult'
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+        '500':
+          description: Internal Server Error
   /status:
     get:
       tags:
@@ -1375,6 +1404,35 @@ definitions:
       volume:
         type: "string"
         description: "The volume of the archival unit"
+    description: "The status of an archival unit"
+  checkSubstanceResult:
+    type: "object"
+    required:
+      - "id"
+      - "oldState"
+      - "newState"
+      - "errorMessage"
+    properties:
+      id:
+        type: "string"
+        description: "The identifier of the archival unit"
+      oldState:
+        type: "string"
+        description: "An indication of whether the result is successful"
+        enum:
+          - "Unknown"
+          - "Yes"
+          - "No"
+      newState:
+        type: "string"
+        description: "An indication of whether the result is successful"
+        enum:
+          - "Unknown"
+          - "Yes"
+          - "No"
+      errorMessage:
+        type: "string"
+        description: "The error message as a result of the operation"
     description: "The status of an archival unit"
   apiStatus:
     type: "object"

@@ -102,3 +102,11 @@ sed -i.backup "s/import org.lockss.laaws.config.model.AuStatus/import org.lockss
 # Edit AustatusesApi.java.
 AUSTATUSES_API=src/generated/java/org/lockss/laaws/config/api/AustatusesApi.java
 sed -i.backup "s/import org.lockss.laaws.config.model.AuStatus/import org.lockss.ws.entities.AuStatus/" $AUSTATUSES_API && rm $AUSTATUSES_API.backup
+
+# Edit AusubstancesApiDelegate.java.
+AUSUBSTANCES_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/AusubstancesApiDelegate.java
+sed -i.backup "s/import org.lockss.laaws.config.model.CheckSubstanceResult/import org.lockss.ws.entities.CheckSubstanceResult/" $AUSUBSTANCES_API_DELEGATE && rm $AUSUBSTANCES_API_DELEGATE.backup
+
+# Edit AusubstanceeApi.java.
+AUSUBSTANCES_API=src/generated/java/org/lockss/laaws/config/api/AusubstancesApi.java
+sed -i.backup "s/import org.lockss.laaws.config.model.CheckSubstanceResult/import org.lockss.ws.entities.CheckSubstanceResult/" $AUSUBSTANCES_API && rm $AUSUBSTANCES_API.backup
