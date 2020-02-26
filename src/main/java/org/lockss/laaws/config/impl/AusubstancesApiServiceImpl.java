@@ -31,11 +31,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package org.lockss.laaws.config.impl;
 
+import static org.lockss.servlet.DebugPanel.ACTION_CHECK_SUBSTANCE;
+import java.security.AccessControlException;
+import org.lockss.account.UserAccount;
 import org.lockss.app.LockssDaemon;
 import org.lockss.laaws.config.api.AusubstancesApiDelegate;
 import org.lockss.log.L4JLogger;
 import org.lockss.plugin.ArchivalUnit;
 import org.lockss.plugin.AuUtil;
+import org.lockss.servlet.DebugPanel;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
 import org.lockss.state.AuState;
 import org.lockss.state.SubstanceChecker;
@@ -43,6 +47,7 @@ import org.lockss.util.StringUtil;
 import org.lockss.ws.entities.CheckSubstanceResult;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 /**
@@ -75,6 +80,14 @@ implements AusubstancesApiDelegate {
     if (!waitReady()) {
       // Yes: Notify the client.
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    // Add to the audit log a reference to this operation, if necessary.
+    try {
+      audit(ACTION_CHECK_SUBSTANCE, auId);
+    } catch (AccessControlException ace) {
+      log.warn(ace.getMessage());
+      return new ResponseEntity<>(HttpStatus.FORBIDDEN);
     }
 
     // Input validation.
@@ -154,6 +167,43 @@ implements AusubstancesApiDelegate {
       String message = "Cannot getAuSubstanceCheck() for auId = '" + auId + "'";
       log.error(message, e);
       return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Adds to the audit log a reference to this operation, if necessary.
+   * 
+   * @param action
+   *          A String with the name of the operation.
+   * @param auId
+   *          A String with the identifier (auid) of the archival unit.
+   * @throws AccessControlException if the user cannot be validated.
+   */
+  private void audit(String action, String auId) throws AccessControlException {
+    log.debug2("action = {}", action);
+    log.debug2("auId = {}", auId);
+
+    String userName =
+	SecurityContextHolder.getContext().getAuthentication().getName();
+    log.trace("userName = {}", userName);
+
+    // Get the user account.
+    UserAccount userAccount = null;
+
+    try {
+      userAccount =
+          LockssDaemon.getLockssDaemon().getAccountManager().getUser(userName);
+      log.trace("userAccount = {}", userAccount);
+    } catch (Exception e) {
+      log.error("userName = {}", userName);
+      log.error("LockssDaemon.getLockssDaemon().getAccountManager()."
+          + "getUser(" + userName + ")", e);
+      throw new AccessControlException("Unable to get user '" + userName + "'");
+    }
+
+    if (userAccount != null && !DebugPanel.noAuditActions.contains(action)) {
+      userAccount.auditableEvent("Called AusApi web service operation '"
+	  + action + "' AU ID: " + auId);
     }
   }
 
