@@ -112,3 +112,36 @@ org.lockss.configDbManager.datasource.password=goodPassword
 
 #org.lockss.restAuth.authenticationType=basic
 
+# Subscription management.
+#org.lockss.subscription.enabled=true
+
+#
+# The database manager used to store the Archival Unit metadata.
+#
+# Using Derby.
+#org.lockss.metadataDbManager.derby.infologAppend=true
+##org.lockss.metadataDbManager.derby.languageLogqueryplan=true
+#org.lockss.metadataDbManager.derby.languageLogstatementtext=true
+##org.lockss.metadataDbManager.derby.streamErrorFile=/tmp/derby.log
+#org.lockss.metadataDbManager.derby.streamErrorLogseveritylevel=0
+#org.lockss.metadataDbManager.datasource.className=org.apache.derby.jdbc.EmbeddedDataSource
+org.lockss.metadataDbManager.datasource.className=org.apache.derby.jdbc.ClientDataSource
+org.lockss.metadataDbManager.datasource.password=goodPassword
+##org.lockss.metadataDbManager.datasource.createDatabase=create
+#org.lockss.metadataDbManager.datasource.databaseName=LockssMetadataDbManager
+#org.lockss.metadataDbManager.datasource.portNumber=1527
+##org.lockss.metadataDbManager.datasource.serverName=localhost
+##org.lockss.metadataDbManager.datasource.user=LOCKSS
+
+# Using PostgreSQL.
+#org.lockss.metadataDbManager.datasource.className=org.postgresql.ds.PGSimpleDataSource
+##org.lockss.metadataDbManager.datasource.databaseName=LockssMetadataDbManager
+##org.lockss.metadataDbManager.datasource.password=goodPassword
+#org.lockss.metadataDbManager.datasource.portNumber=5432
+##org.lockss.metadataDbManager.datasource.serverName=localhost
+##org.lockss.metadataDbManager.datasource.user=LOCKSS
+##org.lockss.metadataDbManager.datasource.schemaName=LOCKSS
+
+# Using MySQL
+#org.lockss.metadataDbManager.datasource.className=com.mysql.jdbc.jdbc2.optional.MysqlDataSource
+
