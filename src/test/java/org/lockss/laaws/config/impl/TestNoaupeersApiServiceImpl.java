@@ -354,7 +354,7 @@ public class TestNoaupeersApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     HttpEntity<String> requestEntity = null;
 
@@ -572,7 +572,7 @@ public class TestNoaupeersApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     HttpEntity<String> requestEntity = null;
 
@@ -1164,7 +1164,7 @@ public class TestNoaupeersApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     HttpEntity<String> requestEntity = null;
 

@@ -358,7 +358,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     HttpEntity<String> requestEntity = null;
 
@@ -827,7 +827,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
@@ -1111,7 +1111,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
@@ -1386,7 +1386,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     HttpEntity<Collection<AuConfiguration>> requestEntity = null;
 
@@ -1817,7 +1817,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
@@ -1894,8 +1894,8 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
 
     try {
       // Make the request and get the result.
-      result =
-	  getRestConfigClient(credentials).deleteArchivalUnitConfiguration(auId);
+      result = getRestConfigClient(credentials)
+	  .deleteArchivalUnitConfiguration(auId);
       log.debug2("result = {}", result);
 
       if (!RestUtil.isSuccess(expectedStatus)) {

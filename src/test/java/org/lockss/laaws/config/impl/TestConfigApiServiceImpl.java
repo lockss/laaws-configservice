@@ -432,7 +432,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     HttpEntity<String> requestEntity = null;
 
@@ -1293,7 +1293,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     // Set the multipart/form-data converter as the only one.
     List<HttpMessageConverter<?>> messageConverters =
@@ -2412,7 +2412,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     // Set the multipart/form-data converter as the only one.
     List<HttpMessageConverter<?>> messageConverters =
@@ -2586,7 +2586,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     HttpEntity<String> requestEntity = null;
 
@@ -2708,7 +2708,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     HttpEntity<String> requestEntity = null;
 
@@ -3723,7 +3723,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     HttpEntity<MultiValueMap<String, Object>> requestEntity = null;
 
@@ -4006,7 +4006,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
 
     HttpEntity<String> requestEntity = null;
 
