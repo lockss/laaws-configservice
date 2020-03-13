@@ -358,7 +358,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     HttpEntity<String> requestEntity = null;
 
@@ -827,7 +827,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
@@ -1111,7 +1111,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
@@ -1386,7 +1386,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     HttpEntity<Collection<AuConfiguration>> requestEntity = null;
 
@@ -1817,7 +1817,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getSimpleFactoryRestTemplate(true);
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
