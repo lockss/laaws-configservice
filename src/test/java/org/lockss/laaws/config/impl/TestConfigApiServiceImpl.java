@@ -1535,10 +1535,10 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     Part part = parts.get(CONFIG_PART_NAME);
 
     // Validate the part content type.
-    Map<String, String> partHeaders = part.getHeaders();
+    HttpHeaders partHeaders = part.getHeaders();
     assertTrue(partHeaders.containsKey(HttpHeaders.CONTENT_TYPE));
     assertEquals(expectedContentType.toString(),
-	HeaderUtil.getMimeTypeFromContentType(partHeaders.get(
+	HeaderUtil.getMimeTypeFromContentType(partHeaders.getFirst(
 	    HttpHeaders.CONTENT_TYPE)));
 
     // Get the part payload content length.
