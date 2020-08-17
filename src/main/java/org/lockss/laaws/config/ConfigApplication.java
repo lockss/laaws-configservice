@@ -113,6 +113,7 @@ public class ConfigApplication extends BaseSpringBootApplication
 		      "true")
 	.addAppConfig(PARAM_START_PLUGINS, "true")
 	.addAppDefault(PluginManager.PARAM_START_ALL_AUS, "true")
+	.setSpringApplicatonContext(getApplicationContext())
 	.setAppManagers(myManagerDescs);
       LockssApp.startStatic(LockssDaemon.class, spec);
     } else {

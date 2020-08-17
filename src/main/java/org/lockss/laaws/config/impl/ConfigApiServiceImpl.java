@@ -61,7 +61,7 @@ import org.lockss.config.HttpRequestPreconditions;
 import org.lockss.config.ConfigFileReadWriteResult;
 import org.lockss.daemon.Cron;
 import org.lockss.spring.auth.Roles;
-import org.lockss.spring.auth.SpringAuthenticationFilter;
+import org.lockss.spring.auth.AuthUtil;
 import org.lockss.spring.base.*;
 import org.lockss.laaws.config.api.ConfigApiDelegate;
 import org.lockss.laaws.rs.util.NamedInputStreamResource;
@@ -439,9 +439,9 @@ public class ConfigApiServiceImpl
 					HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check authorization.
+    // Check for required role.
     try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_USER_ADMIN);
+      AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
@@ -533,9 +533,9 @@ public class ConfigApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check authorization.
+    // Check for required role
     try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_USER_ADMIN);
+      AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);

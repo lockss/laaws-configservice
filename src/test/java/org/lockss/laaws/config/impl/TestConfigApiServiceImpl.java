@@ -55,12 +55,14 @@ import org.lockss.util.rest.multipart.MimeMultipartHttpMessageConverter;
 import org.lockss.util.rest.multipart.NamedByteArrayResource;
 import org.lockss.util.rest.multipart.MultipartResponse;
 import org.lockss.util.rest.multipart.MultipartResponse.Part;
-import org.lockss.test.SpringLockssTestCase;
+import org.lockss.spring.test.SpringLockssTestCase4;
 import org.lockss.util.AccessType;
 import org.lockss.util.HeaderUtil;
 import org.lockss.util.ListUtil;
 import org.lockss.util.StringUtil;
 import org.lockss.util.time.TimeBase;
+import org.lockss.spring.auth.SpringAuthenticationFilter;
+import org.lockss.test.ConfigurationUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.context.embedded.LocalServerPort;
@@ -87,7 +89,7 @@ import org.springframework.web.util.UriComponentsBuilder;
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class TestConfigApiServiceImpl extends SpringLockssTestCase {
+public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
   private static L4JLogger log = L4JLogger.getLogger();
 
   private static final String EMPTY_STRING = "";
@@ -2373,6 +2375,31 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 	HttpStatus.PRECONDITION_FAILED);
 
     log.debug2("Done");
+
+    // IP access control tests
+
+    // No IP filters are defined; preceding tests are allowed because they
+    // come from loopback address.  Disabling special allowance for
+    // loopback should result in 403
+
+    ConfigurationUtil.addFromArgs(SpringAuthenticationFilter.PARAM_ALLOW_LOOPBACK,
+				  "false");
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, CONTENT_ADMIN,
+	HttpStatus.FORBIDDEN);
+
+
+    // Now specifially allow 127.0.0.1, should work
+    ConfigurationUtil.addFromArgs(SpringAuthenticationFilter.PARAM_IP_INCLUDE,
+				  "127.0.0.1");
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, CONTENT_ADMIN,
+	HttpStatus.PRECONDITION_FAILED);
+
+    // Restore default config as multiple tests are run in a single testcase
+    ConfigurationUtil.addFromArgs(SpringAuthenticationFilter.PARAM_ALLOW_LOOPBACK,
+				  "false",
+				  SpringAuthenticationFilter.PARAM_IP_INCLUDE,
+				  "127.0.0.1");
+
   }
 
   /**

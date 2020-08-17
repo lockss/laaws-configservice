@@ -51,10 +51,12 @@ import org.lockss.util.rest.exception.LockssRestException;
 import org.lockss.util.rest.exception.LockssRestHttpException;
 import org.lockss.state.StateManager;
 import org.lockss.test.MockLockssDaemon;
-import org.lockss.test.SpringLockssTestCase;
+import org.lockss.spring.test.SpringLockssTestCase4;
+import org.lockss.spring.auth.SpringAuthenticationFilter;
 import org.lockss.util.ListUtil;
 import org.lockss.util.StringUtil;
 import org.lockss.util.time.TimeBase;
+import org.lockss.test.ConfigurationUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.context.embedded.LocalServerPort;
@@ -77,7 +79,7 @@ import org.springframework.web.util.UriComponentsBuilder;
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
+public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase4 {
   private static L4JLogger log = L4JLogger.getLogger();
 
   private static final String EMPTY_STRING = "";
@@ -166,6 +168,8 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     cmdLineArgs.add("-p");
     cmdLineArgs.add("test/config/testAuthOff.txt");
 
+    // XXX This is kinda wonky.  SpringRunner has already set up the
+    // test environment; this starts (parts of?) it over again
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
@@ -192,6 +196,8 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     cmdLineArgs.add("-p");
     cmdLineArgs.add("test/config/testAuthOn.txt");
 
+    // XXX This is kinda wonky.  SpringRunner has already set up the
+    // test environment; this starts (parts of?) it over again
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
@@ -536,6 +542,29 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase {
     // Good AUId using the REST service client.
     assertEquals(result,
 	runTestGetAuAgreementsClient(AUID_2, USER_ADMIN, HttpStatus.OK));
+
+    // IP access control tests
+
+    // No IP filters are defined; preceding tests are allowed because they
+    // come from loopback address.  Disabling special allowance for
+    // loopback should result in 403
+
+    ConfigurationUtil.addFromArgs(SpringAuthenticationFilter.PARAM_ALLOW_LOOPBACK,
+				  "false");
+    assertEquals(null,
+	runTestGetAuAgreementsClient(AUID_2, USER_ADMIN, HttpStatus.FORBIDDEN));
+
+    // Now specifially allow 127.0.0.1, should work
+    ConfigurationUtil.addFromArgs(SpringAuthenticationFilter.PARAM_IP_INCLUDE,
+				  "127.0.0.1");
+    assertEquals(result,
+	runTestGetAuAgreementsClient(AUID_2, USER_ADMIN, HttpStatus.OK));
+
+    // Restore default config as multiple tests are run in a single testcase
+    ConfigurationUtil.addFromArgs(SpringAuthenticationFilter.PARAM_ALLOW_LOOPBACK,
+				  "false",
+				  SpringAuthenticationFilter.PARAM_IP_INCLUDE,
+				  "127.0.0.1");
 
     log.debug2("Done");
   }

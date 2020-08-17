@@ -51,7 +51,7 @@ import org.lockss.remote.RemoteApi;
 import org.lockss.remote.RemoteApi.BatchAuStatus;
 import org.lockss.servlet.DebugPanel;
 import org.lockss.spring.auth.Roles;
-import org.lockss.spring.auth.SpringAuthenticationFilter;
+import org.lockss.spring.auth.AuthUtil;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
 import org.lockss.util.StringUtil;
 import org.lockss.ws.entities.ContentConfigurationResult;
@@ -104,9 +104,9 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check authorization.
+    // Check for required role
     try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
@@ -227,9 +227,9 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check authorization.
+    // Check for required role
     try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
@@ -289,9 +289,9 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check authorization.
+    // Check for required role
     try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
@@ -383,9 +383,9 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check authorization.
+    // Check for required role
     try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
@@ -464,9 +464,9 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check authorization.
+    // Check for required role
     try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
@@ -546,9 +546,9 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check authorization.
+    // Check for required role
     try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
@@ -623,9 +623,9 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check authorization.
+    // Check for required role
     try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
@@ -713,9 +713,9 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check authorization.
+    // Check for required role
     try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
