@@ -66,6 +66,7 @@ import org.lockss.spring.base.*;
 import org.lockss.laaws.config.api.ConfigApiDelegate;
 import org.lockss.laaws.rs.util.NamedInputStreamResource;
 import org.lockss.log.L4JLogger;
+import org.lockss.spring.error.LockssRestServiceException;
 import org.lockss.util.AccessType;
 import org.lockss.util.BuildInfo;
 import org.lockss.util.DaemonVersion;
@@ -162,9 +163,10 @@ public class ConfigApiServiceImpl
    *         section configuration file contents.
    */
   @Override
-  public ResponseEntity getSectionConfig(String sectionName, String accept,
-      String ifMatch, String ifModifiedSince, String ifNoneMatch,
-      String ifUnmodifiedSince) {
+  public ResponseEntity getSectionConfig(
+      String sectionName, String accept, String ifMatch,
+      String ifModifiedSince, String ifNoneMatch, String ifUnmodifiedSince) {
+
     log.debug2("sectionName = {}", () -> sectionName);
     log.debug2("accept = {}", () -> accept);
     log.debug2("ifMatch = {}", () -> ifMatch);
@@ -172,87 +174,99 @@ public class ConfigApiServiceImpl
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
+    String parsedRequest = String.format(
+        "sectionName: %s, accept: %s, ifMatch: %s, ifModifiedSince: %s, ifNoneMatch: %s, ifUnmodifiedSince: %s",
+        sectionName, accept, ifMatch, ifModifiedSince, ifNoneMatch, ifUnmodifiedSince
+    );
+
+    log.debug2("Parsed request: {}", parsedRequest);
+
     if (!waitConfig()) {
-      return new ResponseEntity<String>("Not Ready",
-					HttpStatus.SERVICE_UNAVAILABLE);
+      throw new LockssRestServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Not ready", parsedRequest);
     }
 
-    try {
+//    try {
       HttpRequestPreconditions preconditions;
 
       // Validate the precondition headers.
       try {
-	preconditions = new HttpRequestPreconditions(
-	    StringUtil.breakAt(ifMatch, ",", true), ifModifiedSince,
-	    StringUtil.breakAt(ifNoneMatch, ",", true), ifUnmodifiedSince);
-	log.trace("preconditions = {}", () -> preconditions);
+        preconditions = new HttpRequestPreconditions(
+            StringUtil.breakAt(ifMatch, ",", true), ifModifiedSince,
+            StringUtil.breakAt(ifNoneMatch, ",", true), ifUnmodifiedSince
+        );
+
+        log.trace("preconditions = {}", () -> preconditions);
       } catch (IllegalArgumentException iae) {
-	return new ResponseEntity<String>(iae.getMessage(),
-	    HttpStatus.BAD_REQUEST);
+        throw new LockssRestServiceException(HttpStatus.BAD_REQUEST, iae.getMessage(), parsedRequest);
       }
 
       // Validate the name of the section to be obtained.
       String canonicalSectionName;
-
       try {
-	canonicalSectionName =
-	    validateSectionName(sectionName, AccessType.READ);
-	log.trace("canonicalSectionName = {}", () -> canonicalSectionName);
+        canonicalSectionName = validateSectionName(sectionName, AccessType.READ);
+        log.trace("canonicalSectionName = {}", () -> canonicalSectionName);
       } catch (MalformedParametersException mpe) {
-	return new ResponseEntity<String>(mpe.getMessage(),
-	    HttpStatus.BAD_REQUEST);
+        throw new LockssRestServiceException(HttpStatus.BAD_REQUEST, mpe.getMessage(), parsedRequest);
       }
 
-      // Check whether the request did not specify the appropriate "Accept"
-      // header.
+      // Check whether the request did not specify the appropriate "Accept" header.
+      /*
       if (accept.indexOf(MediaType.MULTIPART_FORM_DATA_VALUE) < 0) {
-	// Yes: Report the problem.
-	String message = "Accept header does not include '"
-	    + MediaType.MULTIPART_FORM_DATA_VALUE + "'";
-	log.warn(message);
-	return new ResponseEntity<String>(message, HttpStatus.NOT_ACCEPTABLE);
+        // Yes: Report the problem.
+        String message = "Accept header does not include '" + MediaType.MULTIPART_FORM_DATA_VALUE + "'";
+        log.warn(message);
+        throw new LockssRestServiceException(HttpStatus.NOT_ACCEPTABLE, message, parsedRequest);
       }
+      */
 
       ConfigManager configManager = getConfigManager();
 
       // Try to get the name of the read-only configuration file to be returned.
-      String sectionUrl =
-	  getConfigReadOnlySectionMap().get(canonicalSectionName);
-      if (log.isTraceEnabled())
-	log.trace("Read-Only sectionUrl = {}", sectionUrl);
+      String sectionUrl = getConfigReadOnlySectionMap().get(canonicalSectionName);
+
+      if (log.isTraceEnabled()) {
+        log.trace("Read-Only sectionUrl = {}", sectionUrl);
+      }
 
       // Check whether no read-only configuration file was found.
       if (sectionUrl == null) {
-	// Yes: Try to get the name of the writable configuration file to be
-	// returned.
-	sectionUrl = new File(configManager.getCacheConfigDir(),
-	    configWritableSectionMap.get(canonicalSectionName)).toString();
-	if (log.isTraceEnabled())
-	  log.trace("Writable sectionUrl = {}", sectionUrl);
+        // Yes: Try to get the name of the writable configuration file to be returned.
+        sectionUrl = new File(
+            configManager.getCacheConfigDir(),
+            configWritableSectionMap.get(canonicalSectionName)
+        ).toString();
+
+        if (log.isTraceEnabled()) {
+          log.trace("Writable sectionUrl = {}", sectionUrl);
+        }
       }
 
       try {
-	return buildGetUrlResponse(sectionUrl, preconditions,
-	    configManager.conditionallyReadCacheConfigFile(sectionUrl,
-		preconditions));
+        return buildGetUrlResponse(
+            sectionUrl,
+            preconditions,
+            configManager.conditionallyReadCacheConfigFile(sectionUrl, preconditions)
+        );
+
       } catch (FileNotFoundException fnfe) {
-	String message =
-	    "Can't get the content for sectionName '" + sectionName + "'";
-	log.error(message, fnfe);
-	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
+
+        String message = "Can't get the content for sectionName '" + sectionName + "'";
+        log.error(message, fnfe);
+        throw new LockssRestServiceException(HttpStatus.NOT_FOUND, message, parsedRequest);
+
       } catch (IOException ioe) {
-	String message = "Can't get the content for URL '" + sectionUrl + "'";
-	log.error(message, ioe);
-	return new ResponseEntity<String>(message,
-	    HttpStatus.INTERNAL_SERVER_ERROR);
+
+        String message = "Can't get the content for URL '" + sectionUrl + "'";
+        log.error(message, ioe);
+        throw new LockssRestServiceException(HttpStatus.INTERNAL_SERVER_ERROR, message, parsedRequest);
+
       }
-    } catch (Exception e) {
-      String message =
-	  "Cannot getSectionConfig() for sectionName = '" + sectionName + "'";
-      log.error(message, e);
-      return new ResponseEntity<String>(message,
-	  HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+
+//    } catch (Exception e) {
+//      String message = "Cannot getSectionConfig() for sectionName = '" + sectionName + "'";
+//      log.error(message, e);
+//      throw new LockssRestServiceException(HttpStatus.INTERNAL_SERVER_ERROR, message, parsedRequest);
+//    }
   }
 
   /**
