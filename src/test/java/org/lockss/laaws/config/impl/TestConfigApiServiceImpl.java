@@ -41,7 +41,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import javax.mail.internet.MimeMultipart;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -51,7 +50,8 @@ import org.lockss.config.RestConfigClient;
 import org.lockss.config.RestConfigSection;
 import org.lockss.log.L4JLogger;
 import org.lockss.util.rest.RestUtil;
-import org.lockss.util.rest.multipart.MimeMultipartHttpMessageConverter;
+import org.lockss.util.rest.multipart.MultipartMessage;
+import org.lockss.util.rest.multipart.MultipartMessageHttpMessageConverter;
 import org.lockss.util.rest.multipart.NamedByteArrayResource;
 import org.lockss.util.rest.multipart.MultipartResponse;
 import org.lockss.util.rest.multipart.MultipartResponse.Part;
@@ -1300,7 +1300,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     // Set the multipart/form-data converter as the only one.
     List<HttpMessageConverter<?>> messageConverters =
 	new ArrayList<HttpMessageConverter<?>>();
-    messageConverters.add(new MimeMultipartHttpMessageConverter());
+    messageConverters.add(new MultipartMessageHttpMessageConverter());
     restTemplate.setMessageConverters(messageConverters);
 
     HttpEntity<String> requestEntity = null;
@@ -1383,8 +1383,8 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<MimeMultipart> response = new TestRestTemplate(restTemplate)
-	.exchange(uri, HttpMethod.GET, requestEntity, MimeMultipart.class);
+    ResponseEntity<MultipartMessage> response = new TestRestTemplate(restTemplate)
+	.exchange(uri, HttpMethod.GET, requestEntity, MultipartMessage.class);
 
     // Get the response status.
     HttpStatus statusCode = response.getStatusCode();
@@ -2444,7 +2444,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     // Set the multipart/form-data converter as the only one.
     List<HttpMessageConverter<?>> messageConverters =
 	new ArrayList<HttpMessageConverter<?>>();
-    messageConverters.add(new MimeMultipartHttpMessageConverter());
+    messageConverters.add(new MultipartMessageHttpMessageConverter());
     restTemplate.setMessageConverters(messageConverters);
 
     HttpEntity<String> requestEntity = null;
@@ -2527,8 +2527,8 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<MimeMultipart> response = new TestRestTemplate(restTemplate)
-	.exchange(uri, HttpMethod.GET, requestEntity, MimeMultipart.class);
+    ResponseEntity<MultipartMessage> response = new TestRestTemplate(restTemplate)
+	.exchange(uri, HttpMethod.GET, requestEntity, MultipartMessage.class);
 
     // Get the response status.
     HttpStatus statusCode = response.getStatusCode();
