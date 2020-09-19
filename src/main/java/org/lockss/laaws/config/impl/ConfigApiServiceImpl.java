@@ -302,6 +302,13 @@ public class ConfigApiServiceImpl
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
+    String parsedRequest = String.format(
+        "url: %s, accept: %s, ifMatch: %s, ifModifiedSince: %s, ifNoneMatch: %s, ifUnmodifiedSince: %s",
+        url, accept, ifMatch, ifModifiedSince, ifNoneMatch, ifUnmodifiedSince
+    );
+
+    log.debug2("Parsed request: {}", parsedRequest);
+
     if (!waitConfig()) {
       return new ResponseEntity<String>("Not Ready",
 					HttpStatus.SERVICE_UNAVAILABLE);
