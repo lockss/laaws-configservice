@@ -732,8 +732,6 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     runTestGetConfigSection(SECTION_NAME_ALERT, null, hrp, null,
 	HttpStatus.UNAUTHORIZED);
 
-    // ----
-
     // Missing credentials.
     runTestGetConfigSection(SECTION_NAME_ALERT,
 	MediaType.APPLICATION_JSON, null, null, HttpStatus.UNAUTHORIZED);
@@ -1411,7 +1409,6 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
       if (log.isDebug2Enabled())
         log.debug2("parsedResponse = {}", parsedResponse);
 
-
       return parsedResponse;
 
     } catch (LockssResponseErrorHandler.WrappedLockssRestHttpException e) {
@@ -1994,8 +1991,6 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	EMPTY_PRECONDITION_LIST, EMPTY_STRING);
 
     runTestGetConfigUrl(url, null, hrp, null, HttpStatus.UNAUTHORIZED);
-
-    // ----
 
     // Missing credentials.
     runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null,

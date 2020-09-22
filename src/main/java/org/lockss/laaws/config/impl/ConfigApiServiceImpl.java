@@ -185,7 +185,6 @@ public class ConfigApiServiceImpl
       throw new LockssRestServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Not ready", parsedRequest);
     }
 
-//    try {
       HttpRequestPreconditions preconditions;
 
       // Validate the precondition headers.
@@ -208,16 +207,6 @@ public class ConfigApiServiceImpl
       } catch (MalformedParametersException mpe) {
         throw new LockssRestServiceException(HttpStatus.BAD_REQUEST, mpe.getMessage(), parsedRequest);
       }
-
-      // Check whether the request did not specify the appropriate "Accept" header.
-      /*
-      if (accept.indexOf(MediaType.MULTIPART_FORM_DATA_VALUE) < 0) {
-        // Yes: Report the problem.
-        String message = "Accept header does not include '" + MediaType.MULTIPART_FORM_DATA_VALUE + "'";
-        log.warn(message);
-        throw new LockssRestServiceException(HttpStatus.NOT_ACCEPTABLE, message, parsedRequest);
-      }
-      */
 
       ConfigManager configManager = getConfigManager();
 
@@ -261,12 +250,6 @@ public class ConfigApiServiceImpl
         throw new LockssRestServiceException(HttpStatus.INTERNAL_SERVER_ERROR, message, parsedRequest);
 
       }
-
-//    } catch (Exception e) {
-//      String message = "Cannot getSectionConfig() for sectionName = '" + sectionName + "'";
-//      log.error(message, e);
-//      throw new LockssRestServiceException(HttpStatus.INTERNAL_SERVER_ERROR, message, parsedRequest);
-//    }
   }
 
   /**
