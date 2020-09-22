@@ -233,8 +233,8 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-//    runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
-//    runMethodsNotAllowedUnAuthenticatedTest();
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
+    runMethodsNotAllowedUnAuthenticatedTest();
     getConfigSectionUnAuthenticatedTest();
     getConfigUrlUnAuthenticatedTest();
     getLastUpdateTimeUnAuthenticatedTest();
