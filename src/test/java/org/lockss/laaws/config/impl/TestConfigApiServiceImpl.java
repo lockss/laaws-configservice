@@ -463,7 +463,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     // Make the request and get the response. 
     TestRestTemplate testRestTemplate = new TestRestTemplate(restTemplate);
 
-    restTemplate.setErrorHandler(new LockssResponseErrorHandler());
+    restTemplate.setErrorHandler(new LockssResponseErrorHandler(restTemplate.getMessageConverters()));
 
     try {
       ResponseEntity<String> response = testRestTemplate
@@ -471,7 +471,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 
     } catch (LockssResponseErrorHandler.WrappedLockssRestHttpException e) {
       // Get the response status.
-      LockssRestHttpException lhre = e.getLHRE();
+      LockssRestHttpException lhre = e.getLRHE();
       HttpStatus statusCode = lhre.getHttpStatus();
       assertFalse(RestUtil.isSuccess(statusCode));
       assertEquals(expectedStatus, statusCode);
@@ -1387,7 +1387,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     // Make the request and get the response.
     TestRestTemplate testTemplate = new TestRestTemplate(restTemplate);
 
-    restTemplate.setErrorHandler(new LockssResponseErrorHandler());
+    restTemplate.setErrorHandler(new LockssResponseErrorHandler(restTemplate.getMessageConverters()));
 
     try {
       ResponseEntity<MultipartMessage> response = testTemplate
@@ -1412,7 +1412,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
       return parsedResponse;
 
     } catch (LockssResponseErrorHandler.WrappedLockssRestHttpException e) {
-      LockssRestHttpException lhre = e.getLHRE();
+      LockssRestHttpException lhre = e.getLRHE();
       HttpStatus statusCode = lhre.getHttpStatus();
       assertFalse(RestUtil.isSuccess(statusCode));
       assertEquals(expectedStatus, statusCode);
@@ -2545,7 +2545,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     try {
       // Make the request and get the response.
       TestRestTemplate testTemplate = new TestRestTemplate(restTemplate);
-      restTemplate.setErrorHandler(new LockssResponseErrorHandler());
+      restTemplate.setErrorHandler(new LockssResponseErrorHandler(restTemplate.getMessageConverters()));
       ResponseEntity<MultipartMessage> response = testTemplate
           .exchange(uri, HttpMethod.GET, requestEntity, MultipartMessage.class);
 
@@ -2567,7 +2567,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     return parsedResponse;
 
     } catch (LockssResponseErrorHandler.WrappedLockssRestHttpException e) {
-      LockssRestHttpException lhre = e.getLHRE();
+      LockssRestHttpException lhre = e.getLRHE();
 
       HttpStatus statusCode = lhre.getHttpStatus();
       assertFalse(RestUtil.isSuccess(statusCode));
