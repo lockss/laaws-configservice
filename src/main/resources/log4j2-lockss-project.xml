@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- Default logging config for repository service. -->
+<!-- Default logging config for config service. -->
 
 <Configuration>
 
