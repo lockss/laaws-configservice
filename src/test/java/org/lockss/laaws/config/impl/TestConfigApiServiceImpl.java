@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017-2019 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2020 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,21 +27,8 @@
  */
 package org.lockss.laaws.config.impl;
 
-import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
-import static org.lockss.laaws.config.impl.ConfigApiServiceImpl.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.MalformedParametersException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import javax.mail.internet.MimeMultipart;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -50,16 +37,21 @@ import org.lockss.config.HttpRequestPreconditions;
 import org.lockss.config.RestConfigClient;
 import org.lockss.config.RestConfigSection;
 import org.lockss.log.L4JLogger;
-import org.lockss.util.rest.RestUtil;
-import org.lockss.util.rest.multipart.MimeMultipartHttpMessageConverter;
-import org.lockss.util.rest.multipart.NamedByteArrayResource;
-import org.lockss.util.rest.multipart.MultipartResponse;
-import org.lockss.util.rest.multipart.MultipartResponse.Part;
-import org.lockss.test.SpringLockssTestCase;
+import org.lockss.spring.auth.SpringAuthenticationFilter;
+import org.lockss.spring.test.SpringLockssTestCase4;
+import org.lockss.test.ConfigurationUtil;
 import org.lockss.util.AccessType;
 import org.lockss.util.HeaderUtil;
 import org.lockss.util.ListUtil;
 import org.lockss.util.StringUtil;
+import org.lockss.util.rest.LockssResponseErrorHandler;
+import org.lockss.util.rest.RestUtil;
+import org.lockss.util.rest.exception.LockssRestHttpException;
+import org.lockss.util.rest.multipart.MultipartMessage;
+import org.lockss.util.rest.multipart.MultipartMessageHttpMessageConverter;
+import org.lockss.util.rest.multipart.MultipartResponse;
+import org.lockss.util.rest.multipart.MultipartResponse.Part;
+import org.lockss.util.rest.multipart.NamedByteArrayResource;
 import org.lockss.util.time.TimeBase;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -67,12 +59,7 @@ import org.springframework.boot.context.embedded.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.ApplicationContext;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -82,12 +69,22 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.MalformedParametersException;
+import java.net.URI;
+import java.util.*;
+
+import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
+import static org.lockss.laaws.config.impl.ConfigApiServiceImpl.*;
+
 /**
  * Test class for org.lockss.laaws.config.api.ConfigApiController.
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class TestConfigApiServiceImpl extends SpringLockssTestCase {
+public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
   private static L4JLogger log = L4JLogger.getLogger();
 
   private static final String EMPTY_STRING = "";
@@ -432,7 +429,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = new RestTemplate();
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     HttpEntity<String> requestEntity = null;
 
@@ -464,13 +461,21 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<String> response = new TestRestTemplate(restTemplate)
-	.exchange(uri, method, requestEntity, String.class);
+    TestRestTemplate testRestTemplate = new TestRestTemplate(restTemplate);
 
-    // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertFalse(RestUtil.isSuccess(statusCode));
-    assertEquals(expectedStatus, statusCode);
+    restTemplate.setErrorHandler(new LockssResponseErrorHandler(restTemplate.getMessageConverters()));
+
+    try {
+      ResponseEntity<String> response = testRestTemplate
+          .exchange(uri, method, requestEntity, String.class);
+
+    } catch (LockssResponseErrorHandler.WrappedLockssRestHttpException e) {
+      // Get the response status.
+      LockssRestHttpException lhre = e.getLRHE();
+      HttpStatus statusCode = lhre.getHttpStatus();
+      assertFalse(RestUtil.isSuccess(statusCode));
+      assertEquals(expectedStatus, statusCode);
+    }
   }
 
   /**
@@ -482,18 +487,19 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
   private void getConfigSectionUnAuthenticatedTest() throws Exception {
     log.debug2("Invoked");
 
+    HttpRequestPreconditions hrp;
+
     // No section.
-    runTestGetConfigSection(null, null, null, null, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(null, null, null, null, HttpStatus.NOT_FOUND);
 
     // Empty section.
     runTestGetConfigSection(EMPTY_STRING, null, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
+	HttpStatus.NOT_FOUND);
 
-    HttpRequestPreconditions hrp =
-	new HttpRequestPreconditions(null, null, null, null);
+    hrp = new HttpRequestPreconditions(null, null, null, null);
 
     runTestGetConfigSection(EMPTY_STRING, null, hrp, null,
-	HttpStatus.NOT_ACCEPTABLE);
+	HttpStatus.NOT_FOUND);
 
     // Use defaults for all headers.
     runTestGetConfigSection(SECTION_NAME_ALERT, null, null, null,
@@ -703,28 +709,28 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.debug2("Invoked");
 
     // No section: Spring checks the Accept header before credentials.
-    runTestGetConfigSection(null, null, null, null, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(null, null, null, null, HttpStatus.UNAUTHORIZED);
 
     // Empty section: Spring checks the Accept header before credentials.
     runTestGetConfigSection(EMPTY_STRING, null, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
+	HttpStatus.UNAUTHORIZED);
 
     HttpRequestPreconditions hrp =
 	new HttpRequestPreconditions(null, null, null, null);
 
     runTestGetConfigSection(EMPTY_STRING, null, hrp, null,
-	HttpStatus.NOT_ACCEPTABLE);
+	HttpStatus.UNAUTHORIZED);
 
     // Missing Accept header: Spring checks the Accept header before
     // credentials.
     runTestGetConfigSection(SECTION_NAME_ALERT, null, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
+	HttpStatus.UNAUTHORIZED);
 
     hrp = new HttpRequestPreconditions(EMPTY_PRECONDITION_LIST, EMPTY_STRING,
 	EMPTY_PRECONDITION_LIST, EMPTY_STRING);
 
     runTestGetConfigSection(SECTION_NAME_ALERT, null, hrp, null,
-	HttpStatus.NOT_ACCEPTABLE);
+	HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestGetConfigSection(SECTION_NAME_ALERT,
@@ -1293,12 +1299,11 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = new RestTemplate();
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
-    // Set the multipart/form-data converter as the only one.
-    List<HttpMessageConverter<?>> messageConverters =
-	new ArrayList<HttpMessageConverter<?>>();
-    messageConverters.add(new MimeMultipartHttpMessageConverter());
+    // Add our MultipartMessageHttpMessageConverter
+    List<HttpMessageConverter<?>> messageConverters = restTemplate.getMessageConverters();
+    messageConverters.add(new MultipartMessageHttpMessageConverter());
     restTemplate.setMessageConverters(messageConverters);
 
     HttpEntity<String> requestEntity = null;
@@ -1337,12 +1342,11 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 
       // Check whether there is a custom "Accept" header.
       if (acceptContentType != null) {
-	// Yes: Set it.
-	headers.setAccept(Arrays.asList(acceptContentType,
-	    MediaType.APPLICATION_JSON));
+        // Yes: Set it.
+        headers.setAccept(Arrays.asList(acceptContentType, MediaType.APPLICATION_JSON));
       } else {
-	// No: Set it to accept errors at least.
-	headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+        // No: Set it to accept errors at least.
+        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
       }
 
       // Check whether there is a custom If-Match header.
@@ -1380,26 +1384,41 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
       requestEntity = new HttpEntity<String>(null, headers);
     }
 
-    // Make the request and get the response. 
-    ResponseEntity<MimeMultipart> response = new TestRestTemplate(restTemplate)
-	.exchange(uri, HttpMethod.GET, requestEntity, MimeMultipart.class);
+    // Make the request and get the response.
+    TestRestTemplate testTemplate = new TestRestTemplate(restTemplate);
 
-    // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    restTemplate.setErrorHandler(new LockssResponseErrorHandler(restTemplate.getMessageConverters()));
 
-    MultipartResponse parsedResponse = null;
+    try {
+      ResponseEntity<MultipartMessage> response = testTemplate
+          .exchange(uri, HttpMethod.GET, requestEntity, MultipartMessage.class);
 
-    // Check whether it is a success response.
-    if (isSuccess(statusCode)) {
-      // Yes: Parse it.
-      parsedResponse = new MultipartResponse(response);
+      // Get the response status.
+      HttpStatus statusCode = response.getStatusCode();
+      assertEquals(expectedStatus, statusCode);
+
+      MultipartResponse parsedResponse = null;
+
+      // Check whether it is a success response.
+      if (isSuccess(statusCode)) {
+        // Yes: Parse it.
+        parsedResponse = new MultipartResponse(response);
+      }
+
+      // Return the parsed response.
+      if (log.isDebug2Enabled())
+        log.debug2("parsedResponse = {}", parsedResponse);
+
+      return parsedResponse;
+
+    } catch (LockssResponseErrorHandler.WrappedLockssRestHttpException e) {
+      LockssRestHttpException lhre = e.getLRHE();
+      HttpStatus statusCode = lhre.getHttpStatus();
+      assertFalse(RestUtil.isSuccess(statusCode));
+      assertEquals(expectedStatus, statusCode);
     }
 
-    // Return the parsed response.
-    if (log.isDebug2Enabled())
-      log.debug2("parsedResponse = {}", parsedResponse);
-    return parsedResponse;
+    return null;
   }
 
   /**
@@ -1535,10 +1554,10 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     Part part = parts.get(CONFIG_PART_NAME);
 
     // Validate the part content type.
-    Map<String, String> partHeaders = part.getHeaders();
+    HttpHeaders partHeaders = part.getHeaders();
     assertTrue(partHeaders.containsKey(HttpHeaders.CONTENT_TYPE));
     assertEquals(expectedContentType.toString(),
-	HeaderUtil.getMimeTypeFromContentType(partHeaders.get(
+	HeaderUtil.getMimeTypeFromContentType(partHeaders.getFirst(
 	    HttpHeaders.CONTENT_TYPE)));
 
     // Get the part payload content length.
@@ -1950,28 +1969,28 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.debug2("Invoked");
 
     // No URL: Spring checks the Accept header before credentials.
-    runTestGetConfigUrl(null, null, null, null, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(null, null, null, null, HttpStatus.UNAUTHORIZED);
 
     // Empty URL: Spring checks the Accept header before credentials.
     runTestGetConfigUrl(EMPTY_STRING, null, null, null,
-	HttpStatus.NOT_ACCEPTABLE);
+	HttpStatus.UNAUTHORIZED);
 
     HttpRequestPreconditions hrp =
 	new HttpRequestPreconditions(null, null, null, null);
 
     runTestGetConfigUrl(EMPTY_STRING, null, hrp, null,
-	HttpStatus.NOT_ACCEPTABLE);
+	HttpStatus.UNAUTHORIZED);
 
     String url = "http://something";
 
     // Missing Accept header: Spring checks the Accept header
     // before credentials.
-    runTestGetConfigUrl(url, null, null, null, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, null, null, null, HttpStatus.UNAUTHORIZED);
 
     hrp = new HttpRequestPreconditions(EMPTY_PRECONDITION_LIST, EMPTY_STRING,
 	EMPTY_PRECONDITION_LIST, EMPTY_STRING);
 
-    runTestGetConfigUrl(url, null, hrp, null, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, null, hrp, null, HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null,
@@ -2032,7 +2051,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     url = "http://localhost:12345";
 
     // Missing Accept header for UNAUTHORIZED response.
-    runTestGetConfigUrl(url, null, null, null, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, null, null, null, HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null,
@@ -2078,7 +2097,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     url = "http://example.com";
 
     // Missing Accept header for UNAUTHORIZED response.
-    runTestGetConfigUrl(url, null, null, null, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, null, null, null, HttpStatus.UNAUTHORIZED);
 
     // Missing credentials.
     runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, null,
@@ -2373,6 +2392,31 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
 	HttpStatus.PRECONDITION_FAILED);
 
     log.debug2("Done");
+
+    // IP access control tests
+
+    // No IP filters are defined; preceding tests are allowed because they
+    // come from loopback address.  Disabling special allowance for
+    // loopback should result in 403
+
+    ConfigurationUtil.addFromArgs(SpringAuthenticationFilter.PARAM_ALLOW_LOOPBACK,
+				  "false");
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, CONTENT_ADMIN,
+	HttpStatus.FORBIDDEN);
+
+
+    // Now specifially allow 127.0.0.1, should work
+    ConfigurationUtil.addFromArgs(SpringAuthenticationFilter.PARAM_IP_INCLUDE,
+				  "127.0.0.1");
+    runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, CONTENT_ADMIN,
+	HttpStatus.PRECONDITION_FAILED);
+
+    // Restore default config as multiple tests are run in a single testcase
+    ConfigurationUtil.addFromArgs(SpringAuthenticationFilter.PARAM_ALLOW_LOOPBACK,
+				  "false",
+				  SpringAuthenticationFilter.PARAM_IP_INCLUDE,
+				  "127.0.0.1");
+
   }
 
   /**
@@ -2412,12 +2456,11 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = new RestTemplate();
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     // Set the multipart/form-data converter as the only one.
-    List<HttpMessageConverter<?>> messageConverters =
-	new ArrayList<HttpMessageConverter<?>>();
-    messageConverters.add(new MimeMultipartHttpMessageConverter());
+    List<HttpMessageConverter<?>> messageConverters = restTemplate.getMessageConverters();
+    messageConverters.add(new MultipartMessageHttpMessageConverter());
     restTemplate.setMessageConverters(messageConverters);
 
     HttpEntity<String> requestEntity = null;
@@ -2499,9 +2542,12 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
       requestEntity = new HttpEntity<String>(null, headers);
     }
 
-    // Make the request and get the response. 
-    ResponseEntity<MimeMultipart> response = new TestRestTemplate(restTemplate)
-	.exchange(uri, HttpMethod.GET, requestEntity, MimeMultipart.class);
+    try {
+      // Make the request and get the response.
+      TestRestTemplate testTemplate = new TestRestTemplate(restTemplate);
+      restTemplate.setErrorHandler(new LockssResponseErrorHandler(restTemplate.getMessageConverters()));
+      ResponseEntity<MultipartMessage> response = testTemplate
+          .exchange(uri, HttpMethod.GET, requestEntity, MultipartMessage.class);
 
     // Get the response status.
     HttpStatus statusCode = response.getStatusCode();
@@ -2519,6 +2565,16 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     if (log.isDebug2Enabled())
       log.debug2("parsedResponse = {}", parsedResponse);
     return parsedResponse;
+
+    } catch (LockssResponseErrorHandler.WrappedLockssRestHttpException e) {
+      LockssRestHttpException lhre = e.getLRHE();
+
+      HttpStatus statusCode = lhre.getHttpStatus();
+      assertFalse(RestUtil.isSuccess(statusCode));
+      assertEquals(expectedStatus, statusCode);
+    }
+
+    return null;
   }
 
   /**
@@ -2586,7 +2642,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = new RestTemplate();
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     HttpEntity<String> requestEntity = null;
 
@@ -2708,7 +2764,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = new RestTemplate();
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     HttpEntity<String> requestEntity = null;
 
@@ -3723,7 +3779,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = new RestTemplate();
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     HttpEntity<MultiValueMap<String, Object>> requestEntity = null;
 
@@ -4006,7 +4062,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = new RestTemplate();
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     HttpEntity<String> requestEntity = null;
 

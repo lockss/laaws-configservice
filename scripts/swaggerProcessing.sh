@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2018-2019 Board of Trustees of Leland Stanford Jr. University,
+# Copyright (c) 2018-2020 Board of Trustees of Leland Stanford Jr. University,
 # all rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -38,7 +38,75 @@ sed -i.backup "s/import org.lockss.laaws.config.model.ApiStatus/import org.locks
 # Edit AusApiDelegate.java.
 AUS_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/AusApiDelegate.java
 sed -i.backup "s/import org.lockss.laaws.config.model.AuConfiguration/import org.lockss.config.AuConfiguration/" $AUS_API_DELEGATE && rm $AUS_API_DELEGATE.backup
+sed -i.backup "s/import org.lockss.laaws.config.model.ContentConfigurationResult/import org.lockss.ws.entities.ContentConfigurationResult/" $AUS_API_DELEGATE && rm $AUS_API_DELEGATE.backup
+sed -i.backup "s/import org.lockss.laaws.config.model.RequestAuControlResult/import org.lockss.ws.entities.RequestAuControlResult/" $AUS_API_DELEGATE && rm $AUS_API_DELEGATE.backup
 
 # Edit AusApi.java.
 AUS_API=src/generated/java/org/lockss/laaws/config/api/AusApi.java
 sed -i.backup "s/import org.lockss.laaws.config.model.AuConfiguration/import org.lockss.config.AuConfiguration/" $AUS_API && rm $AUS_API.backup
+sed -i.backup "s/import org.lockss.laaws.config.model.ContentConfigurationResult/import org.lockss.ws.entities.ContentConfigurationResult/" $AUS_API && rm $AUS_API.backup
+sed -i.backup "s/import org.lockss.laaws.config.model.RequestAuControlResult/import org.lockss.ws.entities.RequestAuControlResult/" $AUS_API && rm $AUS_API.backup
+
+# Edit ConfigApiDelegate.java.
+CONFIG_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/ConfigApiDelegate.java
+sed -i.backup "s/import org.lockss.laaws.config.model.PlatformConfigurationWsResult/import org.lockss.ws.entities.PlatformConfigurationWsResult/" $CONFIG_API_DELEGATE && rm $CONFIG_API_DELEGATE.backup
+
+# Edit AusApi.java.
+CONFIG_API=src/generated/java/org/lockss/laaws/config/api/ConfigApi.java
+sed -i.backup "s/import org.lockss.laaws.config.model.PlatformConfigurationWsResult/import org.lockss.ws.entities.PlatformConfigurationWsResult/" $CONFIG_API && rm $CONFIG_API.backup
+
+# Edit TdbausApiDelegate.java.
+TDBAUS_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/TdbausApiDelegate.java
+sed -i.backup "s/import org.lockss.laaws.config.model.TdbAuWsResult/import org.lockss.ws.entities.TdbAuWsResult/" $TDBAUS_API_DELEGATE && rm $TDBAUS_API_DELEGATE.backup
+
+# Edit TdbausApi.java.
+TDBAUS_API=src/generated/java/org/lockss/laaws/config/api/TdbausApi.java
+sed -i.backup "s/import org.lockss.laaws.config.model.TdbAuWsResult/import org.lockss.ws.entities.TdbAuWsResult/" $TDBAUS_API && rm $TDBAUS_API.backup
+
+# Edit TdbtitlesApiDelegate.java.
+TDBTITLES_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/TdbtitlesApiDelegate.java
+sed -i.backup "s/import org.lockss.laaws.config.model.TdbTitleWsResult/import org.lockss.ws.entities.TdbTitleWsResult/" $TDBTITLES_API_DELEGATE && rm $TDBTITLES_API_DELEGATE.backup
+
+# Edit TdbtitlesApi.java.
+TDBTITLES_API=src/generated/java/org/lockss/laaws/config/api/TdbtitlesApi.java
+sed -i.backup "s/import org.lockss.laaws.config.model.TdbTitleWsResult/import org.lockss.ws.entities.TdbTitleWsResult/" $TDBTITLES_API && rm $TDBTITLES_API.backup
+
+# Edit TdbpublishersApiDelegate.java.
+TDBPUBLISHERS_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/TdbpublishersApiDelegate.java
+sed -i.backup "s/import org.lockss.laaws.config.model.TdbPublisherWsResult/import org.lockss.ws.entities.TdbPublisherWsResult/" $TDBPUBLISHERS_API_DELEGATE && rm $TDBPUBLISHERS_API_DELEGATE.backup
+
+# Edit TdbpublishersApi.java.
+TDBPUBLISHERS_API=src/generated/java/org/lockss/laaws/config/api/TdbpublishersApi.java
+sed -i.backup "s/import org.lockss.laaws.config.model.TdbPublisherWsResult/import org.lockss.ws.entities.TdbPublisherWsResult/" $TDBPUBLISHERS_API && rm $TDBPUBLISHERS_API.backup
+
+# Edit PluginsApiDelegate.java.
+PLUGINS_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/PluginsApiDelegate.java
+sed -i.backup "s/import org.lockss.laaws.config.model.PluginWsResult/import org.lockss.ws.entities.PluginWsResult/" $PLUGINS_API_DELEGATE && rm $PLUGINS_API_DELEGATE.backup
+
+# Edit PluginsApi.java.
+PLUGINS_API=src/generated/java/org/lockss/laaws/config/api/PluginsApi.java
+sed -i.backup "s/import org.lockss.laaws.config.model.PluginWsResult/import org.lockss.ws.entities.PluginWsResult/" $PLUGINS_API && rm $PLUGINS_API.backup
+
+# Edit AuqueriesApiDelegate.java.
+AUQUERIES_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/AuqueriesApiDelegate.java
+sed -i.backup "s/import org.lockss.laaws.config.model.AuWsResult/import org.lockss.ws.entities.AuWsResult/" $AUQUERIES_API_DELEGATE && rm $AUQUERIES_API_DELEGATE.backup
+
+# Edit AuqueriesApi.java.
+AUQUERIES_API=src/generated/java/org/lockss/laaws/config/api/AuqueriesApi.java
+sed -i.backup "s/import org.lockss.laaws.config.model.AuWsResult/import org.lockss.ws.entities.AuWsResult/" $AUQUERIES_API && rm $AUQUERIES_API.backup
+
+# Edit AustatusesApiDelegate.java.
+AUSTATUSES_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/AustatusesApiDelegate.java
+sed -i.backup "s/import org.lockss.laaws.config.model.AuStatus/import org.lockss.ws.entities.AuStatus/" $AUSTATUSES_API_DELEGATE && rm $AUSTATUSES_API_DELEGATE.backup
+
+# Edit AustatusesApi.java.
+AUSTATUSES_API=src/generated/java/org/lockss/laaws/config/api/AustatusesApi.java
+sed -i.backup "s/import org.lockss.laaws.config.model.AuStatus/import org.lockss.ws.entities.AuStatus/" $AUSTATUSES_API && rm $AUSTATUSES_API.backup
+
+# Edit AusubstancesApiDelegate.java.
+AUSUBSTANCES_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/AusubstancesApiDelegate.java
+sed -i.backup "s/import org.lockss.laaws.config.model.CheckSubstanceResult/import org.lockss.ws.entities.CheckSubstanceResult/" $AUSUBSTANCES_API_DELEGATE && rm $AUSUBSTANCES_API_DELEGATE.backup
+
+# Edit AusubstanceeApi.java.
+AUSUBSTANCES_API=src/generated/java/org/lockss/laaws/config/api/AusubstancesApi.java
+sed -i.backup "s/import org.lockss.laaws.config.model.CheckSubstanceResult/import org.lockss.ws.entities.CheckSubstanceResult/" $AUSUBSTANCES_API && rm $AUSUBSTANCES_API.backup

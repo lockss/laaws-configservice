@@ -1,6 +1,6 @@
 /*
 
- Copyright (c) 2017-2018 Board of Trustees of Leland Stanford Jr. University,
+ Copyright (c) 2017-2020 Board of Trustees of Leland Stanford Jr. University,
  all rights reserved.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -64,6 +64,10 @@ public class ConfigApplication extends BaseSpringBootApplication
     IDENTITY_MANAGER_DESC,
     CRAWL_MANAGER_DESC,
     REPOSITORY_MANAGER_DESC,
+    // start database manager before any manager that uses it.
+    METADATA_DB_MANAGER_DESC,
+    // start metadata manager after plugin manager and database manager.
+    METADATA_MANAGER_DESC,
     REMOTE_API_DESC,
     COUNTER_REPORTS_MANAGER_DESC,
     SUBSCRIPTION_MANAGER_DESC,
@@ -109,6 +113,7 @@ public class ConfigApplication extends BaseSpringBootApplication
 		      "true")
 	.addAppConfig(PARAM_START_PLUGINS, "true")
 	.addAppDefault(PluginManager.PARAM_START_ALL_AUS, "true")
+	.setSpringApplicatonContext(getApplicationContext())
 	.setAppManagers(myManagerDescs);
       LockssApp.startStatic(LockssDaemon.class, spec);
     } else {

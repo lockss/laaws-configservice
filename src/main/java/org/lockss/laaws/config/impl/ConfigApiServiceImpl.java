@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2000-2019 Board of Trustees of Leland Stanford Jr. University,
+Copyright (c) 2000-2020 Board of Trustees of Leland Stanford Jr. University,
 all rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -33,6 +33,8 @@ package org.lockss.laaws.config.impl;
 
 import static org.lockss.config.ConfigManager.*;
 import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
+import static org.lockss.util.BuildInfo.BUILD_HOST;
+import static org.lockss.util.BuildInfo.BUILD_TIMESTAMP;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -40,6 +42,8 @@ import java.lang.reflect.MalformedParametersException;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
 import java.security.AccessControlException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -48,19 +52,32 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import org.lockss.alert.AlertManagerImpl;
+import org.lockss.app.LockssDaemon;
 import org.lockss.config.ConfigManager;
+import org.lockss.config.Configuration;
 import org.lockss.config.HttpRequestPreconditions;
 import org.lockss.config.ConfigFileReadWriteResult;
 import org.lockss.daemon.Cron;
 import org.lockss.spring.auth.Roles;
-import org.lockss.spring.auth.SpringAuthenticationFilter;
+import org.lockss.spring.auth.AuthUtil;
 import org.lockss.spring.base.*;
 import org.lockss.laaws.config.api.ConfigApiDelegate;
 import org.lockss.laaws.rs.util.NamedInputStreamResource;
 import org.lockss.log.L4JLogger;
+import org.lockss.spring.error.LockssRestServiceException;
 import org.lockss.util.AccessType;
+import org.lockss.util.BuildInfo;
+import org.lockss.util.DaemonVersion;
+import org.lockss.util.PlatformVersion;
 import org.lockss.util.StringUtil;
+import org.lockss.util.os.PlatformUtil;
+import org.lockss.util.time.TimeBase;
+import org.lockss.ws.entities.DaemonVersionWsResult;
+import org.lockss.ws.entities.JavaVersionWsResult;
+import org.lockss.ws.entities.PlatformConfigurationWsResult;
+import org.lockss.ws.entities.PlatformWsResult;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -118,6 +135,8 @@ public class ConfigApiServiceImpl
       }
   };
 
+  private static final String BUILD_TIMESTAMP_FORMAT = "dd-MMM-yy HH:mm:ss zzz";
+
   // The map of read-only configuration file sections.
   private Map<String, String> configReadOnlySectionMap = null;
 
@@ -144,9 +163,10 @@ public class ConfigApiServiceImpl
    *         section configuration file contents.
    */
   @Override
-  public ResponseEntity getSectionConfig(String sectionName, String accept,
-      String ifMatch, String ifModifiedSince, String ifNoneMatch,
-      String ifUnmodifiedSince) {
+  public ResponseEntity getSectionConfig(
+      String sectionName, String accept, String ifMatch,
+      String ifModifiedSince, String ifNoneMatch, String ifUnmodifiedSince) {
+
     log.debug2("sectionName = {}", () -> sectionName);
     log.debug2("accept = {}", () -> accept);
     log.debug2("ifMatch = {}", () -> ifMatch);
@@ -154,87 +174,82 @@ public class ConfigApiServiceImpl
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
+    String parsedRequest = String.format(
+        "sectionName: %s, accept: %s, ifMatch: %s, ifModifiedSince: %s, ifNoneMatch: %s, ifUnmodifiedSince: %s",
+        sectionName, accept, ifMatch, ifModifiedSince, ifNoneMatch, ifUnmodifiedSince
+    );
+
+    log.debug2("Parsed request: {}", parsedRequest);
+
     if (!waitConfig()) {
-      return new ResponseEntity<String>("Not Ready",
-					HttpStatus.SERVICE_UNAVAILABLE);
+      throw new LockssRestServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Not ready", parsedRequest);
     }
 
-    try {
       HttpRequestPreconditions preconditions;
 
       // Validate the precondition headers.
       try {
-	preconditions = new HttpRequestPreconditions(
-	    StringUtil.breakAt(ifMatch, ",", true), ifModifiedSince,
-	    StringUtil.breakAt(ifNoneMatch, ",", true), ifUnmodifiedSince);
-	log.trace("preconditions = {}", () -> preconditions);
+        preconditions = new HttpRequestPreconditions(
+            StringUtil.breakAt(ifMatch, ",", true), ifModifiedSince,
+            StringUtil.breakAt(ifNoneMatch, ",", true), ifUnmodifiedSince
+        );
+
+        log.trace("preconditions = {}", () -> preconditions);
       } catch (IllegalArgumentException iae) {
-	return new ResponseEntity<String>(iae.getMessage(),
-	    HttpStatus.BAD_REQUEST);
+        throw new LockssRestServiceException(HttpStatus.BAD_REQUEST, iae.getMessage(), parsedRequest);
       }
 
       // Validate the name of the section to be obtained.
       String canonicalSectionName;
-
       try {
-	canonicalSectionName =
-	    validateSectionName(sectionName, AccessType.READ);
-	log.trace("canonicalSectionName = {}", () -> canonicalSectionName);
+        canonicalSectionName = validateSectionName(sectionName, AccessType.READ);
+        log.trace("canonicalSectionName = {}", () -> canonicalSectionName);
       } catch (MalformedParametersException mpe) {
-	return new ResponseEntity<String>(mpe.getMessage(),
-	    HttpStatus.BAD_REQUEST);
-      }
-
-      // Check whether the request did not specify the appropriate "Accept"
-      // header.
-      if (accept.indexOf(MediaType.MULTIPART_FORM_DATA_VALUE) < 0) {
-	// Yes: Report the problem.
-	String message = "Accept header does not include '"
-	    + MediaType.MULTIPART_FORM_DATA_VALUE + "'";
-	log.warn(message);
-	return new ResponseEntity<String>(message, HttpStatus.NOT_ACCEPTABLE);
+        throw new LockssRestServiceException(HttpStatus.BAD_REQUEST, mpe.getMessage(), parsedRequest);
       }
 
       ConfigManager configManager = getConfigManager();
 
       // Try to get the name of the read-only configuration file to be returned.
-      String sectionUrl =
-	  getConfigReadOnlySectionMap().get(canonicalSectionName);
-      if (log.isTraceEnabled())
-	log.trace("Read-Only sectionUrl = {}", sectionUrl);
+      String sectionUrl = getConfigReadOnlySectionMap().get(canonicalSectionName);
+
+      if (log.isTraceEnabled()) {
+        log.trace("Read-Only sectionUrl = {}", sectionUrl);
+      }
 
       // Check whether no read-only configuration file was found.
       if (sectionUrl == null) {
-	// Yes: Try to get the name of the writable configuration file to be
-	// returned.
-	sectionUrl = new File(configManager.getCacheConfigDir(),
-	    configWritableSectionMap.get(canonicalSectionName)).toString();
-	if (log.isTraceEnabled())
-	  log.trace("Writable sectionUrl = {}", sectionUrl);
+        // Yes: Try to get the name of the writable configuration file to be returned.
+        sectionUrl = new File(
+            configManager.getCacheConfigDir(),
+            configWritableSectionMap.get(canonicalSectionName)
+        ).toString();
+
+        if (log.isTraceEnabled()) {
+          log.trace("Writable sectionUrl = {}", sectionUrl);
+        }
       }
 
       try {
-	return buildGetUrlResponse(sectionUrl, preconditions,
-	    configManager.conditionallyReadCacheConfigFile(sectionUrl,
-		preconditions));
+        return buildGetUrlResponse(
+            sectionUrl,
+            preconditions,
+            configManager.conditionallyReadCacheConfigFile(sectionUrl, preconditions)
+        );
+
       } catch (FileNotFoundException fnfe) {
-	String message =
-	    "Can't get the content for sectionName '" + sectionName + "'";
-	log.error(message, fnfe);
-	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
+
+        String message = "Can't get the content for sectionName '" + sectionName + "'";
+        log.error(message, fnfe);
+        throw new LockssRestServiceException(HttpStatus.NOT_FOUND, message, parsedRequest);
+
       } catch (IOException ioe) {
-	String message = "Can't get the content for URL '" + sectionUrl + "'";
-	log.error(message, ioe);
-	return new ResponseEntity<String>(message,
-	    HttpStatus.INTERNAL_SERVER_ERROR);
+
+        String message = "Can't get the content for URL '" + sectionUrl + "'";
+        log.error(message, ioe);
+        throw new LockssRestServiceException(HttpStatus.INTERNAL_SERVER_ERROR, message, parsedRequest);
+
       }
-    } catch (Exception e) {
-      String message =
-	  "Cannot getSectionConfig() for sectionName = '" + sectionName + "'";
-      log.error(message, e);
-      return new ResponseEntity<String>(message,
-	  HttpStatus.INTERNAL_SERVER_ERROR);
-    }
   }
 
   /**
@@ -261,8 +276,9 @@ public class ConfigApiServiceImpl
    */
   @Override
   public ResponseEntity getUrlConfig(String url, String accept,
-      String ifMatch, String ifModifiedSince, String ifNoneMatch,
-      String ifUnmodifiedSince) {
+                                     String ifMatch, String ifModifiedSince, String ifNoneMatch,
+                                     String ifUnmodifiedSince) {
+
     log.debug2("url = {}", () -> url);
     log.debug2("accept = {}", () -> accept);
     log.debug2("ifMatch = {}", () -> ifMatch);
@@ -270,60 +286,52 @@ public class ConfigApiServiceImpl
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
+    String parsedRequest = String.format(
+        "url: %s, accept: %s, ifMatch: %s, ifModifiedSince: %s, ifNoneMatch: %s, ifUnmodifiedSince: %s",
+        url, accept, ifMatch, ifModifiedSince, ifNoneMatch, ifUnmodifiedSince
+    );
+
+    log.debug2("Parsed request: {}", parsedRequest);
+
     if (!waitConfig()) {
-      return new ResponseEntity<String>("Not Ready",
-					HttpStatus.SERVICE_UNAVAILABLE);
+      throw new LockssRestServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Not ready", parsedRequest);
     }
 
-    try {
       HttpRequestPreconditions preconditions;
 
       // Validate the precondition headers.
       try {
-	preconditions = new HttpRequestPreconditions(
-	    StringUtil.breakAt(ifMatch, ",", true), ifModifiedSince,
-	    StringUtil.breakAt(ifNoneMatch, ",", true), ifUnmodifiedSince);
-	log.trace("preconditions = {}", () -> preconditions);
+        preconditions = new HttpRequestPreconditions(
+            StringUtil.breakAt(ifMatch, ",", true), ifModifiedSince,
+            StringUtil.breakAt(ifNoneMatch, ",", true), ifUnmodifiedSince
+        );
+
+        log.trace("preconditions = {}", () -> preconditions);
       } catch (IllegalArgumentException iae) {
-	return new ResponseEntity<String>(iae.getMessage(),
-	    HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<String>(iae.getMessage(), HttpStatus.BAD_REQUEST);
       }
 
-      // Check whether the request did not specify the appropriate "Accept"
-      // header.
-      if (accept.indexOf(MediaType.MULTIPART_FORM_DATA_VALUE) < 0) {
-	// Yes: Report the problem.
-	String message = "Accept header does not include '"
-	    + MediaType.MULTIPART_FORM_DATA_VALUE + "'";
-	log.warn(message);
-	return new ResponseEntity<String>(message, HttpStatus.NOT_ACCEPTABLE);
-      }
-
-      String message1 = "Can't get the content for url '" + url + "': ";
       try {
-	return buildGetUrlResponse(url, preconditions, getConfigManager()
-	    .conditionallyReadCacheConfigFile(url, preconditions));
-      } catch (FileNotFoundException | UnknownHostException
-	       | ConnectException e) {
-	String message = "Can't get the content for url '" + url + "'";
-	log.debug(message + ": " + e);
-	return new ResponseEntity<String>(message, HttpStatus.NOT_FOUND);
+        return buildGetUrlResponse(
+            url,
+            preconditions,
+            getConfigManager().conditionallyReadCacheConfigFile(url, preconditions)
+        );
+      } catch (FileNotFoundException | UnknownHostException | ConnectException e) {
+        String message = "Can't get the content for url '" + url + "'";
+        log.debug(message + ": " + e);
+        throw new LockssRestServiceException(HttpStatus.NOT_FOUND, message, parsedRequest);
       } catch (UnsupportedOperationException uoe) {
-	String message = "Can't get the content for url '" + url + "'";
-	log.error(message, uoe);
-	return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
+        String message = "Can't get the content for url '" + url + "'";
+        log.error(message, uoe);
+        return new ResponseEntity<String>(message, HttpStatus.BAD_REQUEST);
+
       } catch (IOException ioe) {
-	String message = "Can't get the content for URL '" + url + "'";
-	log.error(message, ioe);
-	return new ResponseEntity<String>(message,
-	    HttpStatus.INTERNAL_SERVER_ERROR);
+        String message = "Can't get the content for URL '" + url + "'";
+        log.error(message, ioe);
+        return new ResponseEntity<String>(message,
+            HttpStatus.INTERNAL_SERVER_ERROR);
       }
-    } catch (Exception e) {
-      String message = "Cannot getUrlConfig() for url = '" + url + "'";
-      log.error(message, e);
-      return new ResponseEntity<String>(message,
-	  HttpStatus.INTERNAL_SERVER_ERROR);
-    }
   }
 
   /**
@@ -407,8 +415,9 @@ public class ConfigApiServiceImpl
    */
   @Override
   public ResponseEntity putConfig(String sectionName,
-      MultipartFile configFile, String ifMatch, String ifModifiedSince,
-      String ifNoneMatch, String ifUnmodifiedSince) {
+                                  MultipartFile configFile, String ifMatch, String ifModifiedSince,
+                                  String ifNoneMatch, String ifUnmodifiedSince) {
+
     log.debug2("sectionName = {}", () -> sectionName);
     log.debug2("configFile = {}", () -> configFile);
     log.debug2("ifMatch = {}", () -> ifMatch);
@@ -417,13 +426,12 @@ public class ConfigApiServiceImpl
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
     if (!waitConfig(0)) {
-      return new ResponseEntity<String>("Not Ready",
-					HttpStatus.SERVICE_UNAVAILABLE);
+      return new ResponseEntity<String>("Not Ready", HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check authorization.
+    // Check for required role.
     try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_USER_ADMIN);
+      AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
@@ -433,9 +441,9 @@ public class ConfigApiServiceImpl
 
     // Validate the precondition headers.
     try {
-	preconditions = new HttpRequestPreconditions(
-	    StringUtil.breakAt(ifMatch, ",", true), ifModifiedSince,
-	    StringUtil.breakAt(ifNoneMatch, ",", true), ifUnmodifiedSince);
+      preconditions = new HttpRequestPreconditions(
+          StringUtil.breakAt(ifMatch, ",", true), ifModifiedSince,
+          StringUtil.breakAt(ifNoneMatch, ",", true), ifUnmodifiedSince);
       log.trace("preconditions = {}", () -> preconditions);
     } catch (IllegalArgumentException iae) {
       return new ResponseEntity<Void>(HttpStatus.BAD_REQUEST);
@@ -465,18 +473,18 @@ public class ConfigApiServiceImpl
       log.trace("sectionUrl = {}", () -> sectionUrl);
 
       String filename =
-	  new File(configManager.getCacheConfigDir(), sectionUrl).toString();
+          new File(configManager.getCacheConfigDir(), sectionUrl).toString();
       log.trace("filename = {}", () -> filename);
 
       // Write the file.
       ConfigFileReadWriteResult writeResult = configManager
-	  .conditionallyWriteCacheConfigFile(filename, preconditions,
-	      configFile.getInputStream());
+          .conditionallyWriteCacheConfigFile(filename, preconditions,
+              configFile.getInputStream());
 
       // Check whether the preconditions have not been met.
       if (!writeResult.isPreconditionsMet()) {
-	// Yes: Return no content, just a Precondition-Failed status.
-	return new ResponseEntity<Void>(HttpStatus.PRECONDITION_FAILED);
+        // Yes: Return no content, just a Precondition-Failed status.
+        return new ResponseEntity<Void>(HttpStatus.PRECONDITION_FAILED);
       }
 
       String lastModified = writeResult.getLastModified();
@@ -494,7 +502,7 @@ public class ConfigApiServiceImpl
       return new ResponseEntity<Void>(null, responseHeaders, HttpStatus.OK);
     } catch (Exception e) {
       String message = "Cannot putConfig() for sectionName = '" + sectionName
-	  + "', configFile = '" + configFile + "'";
+          + "', configFile = '" + configFile + "'";
       log.error(message, e);
       return new ResponseEntity<Void>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -515,9 +523,9 @@ public class ConfigApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check authorization.
+    // Check for required role
     try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_USER_ADMIN);
+      AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
@@ -529,6 +537,100 @@ public class ConfigApiServiceImpl
       return new ResponseEntity<Void>(HttpStatus.OK);
     } catch (Exception e) {
       String message = "Cannot requestReload()";
+      log.error(message, e);
+      return new ResponseEntity<Void>(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Provides the platform configuration.
+   * 
+   * @return a {@code ResponseEntity<PlatformConfigurationWsResult>} with the
+   *         platform configuration.
+   */
+  @Override
+  public ResponseEntity getPlatformConfig() {
+    log.debug2("Invoked.");
+
+    if (!waitConfig()) {
+      return new ResponseEntity<String>("Not Ready",
+					HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    PlatformConfigurationWsResult result = new PlatformConfigurationWsResult();
+
+    try {
+      LockssDaemon theDaemon = LockssDaemon.getLockssDaemon();
+      Configuration config = ConfigManager.getCurrentConfig();
+
+      result.setHostName(config.get(PARAM_PLATFORM_FQDN));
+
+      result.setIpAddress(config.get(PARAM_PLATFORM_IP_ADDRESS));
+
+      result.setGroups((List<String>)(config.getPlatformGroupList()));
+      result.setProject(config.get(PARAM_PLATFORM_PROJECT));
+      result.setV3Identity(config.get(PARAM_PLATFORM_LOCAL_V3_IDENTITY));
+
+      String smtpHost = config.get(PARAM_PLATFORM_SMTP_HOST);
+
+      if (smtpHost != null) {
+	int smtpPort = config.getInt(PARAM_PLATFORM_SMTP_PORT,
+	    org.lockss.mail.SmtpMailService.DEFAULT_SMTPPORT);
+	result.setMailRelay(smtpHost + ":" + smtpPort);
+      }
+
+      result.setAdminEmail(config.get(PARAM_PLATFORM_ADMIN_EMAIL));
+      result.setDisks((List<String>)
+	  (config.getList(PARAM_PLATFORM_DISK_SPACE_LIST)));
+
+      result.setCurrentTime(TimeBase.nowMs());
+      result.setUptime(TimeBase.msSince(theDaemon.getStartDate().getTime()));
+
+      DaemonVersion daemonVersion = ConfigManager.getDaemonVersion();
+      DaemonVersionWsResult daemonVersionResult = new DaemonVersionWsResult();
+
+      daemonVersionResult.setFullVersion(daemonVersion.displayString());
+      daemonVersionResult.setMajorVersion(daemonVersion.getMajorVersion());
+      daemonVersionResult.setMinorVersion(daemonVersion.getMinorVersion());
+      daemonVersionResult.setBuildVersion(daemonVersion.getBuildVersion());
+
+      result.setDaemonVersion(daemonVersionResult);
+
+      JavaVersionWsResult javaVersionResult = new JavaVersionWsResult();
+
+      Properties sprops = System.getProperties();
+      javaVersionResult.setVersion(sprops.getProperty("java.version"));
+      javaVersionResult.setSpecificationVersion(
+	  sprops.getProperty("java.specification.version"));
+      javaVersionResult.setRuntimeVersion(
+	  sprops.getProperty("java.runtime.version"));
+      javaVersionResult.setRuntimeName(sprops.getProperty("java.runtime.name"));
+
+      result.setJavaVersion(javaVersionResult);
+
+      PlatformVersion platformVersion = Configuration.getPlatformVersion();
+      PlatformWsResult platform = new PlatformWsResult();
+
+      if (platformVersion != null) {
+	platform.setName(platformVersion.getName());
+	platform.setVersion(platformVersion.getVersion());
+	platform.setSuffix(platformVersion.getSuffix());
+	result.setPlatform(platform);
+      }
+
+      result.setCurrentWorkingDirectory(PlatformUtil.getCwd());
+
+      result.setProperties((List<String>)
+	  (ConfigManager.getConfigManager().getConfigUrlList()));
+
+      result.setBuildHost(BuildInfo.getBuildProperty(BUILD_HOST));
+      result.setBuildTimestamp(getBuildTimestamp());
+
+      log.debug2("result = {}", result);
+      return new ResponseEntity<PlatformConfigurationWsResult>(result,
+	    HttpStatus.OK);
+    } catch (Exception e) {
+      String message = "Cannot getPlatformConfig()";
       log.error(message, e);
       return new ResponseEntity<Void>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -713,4 +815,26 @@ public class ConfigApiServiceImpl
     }
   }
 
+  /**
+   * Provides the build timestamp.
+   * 
+   * @return A long with the build timestamp.
+   * @throws ParseException if there are problems parsing the timestamp.
+   */
+  protected long getBuildTimestamp() throws ParseException {
+    log.debug2("Invoked.");
+
+    try {
+      long timestamp = (new SimpleDateFormat(BUILD_TIMESTAMP_FORMAT))
+	  .parse(BuildInfo.getBuildProperty(BUILD_TIMESTAMP)).getTime();
+
+      log.debug2("timestamp = {}", timestamp);
+      return timestamp;
+    } catch (ParseException pe) {
+      log.error("Caught ParseException", pe);
+      log.error("BuildInfo.getBuildProperty(BUILD_TIMESTAMP)) = '"
+	  + BuildInfo.getBuildProperty(BUILD_TIMESTAMP) + "'");
+      throw pe;
+    }
+  }
 }

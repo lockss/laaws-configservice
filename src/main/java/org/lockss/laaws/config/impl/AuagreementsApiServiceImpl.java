@@ -38,7 +38,7 @@ import org.lockss.laaws.config.api.AuagreementsApiDelegate;
 import org.lockss.log.L4JLogger;
 import org.lockss.plugin.AuUtil;
 import org.lockss.spring.auth.Roles;
-import org.lockss.spring.auth.SpringAuthenticationFilter;
+import org.lockss.spring.auth.AuthUtil;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
 import org.lockss.state.StateManager;
 import org.lockss.util.JsonUtil;
@@ -125,9 +125,9 @@ public class AuagreementsApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check authorization.
+    // Check for required role
     try {
-      SpringAuthenticationFilter.checkAuthorization(Roles.ROLE_AU_ADMIN);
+      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
     } catch (AccessControlException ace) {
       log.warn(ace.getMessage());
       return getErrorResponseEntity(HttpStatus.FORBIDDEN, null, ace);

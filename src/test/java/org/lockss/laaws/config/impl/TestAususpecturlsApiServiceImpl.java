@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2000-2019 Board of Trustees of Leland Stanford Jr. University,
+Copyright (c) 2000-2020 Board of Trustees of Leland Stanford Jr. University,
 all rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -50,7 +50,7 @@ import org.lockss.state.AuSuspectUrlVersions;
 import org.lockss.state.StateManager;
 import org.lockss.state.AuSuspectUrlVersions.SuspectUrlVersion;
 import org.lockss.test.MockLockssDaemon;
-import org.lockss.test.SpringLockssTestCase;
+import org.lockss.spring.test.SpringLockssTestCase4;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.context.embedded.LocalServerPort;
@@ -73,7 +73,7 @@ import org.springframework.web.util.UriComponentsBuilder;
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class TestAususpecturlsApiServiceImpl extends SpringLockssTestCase {
+public class TestAususpecturlsApiServiceImpl extends SpringLockssTestCase4 {
   private static L4JLogger log = L4JLogger.getLogger();
 
   private static final String EMPTY_STRING = "";
@@ -365,7 +365,7 @@ public class TestAususpecturlsApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = new RestTemplate();
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     HttpEntity<String> requestEntity = null;
 
@@ -589,7 +589,7 @@ public class TestAususpecturlsApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = new RestTemplate();
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     HttpEntity<String> requestEntity = null;
 
@@ -1158,7 +1158,7 @@ public class TestAususpecturlsApiServiceImpl extends SpringLockssTestCase {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = new RestTemplate();
+    RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     HttpEntity<String> requestEntity = null;
 
