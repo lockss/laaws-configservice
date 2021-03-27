@@ -145,8 +145,6 @@ public class ConfigApiServiceImpl
    * 
    * @param sectionName
    *          A String with the section name.
-   * @param accept
-   *          A String with the value of the "Accept" request header.
    * @param ifMatch
    *          A List<String> with the "If-Match" request header, containing an
    *          asterisk or values equivalent to the "If-Unmodified-Since" request
@@ -164,19 +162,19 @@ public class ConfigApiServiceImpl
    */
   @Override
   public ResponseEntity getSectionConfig(
-      String sectionName, String accept, String ifMatch,
+      String sectionName, String ifMatch,
       String ifModifiedSince, String ifNoneMatch, String ifUnmodifiedSince) {
 
     log.debug2("sectionName = {}", () -> sectionName);
-    log.debug2("accept = {}", () -> accept);
+//    log.debug2("accept = {}", () -> accept);
     log.debug2("ifMatch = {}", () -> ifMatch);
     log.debug2("ifModifiedSince = {}", () -> ifModifiedSince);
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
     String parsedRequest = String.format(
-        "sectionName: %s, accept: %s, ifMatch: %s, ifModifiedSince: %s, ifNoneMatch: %s, ifUnmodifiedSince: %s",
-        sectionName, accept, ifMatch, ifModifiedSince, ifNoneMatch, ifUnmodifiedSince
+        "sectionName: %s, ifMatch: %s, ifModifiedSince: %s, ifNoneMatch: %s, ifUnmodifiedSince: %s",
+        sectionName, ifMatch, ifModifiedSince, ifNoneMatch, ifUnmodifiedSince
     );
 
     log.debug2("Parsed request: {}", parsedRequest);

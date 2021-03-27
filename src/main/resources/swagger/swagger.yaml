@@ -123,6 +123,7 @@ paths:
       operationId: getSectionConfig
       produces:
         - multipart/form-data
+        - application/json
       parameters:
         - name: 'sectionName'
           in: path
@@ -130,11 +131,11 @@ paths:
             \ is requested
           required: true
           type: string
-        - name: 'Accept'
-          in: header
-          description: The Accept header
-          required: true
-          type: string
+#        - name: 'Accept'
+#          in: header
+#          description: The Accept header
+#          required: true
+#          type: string
         - name: 'If-Match'
           in: header
           description: The If-Match header
@@ -183,6 +184,7 @@ paths:
       operationId: getUrlConfig
       produces:
         - multipart/form-data
+        - application/json
       parameters:
         - name: 'url'
           in: 'query'
