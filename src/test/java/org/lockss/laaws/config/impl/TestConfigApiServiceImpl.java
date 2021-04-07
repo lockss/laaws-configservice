@@ -245,11 +245,6 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.debug2("Done");
   }
 
-  @Test
-  public void isolatedTest() throws Exception {
-    getConfigSectionUnAuthenticatedTest();
-  }
-
   /**
    * Runs the full controller tests with authentication turned on.
    * 
@@ -511,14 +506,14 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	HttpStatus.NOT_FOUND);
 
     // Bad Accept header content type.
-//    runTestGetConfigSection(SECTION_NAME_ALERT,
-//	MediaType.APPLICATION_JSON, null, null, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(SECTION_NAME_ALERT,
+	MediaType.APPLICATION_JSON, null, null, HttpStatus.NOT_ACCEPTABLE);
 
     hrp = new HttpRequestPreconditions(EMPTY_PRECONDITION_LIST, EMPTY_STRING,
 	EMPTY_PRECONDITION_LIST, EMPTY_STRING);
 
-//    runTestGetConfigSection(SECTION_NAME_ALERT,
-//	MediaType.APPLICATION_JSON, hrp, null, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(SECTION_NAME_ALERT,
+	MediaType.APPLICATION_JSON, hrp, null, HttpStatus.NOT_ACCEPTABLE);
 
     // Good Accept header content type.
     runTestGetConfigSection(SECTION_NAME_ALERT,
@@ -532,18 +527,18 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	MediaType.MULTIPART_FORM_DATA, hrp, null, HttpStatus.NOT_FOUND);
 
     // Bad Accept header content type.
-//    runTestGetConfigSection(SECTION_NAME_ALERT, null, null, ANYBODY,
-//	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(SECTION_NAME_ALERT, null, null, ANYBODY,
+	HttpStatus.NOT_ACCEPTABLE);
 
     hrp = new HttpRequestPreconditions(null, EMPTY_STRING, IfMatchNoMatch,
 	EMPTY_STRING);
 
-//    runTestGetConfigSection(SECTION_NAME_ALERT, null, null, ANYBODY,
-//	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(SECTION_NAME_ALERT, null, null, ANYBODY,
+	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-//    runTestGetConfigSection(SECTION_NAME_ALERT,
-//	MediaType.APPLICATION_JSON, null, ANYBODY, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(SECTION_NAME_ALERT,
+	MediaType.APPLICATION_JSON, null, ANYBODY, HttpStatus.NOT_ACCEPTABLE);
 
     // Good Accept header content type.
     runTestGetConfigSection(SECTION_NAME_ALERT,
@@ -571,9 +566,9 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     // Verify the part last modification timestamps.
     verifyPartModificationTimestamps(part, null);
 
-//    // Bad Accept header content type.
-//    runTestGetConfigSection(SECTION_NAME_CLUSTER,
-//	MediaType.APPLICATION_JSON, null, null, HttpStatus.NOT_ACCEPTABLE);
+    // Bad Accept header content type.
+    runTestGetConfigSection(SECTION_NAME_CLUSTER,
+	MediaType.APPLICATION_JSON, null, null, HttpStatus.NOT_ACCEPTABLE);
 
     // Good Accept header content type.
     configOutput = runTestGetConfigSection(SECTION_NAME_CLUSTER,
@@ -856,29 +851,31 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Bad Accept header content type.
-//    runTestGetConfigSection(SECTION_NAME_ALERT, null, null,
-//	USER_ADMIN, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(SECTION_NAME_ALERT, null, null,
+	USER_ADMIN, HttpStatus.NOT_ACCEPTABLE);
 
     hrp = new HttpRequestPreconditions(null, EMPTY_STRING, IfMatchNoMatch,
 	EMPTY_STRING);
 
-//    runTestGetConfigSection(SECTION_NAME_ALERT, null, hrp,
-//	CONTENT_ADMIN, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(SECTION_NAME_ALERT, null, hrp,
+	CONTENT_ADMIN, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-//    runTestGetConfigSection(SECTION_NAME_ALERT, MediaType.APPLICATION_JSON, null, USER_ADMIN,
-//	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(SECTION_NAME_ALERT,
+	MediaType.APPLICATION_JSON, null, USER_ADMIN,
+	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     List<String> ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
     hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
 
-//    runTestGetConfigSection(SECTION_NAME_ALERT, MediaType.APPLICATION_JSON, hrp, CONTENT_ADMIN,
-//	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(SECTION_NAME_ALERT,
+	MediaType.APPLICATION_JSON, hrp, CONTENT_ADMIN,
+	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-//    runTestGetConfigSection(SECTION_NAME_ALERT, null, hrp, USER_ADMIN,
-//	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(SECTION_NAME_ALERT, null, hrp, USER_ADMIN,
+	HttpStatus.NOT_ACCEPTABLE);
 
     // Not found.
     runTestGetConfigSection(SECTION_NAME_ALERT,
@@ -956,7 +953,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 
     // Bad section name.
     runTestGetConfigSection(BAD_SN, null, null, USER_ADMIN,
-	HttpStatus.BAD_REQUEST);
+	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad section name using the REST service client.
     runTestGetConfigSectionClient(BAD_SN, null, CONTENT_ADMIN,
@@ -2204,56 +2201,55 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 
     // No URL.
     runTestGetConfigUrl(null, null, null, USER_ADMIN,
-	HttpStatus.NOT_FOUND);
+	HttpStatus.NOT_ACCEPTABLE);
 
     HttpRequestPreconditions hrp =
 	new HttpRequestPreconditions(null, null, null, null);
 
     runTestGetConfigUrl(null, null, hrp, CONTENT_ADMIN,
-	HttpStatus.NOT_FOUND);
+	HttpStatus.NOT_ACCEPTABLE);
 
     // Empty URL.
     runTestGetConfigUrl(EMPTY_STRING, null, null, USER_ADMIN,
-	HttpStatus.NOT_FOUND);
+	HttpStatus.NOT_ACCEPTABLE);
 
     hrp = new HttpRequestPreconditions(EMPTY_PRECONDITION_LIST, EMPTY_STRING,
 	  EMPTY_PRECONDITION_LIST, EMPTY_STRING);
 
     runTestGetConfigUrl(EMPTY_STRING, null, hrp, CONTENT_ADMIN,
-	HttpStatus.NOT_FOUND);
+	HttpStatus.NOT_ACCEPTABLE);
 
     String url = "http://something";
 
     // Bad Accept header content type.
-//    runTestGetConfigUrl(url, null, null, USER_ADMIN, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, null, null, USER_ADMIN, HttpStatus.NOT_ACCEPTABLE);
 
     List<String> IfMatchNoMatch = ListUtil.list(EMPTY_PRECONDITION);
     hrp = new HttpRequestPreconditions(IfMatchNoMatch, EMPTY_STRING, null,
 	EMPTY_STRING);
 
-//    runTestGetConfigUrl(url, null, hrp, CONTENT_ADMIN,
-//	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, null, hrp, CONTENT_ADMIN,
+	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-//    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, USER_ADMIN,
-//	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, USER_ADMIN,
+	HttpStatus.NOT_ACCEPTABLE);
 
     hrp = new HttpRequestPreconditions(null, EMPTY_STRING, IfMatchNoMatch,
 	EMPTY_STRING);
 
-//    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, CONTENT_ADMIN,
-//	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, CONTENT_ADMIN,
+	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
     List<String> ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
     hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
-
-//    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, USER_ADMIN,
-//	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, USER_ADMIN,
+	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-//    runTestGetConfigUrl(url, null, hrp, CONTENT_ADMIN,
-//	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, null, hrp, CONTENT_ADMIN,
+	HttpStatus.NOT_ACCEPTABLE);
 
     // Nothing there.
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, USER_ADMIN,
@@ -2262,22 +2258,22 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     url = "http://example.com";
 
     // Bad Accept header content type.
-//    MultipartResponse configOutput = runTestGetConfigUrl(url, null, null,
-//	CONTENT_ADMIN, HttpStatus.NOT_ACCEPTABLE);
+    MultipartResponse configOutput = runTestGetConfigUrl(url, null, null,
+	CONTENT_ADMIN, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-//    runTestGetConfigUrl(url, null, hrp, USER_ADMIN, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, null, hrp, USER_ADMIN, HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-//    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, CONTENT_ADMIN,
-//	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, null, CONTENT_ADMIN,
+	HttpStatus.NOT_ACCEPTABLE);
 
     // Bad Accept header content type.
-//    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, USER_ADMIN,
-//	HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigUrl(url, MediaType.APPLICATION_JSON, hrp, USER_ADMIN,
+	HttpStatus.NOT_ACCEPTABLE);
 
     // Success.
-    MultipartResponse configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
+    configOutput = runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, null,
 	CONTENT_ADMIN, HttpStatus.OK);
 
     List<String> expectedPayloads =
@@ -3481,8 +3477,8 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     // Bad Accept header content type.
     List<String> ifNoneMatch = ListUtil.list(ZERO_PRECONDITION);
     hrp = new HttpRequestPreconditions(null, null, ifNoneMatch, null);
-//    runTestGetConfigSection(SECTION_NAME_EXPERT, null, hrp,
-//	USER_ADMIN, HttpStatus.NOT_ACCEPTABLE);
+    runTestGetConfigSection(SECTION_NAME_EXPERT, null, hrp,
+	USER_ADMIN, HttpStatus.NOT_ACCEPTABLE);
 
     // Verify that nothing was written when the preconditions failed.
     configOutput = runTestGetConfigSection(SECTION_NAME_EXPERT,
