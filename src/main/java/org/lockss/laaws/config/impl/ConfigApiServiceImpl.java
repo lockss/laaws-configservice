@@ -321,6 +321,16 @@ public class ConfigApiServiceImpl
         return new ResponseEntity<String>(iae.getMessage(), HttpStatus.BAD_REQUEST);
       }
 
+      // Check whether the request did not specify the appropriate "Accept"
+      // header.
+      if (accept.indexOf(MediaType.MULTIPART_FORM_DATA_VALUE) < 0) {
+        // Yes: Report the problem.
+        String message = "Accept header does not include '"
+            + MediaType.MULTIPART_FORM_DATA_VALUE + "'";
+        log.warn(message);
+        return new ResponseEntity<String>(message, HttpStatus.NOT_ACCEPTABLE);
+      }
+
       try {
         return buildGetUrlResponse(
             url,
