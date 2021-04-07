@@ -142,7 +142,7 @@ public class ConfigApiServiceImpl
 
   /**
    * Provides the configuration file for a section given the section name.
-   * 
+   *
    * @param sectionName
    *          A String with the section name.
    * @param accept
@@ -264,7 +264,7 @@ public class ConfigApiServiceImpl
 
   /**
    * Provides the configuration file for a given URL.
-   * 
+   *
    * @param url
    *          A String with the url.
    * @param accept
@@ -346,7 +346,7 @@ public class ConfigApiServiceImpl
 
   /**
    * Provides the timestamp of the last time the configuration was updated.
-   * 
+   *
    * @return a {@code ResponseEntity<Date>} with the timestamp.
    */
   @Override
@@ -377,7 +377,7 @@ public class ConfigApiServiceImpl
 
   /**
    * Provides the URLs from which the configuration was loaded.
-   * 
+   *
    * @return a {@code ResponseEntity<List<String>>} with the URLs.
    */
   @Override
@@ -404,7 +404,7 @@ public class ConfigApiServiceImpl
 
   /**
    * Stores the configuration file for a section given the section name.
-   * 
+   *
    * @param sectionName
    *          A String with the section name.
    * @param configFile
@@ -520,7 +520,7 @@ public class ConfigApiServiceImpl
 
   /**
    * Requests a reload of the configuration.
-   * 
+   *
    * @return a {@code ResponseEntity<Void>} with the status.
    */
   @Override
@@ -554,7 +554,7 @@ public class ConfigApiServiceImpl
 
   /**
    * Provides the platform configuration.
-   * 
+   *
    * @return a {@code ResponseEntity<PlatformConfigurationWsResult>} with the
    *         platform configuration.
    */
@@ -648,7 +648,7 @@ public class ConfigApiServiceImpl
 
   /**
    * Provides a validated canonical version of the passed section name.
-   * 
+   *
    * @param sectionName
    *          A String with the section name.
    * @param access
@@ -696,7 +696,7 @@ public class ConfigApiServiceImpl
   /**
    * Provides a lazy-loaded copy of the map of read-only configuration file
    * sections.
-   * 
+   *
    * @return a {@code Map<String, String>} with the map of read-only
    *         configuration file sections.
    */
@@ -715,7 +715,7 @@ public class ConfigApiServiceImpl
 
   /**
    * Provides the response for a request to get the content at a URL.
-   * 
+   *
    * @param url
    *          A String with the URL where to get the content.
    * @param preconditions
@@ -827,7 +827,7 @@ public class ConfigApiServiceImpl
 
   /**
    * Provides the build timestamp.
-   * 
+   *
    * @return A long with the build timestamp.
    * @throws ParseException if there are problems parsing the timestamp.
    */
