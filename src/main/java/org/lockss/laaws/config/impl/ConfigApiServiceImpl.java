@@ -199,15 +199,6 @@ public class ConfigApiServiceImpl
         throw new LockssRestServiceException(HttpStatus.BAD_REQUEST, iae.getMessage(), parsedRequest);
       }
 
-      // Validate the name of the section to be obtained.
-      String canonicalSectionName;
-      try {
-        canonicalSectionName = validateSectionName(sectionName, AccessType.READ);
-        log.trace("canonicalSectionName = {}", () -> canonicalSectionName);
-      } catch (MalformedParametersException mpe) {
-        throw new LockssRestServiceException(HttpStatus.BAD_REQUEST, mpe.getMessage(), parsedRequest);
-      }
-
     // Check whether the request did not specify the appropriate "Accept"
     // header.
     if (accept.indexOf(MediaType.MULTIPART_FORM_DATA_VALUE) < 0) {
@@ -217,6 +208,15 @@ public class ConfigApiServiceImpl
       log.warn(message);
       throw new LockssRestServiceException(HttpStatus.NOT_ACCEPTABLE, message, parsedRequest);
     }
+
+      // Validate the name of the section to be obtained.
+      String canonicalSectionName;
+      try {
+        canonicalSectionName = validateSectionName(sectionName, AccessType.READ);
+        log.trace("canonicalSectionName = {}", () -> canonicalSectionName);
+      } catch (MalformedParametersException mpe) {
+        throw new LockssRestServiceException(HttpStatus.BAD_REQUEST, mpe.getMessage(), parsedRequest);
+      }
 
       ConfigManager configManager = getConfigManager();
 
