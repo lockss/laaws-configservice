@@ -50,6 +50,8 @@ tags:
     description: Tasks on the archival units (AUs)
 schemes:
   - https
+produces:
+  - application/json
 security:
   - basicAuth: []
 paths:
@@ -119,6 +121,8 @@ paths:
       summary: Get the named configuration file
       description: Get the configuration file stored for a given name
       operationId: getSectionConfig
+      produces:
+        - multipart/form-data
       parameters:
         - name: 'sectionName'
           in: path
@@ -172,6 +176,8 @@ paths:
       summary: Get the configuration file for a URL
       description: Get the configuration file stored for a given URL
       operationId: getUrlConfig
+      produces:
+        - multipart/form-data
       parameters:
         - name: 'url'
           in: 'query'
