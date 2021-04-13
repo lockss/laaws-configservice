@@ -164,19 +164,18 @@ public class ConfigApiServiceImpl
    */
   @Override
   public ResponseEntity getSectionConfig(
-      String sectionName, String accept, String ifMatch,
+      String sectionName, String ifMatch,
       String ifModifiedSince, String ifNoneMatch, String ifUnmodifiedSince) {
 
     log.debug2("sectionName = {}", () -> sectionName);
-    log.debug2("accept = {}", () -> accept);
     log.debug2("ifMatch = {}", () -> ifMatch);
     log.debug2("ifModifiedSince = {}", () -> ifModifiedSince);
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
     String parsedRequest = String.format(
-        "sectionName: %s, accept: %s, ifMatch: %s, ifModifiedSince: %s, ifNoneMatch: %s, ifUnmodifiedSince: %s",
-        sectionName, accept, ifMatch, ifModifiedSince, ifNoneMatch, ifUnmodifiedSince
+        "sectionName: %s, ifMatch: %s, ifModifiedSince: %s, ifNoneMatch: %s, ifUnmodifiedSince: %s",
+        sectionName, ifMatch, ifModifiedSince, ifNoneMatch, ifUnmodifiedSince
     );
 
     log.debug2("Parsed request: {}", parsedRequest);
@@ -198,16 +197,6 @@ public class ConfigApiServiceImpl
       } catch (IllegalArgumentException iae) {
         throw new LockssRestServiceException(HttpStatus.BAD_REQUEST, iae.getMessage(), parsedRequest);
       }
-
-    // Check whether the request did not specify the appropriate "Accept"
-    // header.
-    if (accept.indexOf(MediaType.MULTIPART_FORM_DATA_VALUE) < 0) {
-      // Yes: Report the problem.
-      String message = "Accept header does not include '"
-          + MediaType.MULTIPART_FORM_DATA_VALUE + "'";
-      log.warn(message);
-      throw new LockssRestServiceException(HttpStatus.NOT_ACCEPTABLE, message, parsedRequest);
-    }
 
       // Validate the name of the section to be obtained.
       String canonicalSectionName;
@@ -285,20 +274,19 @@ public class ConfigApiServiceImpl
    *         section configuration file.
    */
   @Override
-  public ResponseEntity getUrlConfig(String url, String accept,
+  public ResponseEntity getUrlConfig(String url,
                                      String ifMatch, String ifModifiedSince, String ifNoneMatch,
                                      String ifUnmodifiedSince) {
 
     log.debug2("url = {}", () -> url);
-    log.debug2("accept = {}", () -> accept);
     log.debug2("ifMatch = {}", () -> ifMatch);
     log.debug2("ifModifiedSince = {}", () -> ifModifiedSince);
     log.debug2("ifNoneMatch = {}", () -> ifNoneMatch);
     log.debug2("ifUnmodifiedSince = {}", () -> ifUnmodifiedSince);
 
     String parsedRequest = String.format(
-        "url: %s, accept: %s, ifMatch: %s, ifModifiedSince: %s, ifNoneMatch: %s, ifUnmodifiedSince: %s",
-        url, accept, ifMatch, ifModifiedSince, ifNoneMatch, ifUnmodifiedSince
+        "url: %s, ifMatch: %s, ifModifiedSince: %s, ifNoneMatch: %s, ifUnmodifiedSince: %s",
+        url, ifMatch, ifModifiedSince, ifNoneMatch, ifUnmodifiedSince
     );
 
     log.debug2("Parsed request: {}", parsedRequest);
@@ -319,16 +307,6 @@ public class ConfigApiServiceImpl
         log.trace("preconditions = {}", () -> preconditions);
       } catch (IllegalArgumentException iae) {
         return new ResponseEntity<String>(iae.getMessage(), HttpStatus.BAD_REQUEST);
-      }
-
-      // Check whether the request did not specify the appropriate "Accept"
-      // header.
-      if (accept.indexOf(MediaType.MULTIPART_FORM_DATA_VALUE) < 0) {
-        // Yes: Report the problem.
-        String message = "Accept header does not include '"
-            + MediaType.MULTIPART_FORM_DATA_VALUE + "'";
-        log.warn(message);
-        return new ResponseEntity<String>(message, HttpStatus.NOT_ACCEPTABLE);
       }
 
       try {
