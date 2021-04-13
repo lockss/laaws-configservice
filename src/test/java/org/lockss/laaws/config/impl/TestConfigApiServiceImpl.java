@@ -1390,7 +1390,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 
     // TestRestTemplate sets the error handler to NoOpResponseErrorHandler in its
     // constructor - we set it back to our LockssResponseErrorHandler here:
-    restTemplate.setErrorHandler(new LockssResponseErrorHandler(messageConverters));
+    restTemplate.setErrorHandler(new LockssResponseErrorHandler(restTemplate.getMessageConverters()));
 
     try {
       ResponseEntity<MultipartMessage> response = testTemplate
