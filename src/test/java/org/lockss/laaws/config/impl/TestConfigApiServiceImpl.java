@@ -1302,8 +1302,9 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     RestTemplate restTemplate = RestUtil.getRestTemplate();
 
     // Add our MultipartMessageHttpMessageConverter
-    List<HttpMessageConverter<?>> messageConverters = restTemplate.getMessageConverters();
+    List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
     messageConverters.add(new MultipartMessageHttpMessageConverter());
+    messageConverters.addAll(restTemplate.getMessageConverters());
     restTemplate.setMessageConverters(messageConverters);
 
     HttpEntity<String> requestEntity = null;
@@ -1387,6 +1388,8 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     // Make the request and get the response.
     TestRestTemplate testTemplate = new TestRestTemplate(restTemplate);
 
+    // TestRestTemplate sets the error handler to NoOpResponseErrorHandler in its
+    // constructor - we set it back to our LockssResponseErrorHandler here:
     restTemplate.setErrorHandler(new LockssResponseErrorHandler(restTemplate.getMessageConverters()));
 
     try {

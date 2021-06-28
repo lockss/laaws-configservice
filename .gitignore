@@ -203,3 +203,7 @@ local.properties
 .swagger-codegen/
 /remote_config_failover_info.xml
 
+
+/pom.xml.bak
+/*/pom.xml.bak
+/.surefire-*

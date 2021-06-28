@@ -130,11 +130,6 @@ paths:
             \ is requested
           required: true
           type: string
-        - name: 'Accept'
-          in: header
-          description: The Accept header
-          required: true
-          type: string
         - name: 'If-Match'
           in: header
           description: The If-Match header
@@ -187,11 +182,6 @@ paths:
         - name: 'url'
           in: 'query'
           description: The URL for which the configuration is requested
-          required: true
-          type: string
-        - name: 'Accept'
-          in: header
-          description: The Accept header
           required: true
           type: string
         - name: 'If-Match'
