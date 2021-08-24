@@ -255,7 +255,7 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
       }
 
       // Update the Archival Unit configuration.
-      getPluginManager().updateAuInDatabase(auConfiguration);
+      getPluginManager().updateAuConfigFromExternalSource(auConfiguration);
 
       return new ResponseEntity<Void>(HttpStatus.OK);
     } catch (IllegalArgumentException iae) {
