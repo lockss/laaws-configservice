@@ -13,7 +13,7 @@
 #
 # 3. Neither the name of the copyright holder nor the names of its contributors
 # may be used to endorse or promote products derived from this software without
-# specific prior written permission. 
+# specific prior written permission.
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -331,6 +331,11 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for this configuration.
+          required: true
+          type: string
         - name: 'auConfiguration'
           in: body
           description: The Archival Unit configuration to be stored
@@ -567,7 +572,7 @@ paths:
         \ identifier
       operationId: putAusMdDisable
       consumes:
-        - application/json    
+        - application/json
       produces:
         - application/json
       parameters:
@@ -605,7 +610,7 @@ paths:
       description: Enable the metadata extraction for an AU given its identifier
       operationId: putAusMdEnable
       consumes:
-        - application/json    
+        - application/json
       produces:
         - application/json
       parameters:
@@ -1354,7 +1359,7 @@ definitions:
         type: "string"
         description: The URL of the plugin
       auCount:
-        type: "int"
+        type: "integer"
         description: The count of Archival Units linked to the plugin
       publishingPlatform:
         type: "string"
