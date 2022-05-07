@@ -214,11 +214,14 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
    * 
    * @param auConfiguration
    *          An AuConfiguration with the Archival Unit configuration.
+   * @param auidArg
+   *          The auid passed in the request, currently ignored
    * @return a {@code ResponseEntity<Void>} with the Archival Unit
    *         configuration.
    */
   @Override
-  public ResponseEntity putAuConfig(AuConfiguration auConfiguration) {
+  public ResponseEntity putAuConfig(String auidArg,
+                                    AuConfiguration auConfiguration) {
     if (log.isDebugEnabled()) log.debug("auConfiguration = " + auConfiguration);
 
     // Check whether the service has not been fully initialized.
