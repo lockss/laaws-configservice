@@ -32,11 +32,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.lockss.laaws.config.impl;
 
 import java.security.AccessControlException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 import org.lockss.account.UserAccount;
 import org.lockss.app.LockssDaemon;
 import org.lockss.config.AuConfiguration;
@@ -305,33 +302,35 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
 	  new ArrayList<ContentConfigurationResult>(auIds.size());
 
       RemoteApi remoteApi = LockssDaemon.getLockssDaemon().getRemoteApi();
-      String[] auIdArray = new String[auIds.size()];
-      int index = 0;
+      List<String> auids = new LinkedList<>();
 
       Map<String, Configuration> titleConfigs =
 	  new HashMap<String, Configuration>();
 
       // Loop  through all the Archival Unit identifiers.
       for (String auId : auIds) {
-	// Populate the array of Archival Unit identifiers.
-	auIdArray[index++] = auId;
 
 	// Get the configuration of the Archival Unit.
 	TitleConfig titleConfig = remoteApi.findTitleConfig(auId);
 
 	// Check whether the configuration was found.
 	if (titleConfig != null) {
+    // Populate the array of Archival Unit identifiers.
+    auids.add(auId);
+
 	  // Yes: Add it to the map.
 	  titleConfigs.put(auId,  titleConfig.getConfig());
 	}
       }
+
+      String[] auIdArray = auids.toArray(new String[0]);
 
       // Add all the archival units.
       BatchAuStatus status = remoteApi.batchAddAus(RemoteApi.BATCH_ADD_ADD,
 	  auIdArray, null, null, titleConfigs, new HashMap<String, String>(),
 	  null);
 
-      index = 0;
+      int index = 0;
 
       // Loop through all the results.
       for (BatchAuStatus.Entry entry : status.getUnsortedStatusList()) {
