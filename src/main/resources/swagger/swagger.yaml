@@ -1207,17 +1207,6 @@ definitions:
     description: "The encapsulation of the result of adding an Archival Unit"
   tdbAuWsResult:
     type: "object"
-    required:
-      - "auId"
-      - "name"
-      - "pluginName"
-      - "tdbTitle"
-      - "tdbPublisher"
-      - "down"
-      - "active"
-      - "params"
-      - "attrs"
-      - "props"
     properties:
       auId:
         type: "string"
@@ -1261,18 +1250,6 @@ definitions:
     description: "The properties of a TDB Archival Unit"
   tdbTitleWsResult:
     type: "object"
-    required:
-      - "name"
-      - "tdbPublisher"
-      - "id"
-      - "proprietaryid"
-      - "proprietaryids"
-      - "publicationtype"
-      - "issn"
-      - "issnl"
-      - "eissn"
-      - "printissn"
-      - "issns"
     properties:
       name:
         type: "string"
