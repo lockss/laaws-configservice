@@ -329,20 +329,25 @@ paths:
       parameters:
         - name: 'pluginid'
           in: body
-          descripton: the plugin id
+          description: the plugin id
+          schema:
+           type: string
+          required: false
+        - name: 'handle'
+          in: body
+          schema:
+           type: string
+          description: the handle of a NamedArchivalUnit
           required: false
         - name: 'auConfig'
           in: body
           description: The configuration information for this au.
           required: false
-          type: "object"
-          additionalProperties:
-            type: "object"
+          schema:
+            type: object
+            additionalProperties:
+              type: string
             description: "The value of the configuration for the key"
-        - name: 'handle'
-          in: body
-          descripton: the handle of a NamedArchivalUnit
-          required: false
       consumes:
         - application/json
       produces:
