@@ -326,35 +326,36 @@ paths:
       summary: Calculate an AUID for a hypothetical AU
       description: Calculate an AUID for a hypothetical AU
       operationId: calculateAuid
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - application/json
+        - text/plain
       parameters:
-        - name: 'pluginid'
-          in: body
+        - name: 'pluginId'
+          in: "formData"
           description: the plugin id
-          schema:
-           type: string
+          type: string
           required: false
         - name: 'handle'
-          in: body
-          schema:
-           type: string
+          in: "formData"
+          type: string
           description: the handle of a NamedArchivalUnit
           required: false
         - name: 'auConfig'
-          in: body
-          description: The configuration information for this au.
+          in: "formData"
+          description: The configuration information for this au (as a json map).
           required: false
           schema:
             type: object
             additionalProperties:
               type: string
             description: "The value of the configuration for the key"
-      consumes:
-        - application/json
-      produces:
-        - application/json
       responses:
         '200':
           description: The resulting AUID
+          schema:
+            type: string
         '401':
           description: Unauthorized
         '500':

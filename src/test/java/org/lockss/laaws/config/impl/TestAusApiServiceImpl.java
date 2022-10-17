@@ -51,6 +51,9 @@ import org.lockss.config.RestConfigClient;
 import org.lockss.db.DbException;
 import org.lockss.log.L4JLogger;
 import org.lockss.plugin.PluginManager;
+import org.lockss.plugin.AuUtil;
+import org.lockss.plugin.definable.NamedArchivalUnit;
+import org.lockss.util.MapUtil;
 import org.lockss.util.rest.RestUtil;
 import org.lockss.util.rest.exception.LockssRestException;
 import org.lockss.util.rest.exception.LockssRestHttpException;
@@ -172,7 +175,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     getAuConfigUnAuthenticatedTest();
     getAllAuConfigUnAuthenticatedTest();
     deleteAusUnAuthenticatedTest();
-
+    calculateAuidUnAuthenticatedTest();
     log.debug2("Done");
   }
 
@@ -200,6 +203,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     getAuConfigAuthenticatedTest();
     getAllAuConfigAuthenticatedTest();
     deleteAusAuthenticatedTest();
+    calculateAuidAuthenticatedTest();
 
     log.debug2("Done");
   }
@@ -905,6 +909,165 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     } catch (LockssRestException lre) {
       fail("Should have thrown LockssRestHttpException");
     }
+  }
+
+  /**
+   * Runs the calculateAuid()-related un-authenticated-specific tests.
+   */
+  private void calculateAuidUnAuthenticatedTest() throws Exception {
+    log.debug2("calculateAuidUnAuthenticatedTest Invoked");
+
+    PluginManager pluginManager =
+	LockssDaemon.getLockssDaemon().getPluginManager();
+
+    assertMatchesRE("Must supply",
+                    runTestCalculateAuid(null, null, null,
+                                         null, HttpStatus.BAD_REQUEST));
+    assertMatchesRE("Must supply",
+                    runTestCalculateAuid("noplug", null, null,
+                                         null, HttpStatus.BAD_REQUEST));
+    assertMatchesRE("Must not supply",
+                    runTestCalculateAuid(null, "handle",
+                                         MapUtil.map("foo", "bar"),
+                                         null, HttpStatus.BAD_REQUEST));
+    assertMatchesRE("Plugin not found: noplug",
+                    runTestCalculateAuid("noplug", null, MapUtil.map("a", "b"),
+                                         null, HttpStatus.NOT_FOUND));
+
+    String foo;
+
+    foo = runTestCalculateAuid(null, "handlehandle", null,
+                               null, HttpStatus.OK);
+    assertEquals("org|lockss|plugin|NamedPlugin&handle~handlehandle",
+                 AuUtil.jsonToMap(foo).get("auid"));
+
+    foo = runTestCalculateAuid(NamedArchivalUnit.NAMED_PLUGIN_NAME,
+                               null,
+                               MapUtil.map("handle", "second|handle"),
+                               null, HttpStatus.OK);
+    assertEquals("org|lockss|plugin|NamedPlugin&handle~second%7Chandle",
+                 AuUtil.jsonToMap(foo).get("auid"));
+
+    calculateAuidCommonTest();
+  }
+
+  /**
+   * Runs the calculateAuid()-related authenticated-specific tests.
+   */
+  private void calculateAuidAuthenticatedTest() throws Exception {
+
+    PluginManager pluginManager =
+	LockssDaemon.getLockssDaemon().getPluginManager();
+
+    runTestCalculateAuid(null, null, null, null, HttpStatus.UNAUTHORIZED);
+    runTestCalculateAuid("plug", null, null, null, HttpStatus.UNAUTHORIZED);
+    runTestCalculateAuid(null, "handle", null, null, HttpStatus.UNAUTHORIZED);
+    runTestCalculateAuid("plug", null, MapUtil.map("a", "b"),
+                         null, HttpStatus.UNAUTHORIZED);
+    calculateAuidCommonTest();
+  }
+
+  private void calculateAuidCommonTest() throws IOException {
+
+    assertMatchesRE("Must supply",
+                    runTestCalculateAuid(null, null, null,
+                                         USER_ADMIN,
+                                         HttpStatus.BAD_REQUEST));
+
+
+    assertMatchesRE("Must supply",
+                    runTestCalculateAuid("noplug", null, null,
+                                         CONTENT_ADMIN, HttpStatus.BAD_REQUEST));
+    assertMatchesRE("Must not supply",
+                    runTestCalculateAuid(null, "handle",
+                                         MapUtil.map("foo", "bar"),
+                                         CONTENT_ADMIN, HttpStatus.BAD_REQUEST));
+    assertMatchesRE("Plugin not found: noplug",
+                    runTestCalculateAuid("noplug", null, MapUtil.map("a", "b"),
+                                         CONTENT_ADMIN, HttpStatus.NOT_FOUND));
+
+    String foo;
+
+    foo = runTestCalculateAuid(null, "handlehandle", null,
+                               CONTENT_ADMIN, HttpStatus.OK);
+    assertEquals("org|lockss|plugin|NamedPlugin&handle~handlehandle",
+                 AuUtil.jsonToMap(foo).get("auid"));
+
+    foo = runTestCalculateAuid(NamedArchivalUnit.NAMED_PLUGIN_NAME,
+                               null,
+                               MapUtil.map("handle", "second|handle"),
+                               CONTENT_ADMIN, HttpStatus.OK);
+    assertEquals("org|lockss|plugin|NamedPlugin&handle~second%7Chandle",
+                 AuUtil.jsonToMap(foo).get("auid"));
+
+    foo = runTestCalculateAuid(NamedArchivalUnit.NAMED_PLUGIN_NAME,
+                               null,
+                               MapUtil.map("handle", "second|handle",
+                                           "nondefparam", "foo"),
+                               CONTENT_ADMIN, HttpStatus.OK);
+    assertEquals("org|lockss|plugin|NamedPlugin&handle~second%7Chandle",
+                 AuUtil.jsonToMap(foo).get("auid"));
+
+    foo = runTestCalculateAuid("org.lockss.plugin.definable.GoodPlugin",
+                               null,
+                               MapUtil.map("missing", "params"),
+                               CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
+    assertEquals("Illegal AU config: base_url is null in: {missing=params}",
+                 foo);
+
+    foo = runTestCalculateAuid("org.lockss.plugin.definable.GoodPlugin",
+                               null,
+                               MapUtil.map("base_url", "http://x.y/z",
+                                           "num_issue_range", "2-7"),
+                               CONTENT_ADMIN, HttpStatus.OK);
+
+    assertEquals("org|lockss|plugin|definable|GoodPlugin&base_url~http%3A%2F%2Fx%2Ey%2Fz&num_issue_range~2-7",
+                 AuUtil.jsonToMap(foo).get("auid"));
+  }
+
+  /**
+   * Performs a POST to calculate an AUID
+   *
+   * @param pluginId
+   *          plugin ID
+   * @param handle
+   *          A handle for a NamedArchivalUnit
+   * @param auConfig
+   *          A Map with the Archival Unit configuration.
+   * @param credentials
+   *          A Credentials with the request credentials.
+   * @param expectedStatus
+   *          An HttpStatus with the HTTP status of the result.
+   */
+  private String runTestCalculateAuid(String pluginId, String handle,
+                                      Map<String,String> auConfig,
+                                      Credentials credentials,
+                                      HttpStatus expectedStatus)
+      throws IOException {
+    log.debug2("pluginId = {}", pluginId);
+    log.debug2("handle = {}", handle);
+    log.debug2("auConfig = {}", auConfig);
+    log.debug2("credentials = {}", credentials);
+    log.debug2("expectedStatus = {}", expectedStatus);
+
+    try {
+      // Make the request and get the result.
+      String res = getRestConfigClient(credentials)
+        .calculateAuid(pluginId, handle, auConfig);
+
+      if (!RestUtil.isSuccess(expectedStatus)) {
+	fail("Should have thrown LockssRestHttpException");
+      }
+      return res;
+    } catch (LockssRestHttpException lrhe) {
+      assertEquals(expectedStatus.value(), lrhe.getHttpStatusCode());
+      assertEquals(expectedStatus.getReasonPhrase(),
+                   lrhe.getHttpStatusMessage());
+      return lrhe.getServerErrorMessage();
+    } catch (LockssRestException lre) {
+      fail("Should have thrown LockssRestHttpException");
+    }
+    return null;
   }
 
   /**
