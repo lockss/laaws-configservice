@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2000-2020 Board of Trustees of Leland Stanford Jr. University,
+Copyright (c) 2000-2022 Board of Trustees of Leland Stanford Jr. University,
 all rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -84,101 +84,6 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
   static final String PARAM_INDEXING_ENABLED =
       "org.lockss.metadataManager.indexing_enabled";
   static final boolean DEFAULT_INDEXING_ENABLED = false;
-
-  @Override
-  public ResponseEntity calculateAuid(String pluginId,
-                                      String handle,
-                                      Object auConfig) {
-
-    log.debug2("pluginId: {}", pluginId);
-    log.debug2("handle: {}", handle);
-    log.debug2("auConfig: {}", auConfig);
-
-    // Check whether the service has not been fully initialized.
-    if (!waitReady()) {
-      // Yes: Notify the client.
-      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
-    }
-
-    // Check for required role
-    try {
-      AuthUtil.checkHasRole(Roles.ROLE_ANY);
-    } catch (AccessControlException ace) {
-      log.warn(ace.getMessage());
-      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
-    }
-
-    if (handle != null) {
-      if (auConfig != null) {
-        return errorResponse("Must not supply both auConfig and handle",
-                             HttpStatus.BAD_REQUEST);
-      }
-      if (pluginId == null) {
-        pluginId = NamedArchivalUnit.NAMED_PLUGIN_NAME;
-      }
-      try {
-        String auid = PluginManager.generateAuId(pluginId,
-                                                 PropUtil.fromArgs("handle",
-                                                                   handle));
-        return calcAuidResult(auid);
-      } catch (IllegalArgumentException e) {
-        return errorResponse("Illegal AU config: " + e.getMessage(),
-                             HttpStatus.BAD_REQUEST);
-      }
-    }
-    if (auConfig == null || pluginId == null) {
-      return errorResponse("Must supply handle, or auConfig and pluginId",
-                           HttpStatus.BAD_REQUEST);
-    }
-    Map auMap;
-    try {
-      // I think this is safe - Spring never passes anything but a string
-      auMap = AuUtil.jsonToMap((String)auConfig);
-    } catch (IOException e) {
-      log.debug2("Couldn't parse auConfig: {}", auConfig, e);
-      return new ResponseEntity<String>("Illegal map formet: " + auConfig +
-                                        ": " + e.getMessage(),
-                                        HttpStatus.BAD_REQUEST);
-    }
-    PluginManager pluginMgr = getPluginManager();
-    String plugKey = PluginManager.pluginKeyFromName(pluginId);
-    if (!pluginMgr.ensurePluginLoaded(plugKey)) {
-      return new ResponseEntity<String>("Plugin not found: " + pluginId,
-                                        HttpStatus.NOT_FOUND);
-    }
-    Properties p =new Properties();
-    p.putAll(auMap);
-    try {
-      String auid = PluginManager.generateAuId(pluginMgr.getPlugin(plugKey),
-                                               ConfigManager.fromProperties(p));
-      return calcAuidResult(auid);
-    } catch (IllegalArgumentException e) {
-      return errorResponse("Illegal AU config: " + e.getMessage(),
-                           HttpStatus.BAD_REQUEST);
-    }
-  }
-
-  ResponseEntity calcAuidResult(String auid) {
-    return jsonResponse(MapUtil.map("auid", auid), HttpStatus.OK);
-//     try {
-//       String res = AuUtil.mapToJson(MapUtil.map("auid", auid));
-//       return new ResponseEntity<String>(res, HttpStatus.OK);
-//     } catch (IOException e) {
-//       log.error("Couldn't serialize calculateAuid result", e);
-//       return new ResponseEntity<String>("Couldn't serialize calculateAuid result",
-//                                         HttpStatus.INTERNAL_SERVER_ERROR);
-//     }
-  }
-
-  ResponseEntity errorResponse(String msg, HttpStatus code) {
-    return ResponseEntity.status(code).contentType(MediaType.TEXT_PLAIN)
-      .body(msg);
-  }
-
-  ResponseEntity jsonResponse(Map map, HttpStatus code) {
-    return ResponseEntity.status(code).contentType(MediaType.APPLICATION_JSON)
-      .body(map);
-  }
 
   /**
    * Deletes the configuration for an AU given the AU identifier.
@@ -891,15 +796,6 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
    */
   private ConfigManager getConfigManager() {
     return ConfigManager.getConfigManager();
-  }
-
-  /**
-   * Provides the plugin manager.
-   *
-   * @return a PluginManager with the plugin manager.
-   */
-  private PluginManager getPluginManager() {
-    return LockssDaemon.getLockssDaemon().getPluginManager();
   }
 
   /**

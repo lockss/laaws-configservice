@@ -319,7 +319,7 @@ paths:
           description: Unauthorized
         '500':
           description: Internal Server Error
-  '/aus/auid':
+  '/auids':
     post:
       tags:
         - aus
@@ -353,11 +353,20 @@ paths:
             description: "The value of the configuration for the key"
       responses:
         '200':
-          description: The resulting AUID
+          description: Map containing the resulting AUID
           schema:
             type: string
+#             type: object
+#             additionalProperties:
+#               type: string
+        '400':
+          description: Bad Request
         '401':
           description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
         '500':
           description: Internal Server Error
   '/aus/{auid}':
