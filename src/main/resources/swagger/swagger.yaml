@@ -299,26 +299,6 @@ paths:
           description: Unauthorized
         '500':
           description: Internal Server Error
-  '/aus':
-    get:
-      tags:
-        - aus
-      summary: Get the configurations of all AUs
-      description: Get the configuration of all AUs
-      operationId: getAllAuConfig
-      produces:
-        - application/json
-      responses:
-        '200':
-          description: The configuration of all AUs
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/auConfiguration'
-        '401':
-          description: Unauthorized
-        '500':
-          description: Internal Server Error
   '/auids':
     post:
       tags:
@@ -367,6 +347,26 @@ paths:
           description: Forbidden
         '404':
           description: Not Found
+        '500':
+          description: Internal Server Error
+  '/aus':
+    get:
+      tags:
+        - aus
+      summary: Get the configurations of all AUs
+      description: Get the configuration of all AUs
+      operationId: getAllAuConfig
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: The configuration of all AUs
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/auConfiguration'
+        '401':
+          description: Unauthorized
         '500':
           description: Internal Server Error
   '/aus/{auid}':
