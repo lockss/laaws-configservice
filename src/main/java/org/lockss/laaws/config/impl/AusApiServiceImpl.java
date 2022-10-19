@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2000-2020 Board of Trustees of Leland Stanford Jr. University,
+Copyright (c) 2000-2022 Board of Trustees of Leland Stanford Jr. University,
 all rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.lockss.laaws.config.impl;
 
 import java.security.AccessControlException;
+import java.io.*;
 import java.util.*;
 
 import org.lockss.account.UserAccount;
@@ -42,19 +43,20 @@ import org.lockss.config.Configuration;
 import org.lockss.daemon.TitleConfig;
 import org.lockss.laaws.config.api.AusApiDelegate;
 import org.lockss.log.L4JLogger;
-import org.lockss.plugin.ArchivalUnit;
-import org.lockss.plugin.PluginManager;
+import org.lockss.plugin.*;
+import org.lockss.plugin.definable.NamedArchivalUnit;
 import org.lockss.remote.RemoteApi;
 import org.lockss.remote.RemoteApi.BatchAuStatus;
 import org.lockss.servlet.DebugPanel;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.AuthUtil;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
-import org.lockss.util.StringUtil;
+import org.lockss.util.*;
 import org.lockss.ws.entities.ContentConfigurationResult;
 import org.lockss.ws.entities.RequestAuControlResult;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -794,15 +796,6 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
    */
   private ConfigManager getConfigManager() {
     return ConfigManager.getConfigManager();
-  }
-
-  /**
-   * Provides the plugin manager.
-   *
-   * @return a PluginManager with the plugin manager.
-   */
-  private PluginManager getPluginManager() {
-    return LockssDaemon.getLockssDaemon().getPluginManager();
   }
 
   /**
