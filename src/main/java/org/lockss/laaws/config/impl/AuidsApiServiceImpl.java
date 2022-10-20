@@ -137,14 +137,4 @@ public class AuidsApiServiceImpl extends BaseSpringApiServiceImpl
     return jsonResponse(MapUtil.map("auid", auid), HttpStatus.OK);
   }
 
-  ResponseEntity stringResponse(String msg, HttpStatus code) {
-    return ResponseEntity.status(code).contentType(MediaType.TEXT_PLAIN)
-      .body(msg);
-  }
-
-  ResponseEntity jsonResponse(Map map, HttpStatus code) {
-    return ResponseEntity.status(code).contentType(MediaType.APPLICATION_JSON)
-      .body(map);
-  }
-
 }
