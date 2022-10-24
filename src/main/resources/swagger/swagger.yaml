@@ -304,7 +304,7 @@ paths:
       tags:
         - aus
       summary: Calculate an AUID for a hypothetical AU
-      description: Calculate an AUID for a hypothetical AU
+      description: Calculate an AUID for a hypothetical AU, given either a plugin ID and an auConfig map (for traditional AUs), or a handle and an optional plugin ID for NamedAUs
       operationId: calculateAuid
       consumes:
         - application/x-www-form-urlencoded
