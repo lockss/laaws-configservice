@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2000-2020 Board of Trustees of Leland Stanford Jr. University,
+Copyright (c) 2000-2022 Board of Trustees of Leland Stanford Jr. University,
 all rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -32,11 +32,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.lockss.laaws.config.impl;
 
 import java.security.AccessControlException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.*;
+import java.util.*;
+
 import org.lockss.account.UserAccount;
 import org.lockss.app.LockssDaemon;
 import org.lockss.config.AuConfiguration;
@@ -45,19 +43,20 @@ import org.lockss.config.Configuration;
 import org.lockss.daemon.TitleConfig;
 import org.lockss.laaws.config.api.AusApiDelegate;
 import org.lockss.log.L4JLogger;
-import org.lockss.plugin.ArchivalUnit;
-import org.lockss.plugin.PluginManager;
+import org.lockss.plugin.*;
+import org.lockss.plugin.definable.NamedArchivalUnit;
 import org.lockss.remote.RemoteApi;
 import org.lockss.remote.RemoteApi.BatchAuStatus;
 import org.lockss.servlet.DebugPanel;
 import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.AuthUtil;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
-import org.lockss.util.StringUtil;
+import org.lockss.util.*;
 import org.lockss.ws.entities.ContentConfigurationResult;
 import org.lockss.ws.entities.RequestAuControlResult;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -214,11 +213,14 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
    * 
    * @param auConfiguration
    *          An AuConfiguration with the Archival Unit configuration.
+   * @param auidArg
+   *          The auid passed in the request, currently ignored
    * @return a {@code ResponseEntity<Void>} with the Archival Unit
    *         configuration.
    */
   @Override
-  public ResponseEntity putAuConfig(AuConfiguration auConfiguration) {
+  public ResponseEntity putAuConfig(String auidArg,
+                                    AuConfiguration auConfiguration) {
     if (log.isDebugEnabled()) log.debug("auConfiguration = " + auConfiguration);
 
     // Check whether the service has not been fully initialized.
@@ -302,33 +304,35 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
 	  new ArrayList<ContentConfigurationResult>(auIds.size());
 
       RemoteApi remoteApi = LockssDaemon.getLockssDaemon().getRemoteApi();
-      String[] auIdArray = new String[auIds.size()];
-      int index = 0;
+      List<String> auids = new LinkedList<>();
 
       Map<String, Configuration> titleConfigs =
 	  new HashMap<String, Configuration>();
 
       // Loop  through all the Archival Unit identifiers.
       for (String auId : auIds) {
-	// Populate the array of Archival Unit identifiers.
-	auIdArray[index++] = auId;
 
 	// Get the configuration of the Archival Unit.
 	TitleConfig titleConfig = remoteApi.findTitleConfig(auId);
 
 	// Check whether the configuration was found.
 	if (titleConfig != null) {
+    // Populate the array of Archival Unit identifiers.
+    auids.add(auId);
+
 	  // Yes: Add it to the map.
 	  titleConfigs.put(auId,  titleConfig.getConfig());
 	}
       }
+
+      String[] auIdArray = auids.toArray(new String[0]);
 
       // Add all the archival units.
       BatchAuStatus status = remoteApi.batchAddAus(RemoteApi.BATCH_ADD_ADD,
 	  auIdArray, null, null, titleConfigs, new HashMap<String, String>(),
 	  null);
 
-      index = 0;
+      int index = 0;
 
       // Loop through all the results.
       for (BatchAuStatus.Entry entry : status.getUnsortedStatusList()) {
@@ -792,15 +796,6 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
    */
   private ConfigManager getConfigManager() {
     return ConfigManager.getConfigManager();
-  }
-
-  /**
-   * Provides the plugin manager.
-   *
-   * @return a PluginManager with the plugin manager.
-   */
-  private PluginManager getPluginManager() {
-    return LockssDaemon.getLockssDaemon().getPluginManager();
   }
 
   /**

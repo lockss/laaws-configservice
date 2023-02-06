@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2000-2020 Board of Trustees of Leland Stanford Jr. University,
+Copyright (c) 2000-2022 Board of Trustees of Leland Stanford Jr. University,
 all rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -51,6 +51,9 @@ import org.lockss.config.RestConfigClient;
 import org.lockss.db.DbException;
 import org.lockss.log.L4JLogger;
 import org.lockss.plugin.PluginManager;
+import org.lockss.plugin.AuUtil;
+import org.lockss.plugin.definable.NamedArchivalUnit;
+import org.lockss.util.MapUtil;
 import org.lockss.util.rest.RestUtil;
 import org.lockss.util.rest.exception.LockssRestException;
 import org.lockss.util.rest.exception.LockssRestHttpException;
@@ -172,7 +175,6 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     getAuConfigUnAuthenticatedTest();
     getAllAuConfigUnAuthenticatedTest();
     deleteAusUnAuthenticatedTest();
-
     log.debug2("Done");
   }
 

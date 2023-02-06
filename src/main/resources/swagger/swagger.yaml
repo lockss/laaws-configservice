@@ -1,4 +1,4 @@
-# Copyright (c) 2000-2020, Board of Trustees of Leland Stanford Jr. University
+# Copyright (c) 2000-2022, Board of Trustees of Leland Stanford Jr. University
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -13,7 +13,7 @@
 #
 # 3. Neither the name of the copyright holder nor the names of its contributors
 # may be used to endorse or promote products derived from this software without
-# specific prior written permission. 
+# specific prior written permission.
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -299,6 +299,56 @@ paths:
           description: Unauthorized
         '500':
           description: Internal Server Error
+  '/auids':
+    post:
+      tags:
+        - aus
+      summary: Calculate an AUID for a hypothetical AU
+      description: Calculate an AUID for a hypothetical AU, given either a plugin ID and an auConfig map (for traditional AUs), or a handle and an optional plugin ID for NamedAUs
+      operationId: calculateAuid
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - application/json
+        - text/plain
+      parameters:
+        - name: 'pluginId'
+          in: "formData"
+          description: the plugin id
+          type: string
+          required: false
+        - name: 'handle'
+          in: "formData"
+          type: string
+          description: the handle of a NamedArchivalUnit
+          required: false
+        - name: 'auConfig'
+          in: "formData"
+          description: The configuration information for this au (as a json map).
+          required: false
+          schema:
+            type: object
+            additionalProperties:
+              type: string
+            description: "The value of the configuration for the key"
+      responses:
+        '200':
+          description: Map containing the resulting AUID
+          schema:
+            type: string
+#             type: object
+#             additionalProperties:
+#               type: string
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+        '500':
+          description: Internal Server Error
   '/aus':
     get:
       tags:
@@ -331,6 +381,11 @@ paths:
       produces:
         - application/json
       parameters:
+        - name: 'auid'
+          in: path
+          description: The identifier of the AU for this configuration.
+          required: true
+          type: string
         - name: 'auConfiguration'
           in: body
           description: The Archival Unit configuration to be stored
@@ -567,7 +622,7 @@ paths:
         \ identifier
       operationId: putAusMdDisable
       consumes:
-        - application/json    
+        - application/json
       produces:
         - application/json
       parameters:
@@ -605,7 +660,7 @@ paths:
       description: Enable the metadata extraction for an AU given its identifier
       operationId: putAusMdEnable
       consumes:
-        - application/json    
+        - application/json
       produces:
         - application/json
       parameters:
@@ -1202,17 +1257,6 @@ definitions:
     description: "The encapsulation of the result of adding an Archival Unit"
   tdbAuWsResult:
     type: "object"
-    required:
-      - "auId"
-      - "name"
-      - "pluginName"
-      - "tdbTitle"
-      - "tdbPublisher"
-      - "down"
-      - "active"
-      - "params"
-      - "attrs"
-      - "props"
     properties:
       auId:
         type: "string"
@@ -1256,18 +1300,6 @@ definitions:
     description: "The properties of a TDB Archival Unit"
   tdbTitleWsResult:
     type: "object"
-    required:
-      - "name"
-      - "tdbPublisher"
-      - "id"
-      - "proprietaryid"
-      - "proprietaryids"
-      - "publicationtype"
-      - "issn"
-      - "issnl"
-      - "eissn"
-      - "printissn"
-      - "issns"
     properties:
       name:
         type: "string"
@@ -1354,7 +1386,7 @@ definitions:
         type: "string"
         description: The URL of the plugin
       auCount:
-        type: "int"
+        type: "integer"
         description: The count of Archival Units linked to the plugin
       publishingPlatform:
         type: "string"
