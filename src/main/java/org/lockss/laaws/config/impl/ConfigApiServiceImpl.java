@@ -64,7 +64,7 @@ import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.AuthUtil;
 import org.lockss.spring.base.*;
 import org.lockss.laaws.config.api.ConfigApiDelegate;
-import org.lockss.laaws.rs.util.NamedInputStreamResource;
+import org.lockss.util.rest.repo.util.NamedInputStreamResource;
 import org.lockss.log.L4JLogger;
 import org.lockss.spring.error.LockssRestServiceException;
 import org.lockss.util.AccessType;
