@@ -982,7 +982,7 @@ paths:
           description: Unsupported Media Type
         '500':
           description: Internal Server Error
-  '/tdbaus':
+  '/ws/tdbaus':
     get:
       tags:
         - tdb
@@ -1010,7 +1010,7 @@ paths:
           description: Unauthorized
         '500':
           description: Internal Server Error
-  '/tdbtitles':
+  '/ws/tdbtitles':
     get:
       tags:
         - tdb
@@ -1039,7 +1039,7 @@ paths:
           description: Unauthorized
         '500':
           description: Internal Server Error
-  '/tdbpublishers':
+  '/ws/tdbpublishers':
     get:
       tags:
         - tdb
@@ -1069,7 +1069,7 @@ paths:
           description: Unauthorized
         '500':
           description: Internal Server Error
-  '/plugins':
+  '/ws/plugins':
     get:
       tags:
         - plugins
@@ -1097,7 +1097,7 @@ paths:
           description: Unauthorized
         '500':
           description: Internal Server Error
-  '/auqueries':
+  '/ws/auqueries':
     get:
       tags:
         - aus
