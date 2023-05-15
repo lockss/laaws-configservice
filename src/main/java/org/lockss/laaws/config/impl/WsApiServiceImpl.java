@@ -10,9 +10,11 @@ import org.lockss.util.josql.JosqlUtil;
 import org.lockss.ws.entities.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class WsApiServiceImpl extends BaseSpringApiServiceImpl
     implements WsApiDelegate {
 
