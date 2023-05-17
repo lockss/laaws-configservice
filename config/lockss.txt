@@ -50,8 +50,8 @@ org.lockss.poll.v3.pollStarterInterval=5m
 # Crawl starter interval
 org.lockss.crawler.startCrawlsInterval=5m
 
-# ConfigService should crawl only plugins
-org.lockss.daemon.crawlMode=Plugins
+# ConfigService should crawl only plugins when no crawlservice.
+org.lockss.daemon.crawlMode=None
 
 org.lockss.crawlStatus.keepUrls=all
 
@@ -66,7 +66,7 @@ org.lockss.baseau.minFetchDelay=3000
 org.lockss.plugin.restartAusWithNewPlugin=true
 
 # Disable crawler, poller and voter
-org.lockss.crawler.enabled=true
+org.lockss.crawler.enabled=false
 org.lockss.poll.v3.enableV3Poller=false
 org.lockss.poll.v3.enableV3Voter=false
 
