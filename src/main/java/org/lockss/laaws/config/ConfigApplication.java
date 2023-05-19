@@ -34,7 +34,6 @@ import org.lockss.app.LockssApp.AppSpec;
 import org.lockss.app.LockssApp.ManagerDesc;
 import org.lockss.app.LockssDaemon;
 import org.lockss.app.ServiceDescr;
-import org.lockss.crawler.CrawlManagerImpl;
 import org.lockss.plugin.PluginManager;
 import org.lockss.spring.base.BaseSpringBootApplication;
 import org.slf4j.Logger;
@@ -112,7 +111,6 @@ public class ConfigApplication extends BaseSpringBootApplication
         .addAppConfig(org.lockss.jms.JMSManager.PARAM_START_BROKER, "true")
 	.addAppConfig(org.lockss.config.ConfigManager.PARAM_ENABLE_JMS_SEND,
 		      "true")
-        .addAppConfig(CrawlManagerImpl.PARAM_ENABLE_JMS_RECEIVE, "true")
 	.addAppConfig(PARAM_START_PLUGINS, "true")
 	.addAppDefault(PluginManager.PARAM_START_ALL_AUS, "true")
 	.setSpringApplicatonContext(getApplicationContext())
