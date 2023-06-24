@@ -690,10 +690,9 @@ public class ConfigApiServiceImpl
    */
   private Map<String, String> getConfigReadOnlySectionMap() {
     if (configReadOnlySectionMap == null) {
-      configReadOnlySectionMap = new HashMap<String, String>();
-
-      configReadOnlySectionMap.put(SECTION_NAME_CLUSTER, "dyn:cluster.xml");
-
+      Map<String, String> tmpmap = new HashMap<>();
+      tmpmap.put(SECTION_NAME_CLUSTER, "dyn:cluster.xml");
+      configReadOnlySectionMap = tmpmap;
       log.trace("configReadOnlySectionMap = {}",
 	  () -> configReadOnlySectionMap);
     }
