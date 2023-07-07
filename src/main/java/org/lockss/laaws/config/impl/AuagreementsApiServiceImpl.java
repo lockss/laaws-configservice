@@ -229,15 +229,6 @@ public class AuagreementsApiServiceImpl extends BaseSpringApiServiceImpl
   }
 
   /**
-   * Provides the state manager.
-   *
-   * @return a StateManager with the state manager.
-   */
-  private StateManager getStateManager() {
-    return LockssDaemon.getLockssDaemon().getManagerByType(StateManager.class);
-  }
-
-  /**
    * Provides the response entity when there is an error.
    * 
    * @param status
