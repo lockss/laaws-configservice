@@ -98,6 +98,7 @@ public class ConfigApiServiceImpl
   implements ConfigApiDelegate {
 
   static final String SECTION_NAME_CLUSTER = "cluster";
+  static final String SECTION_NAME_USER_CONFIG = "user-config";
   static final String SECTION_NAME_PROPSLOCKSS = "props_lockss";
   static final String SECTION_NAME_UI_IP_ACCESS = "ui_ip_access";
   static final String SECTION_NAME_PROXY_IP_ACCESS = "proxy_ip_access";
@@ -692,6 +693,7 @@ public class ConfigApiServiceImpl
     if (configReadOnlySectionMap == null) {
       Map<String, String> tmpmap = new HashMap<>();
       tmpmap.put(SECTION_NAME_CLUSTER, "dyn:cluster.xml");
+      tmpmap.put(SECTION_NAME_USER_CONFIG, "dyn:user-config.xml");
       configReadOnlySectionMap = tmpmap;
       log.trace("configReadOnlySectionMap = {}",
 	  () -> configReadOnlySectionMap);
