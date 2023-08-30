@@ -116,7 +116,7 @@ public class AuidsApiServiceImpl extends BaseSpringApiServiceImpl
                             HttpStatus.BAD_REQUEST);
     }
     PluginManager pluginMgr = getPluginManager();
-    String plugKey = PluginManager.pluginKeyFromName(pluginId);
+    String plugKey = PluginManager.pluginKeyFromId(pluginId);
     if (!pluginMgr.ensurePluginLoaded(plugKey)) {
       return stringResponse("Plugin not found: " + pluginId,
                             HttpStatus.NOT_FOUND);

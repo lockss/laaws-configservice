@@ -64,7 +64,7 @@ import org.lockss.spring.auth.Roles;
 import org.lockss.spring.auth.AuthUtil;
 import org.lockss.spring.base.*;
 import org.lockss.laaws.config.api.ConfigApiDelegate;
-import org.lockss.laaws.rs.util.NamedInputStreamResource;
+import org.lockss.util.rest.repo.util.NamedInputStreamResource;
 import org.lockss.log.L4JLogger;
 import org.lockss.spring.error.LockssRestServiceException;
 import org.lockss.util.AccessType;
@@ -98,6 +98,7 @@ public class ConfigApiServiceImpl
   implements ConfigApiDelegate {
 
   static final String SECTION_NAME_CLUSTER = "cluster";
+  static final String SECTION_NAME_USER_CONFIG = "user-config";
   static final String SECTION_NAME_PROPSLOCKSS = "props_lockss";
   static final String SECTION_NAME_UI_IP_ACCESS = "ui_ip_access";
   static final String SECTION_NAME_PROXY_IP_ACCESS = "proxy_ip_access";
@@ -690,10 +691,10 @@ public class ConfigApiServiceImpl
    */
   private Map<String, String> getConfigReadOnlySectionMap() {
     if (configReadOnlySectionMap == null) {
-      configReadOnlySectionMap = new HashMap<String, String>();
-
-      configReadOnlySectionMap.put(SECTION_NAME_CLUSTER, "dyn:cluster.xml");
-
+      Map<String, String> tmpmap = new HashMap<>();
+      tmpmap.put(SECTION_NAME_CLUSTER, "dyn:cluster.xml");
+      tmpmap.put(SECTION_NAME_USER_CONFIG, "dyn:user-config.xml");
+      configReadOnlySectionMap = tmpmap;
       log.trace("configReadOnlySectionMap = {}",
 	  () -> configReadOnlySectionMap);
     }
