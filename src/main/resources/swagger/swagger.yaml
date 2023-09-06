@@ -1202,7 +1202,7 @@ paths:
           description: "Unauthorized"
         500:
           description: "Internal Server Error"
-  /users:
+  /usernames:
     get:
       tags:
         - users
@@ -1213,7 +1213,7 @@ paths:
         - "application/json"
       responses:
         200:
-          description: "A list of names configured in the system"
+          description: "A list of usernames configured in the system"
           schema:
             type: array
             items:
@@ -1222,26 +1222,52 @@ paths:
           description: Unauthorized
         500:
           description: Internal Server Error
+  /users:
+    get:
+      tags:
+        - users
+      summary: "Get the user accounts configured in the system"
+      description: "Get the user accounts configured in the system"
+      operationId: getUserAccounts
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "An array of user accounts configured in the system"
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/typedUserAccount'
+        401:
+          description: Unauthorized
+        500:
+          description: Internal Server Error
     post:
       tags:
         - users
-      summary: "Adds a user account to the system"
-      description: "Adds a user account to the system"
-      operationId: addUserAccount
+      summary: "Adds user accounts to the system"
+      description: "Adds user accounts to the system"
+      operationId: addUserAccounts
       consumes:
         - application/json
       produces:
         - application/json
       parameters:
-        - name: userAccount
+        - name: userAccounts
           in: body
-          description: "The user account to be stored"
+          description: "An array of user accounts to be stored"
           required: true
           schema:
-            $ref: '#/definitions/serializedUserAccount'
+            type: array
+            items:
+              $ref: '#/definitions/typedUserAccount'
       responses:
         200:
-          description: "Successfully added user account"
+          description: "Successfully added user accounts"
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/typedUserAccount'
         401:
           description: Unauthorized
         500:
@@ -1265,7 +1291,7 @@ paths:
         200:
           description: "A JSON serialization containing details of the user account"
           schema:
-            $ref: "#/definitions/serializedUserAccount"
+            $ref: "#/definitions/typedUserAccount"
         400:
           description: Bad Request
         401:
@@ -1287,10 +1313,10 @@ paths:
       parameters:
         - name: userAccount
           in: body
-          description: "The user account to be stored"
+          description: "The user account details to be updated"
           required: true
           schema:
-            $ref: '#/definitions/serializedUserAccount'
+            $ref: '#/definitions/typedUserAccount'
       responses:
         200:
           description: "Successfully updated user account"
@@ -1614,7 +1640,7 @@ definitions:
           - PLUGINS_LOADED
           - AUS_STARTING
           - AUS_STARTED
-  serializedUserAccount:
+  typedUserAccount:
     description: "Wrapper for a serialized user account"
     type: "object"
     properties:

@@ -38,7 +38,7 @@ import org.lockss.account.AccountManager;
 import org.lockss.account.UserAccount;
 import org.lockss.app.LockssDaemon;
 import org.lockss.laaws.config.api.UsersApiDelegate;
-import org.lockss.laaws.config.model.SerializedUserAccount;
+import org.lockss.laaws.config.model.TypedUserAccount;
 import org.lockss.log.L4JLogger;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,12 +46,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
-      implements UsersApiDelegate {
+    implements UsersApiDelegate {
   private static L4JLogger log = L4JLogger.getLogger();
 
   @Autowired
@@ -62,20 +63,22 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
   }
 
   @Override
-  public ResponseEntity<Void> addUserAccount(SerializedUserAccount userAccount) {
+  public ResponseEntity<List<TypedUserAccount>> addUserAccounts(List<TypedUserAccount> userAccounts) {
     try {
-      Class<?> cls = Class.forName(userAccount.getUserAccountType());
+      for (TypedUserAccount tua : userAccounts) {
+        Class<?> cls = Class.forName(tua.getUserAccountType());
 
-      if (!cls.isInstance(UserAccount.class)) {
-        log.error("User account type must be a subclass of UserAccount");
-        return ResponseEntity.badRequest().build();
+        if (!cls.isInstance(UserAccount.class)) {
+          log.error("User account type must be a subclass of UserAccount");
+          return ResponseEntity.badRequest().build();
+        }
+
+        UserAccount acct = (UserAccount) objMapper.readValue(tua.getSerializedData(),
+            // FIXME: This seems dangerous; refactor to use a whitelist of classes
+            Class.forName(tua.getUserAccountType()));
+
+        getAccountManager().addUser(acct);
       }
-
-      UserAccount acct = (UserAccount) objMapper.readValue(userAccount.getSerializedData(),
-          // FIXME: This seems dangerous; refactor to use a whitelist of classes
-          Class.forName(userAccount.getUserAccountType()));
-
-      getAccountManager().addUser(acct);
       return ResponseEntity.ok().build();
     } catch (ClassNotFoundException e) {
       log.error("Unknown user account type", e);
@@ -90,7 +93,27 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
   }
 
   @Override
-  public ResponseEntity<SerializedUserAccount> getUserAccount(String username) {
+  public ResponseEntity<List<TypedUserAccount>> getUserAccounts() {
+    Collection<UserAccount> userAccounts = getAccountManager().getUsers();
+    List<TypedUserAccount> tuas = new ArrayList<>(userAccounts.size());
+
+    try {
+      for (UserAccount acct : userAccounts) {
+        TypedUserAccount tua = new TypedUserAccount();
+        tua.setUserAccountType(acct.getType());
+        tua.setSerializedData(objMapper.writeValueAsString(tua));
+        tuas.add(tua);
+      }
+    } catch (JsonProcessingException e) {
+      log.error("Could not serialize user account", e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+
+    return ResponseEntity.ok(tuas);
+  }
+
+  @Override
+  public ResponseEntity<TypedUserAccount> getUserAccount(String username) {
     UserAccount acct = getAccountManager().getUserOrNull(username);
 
     if (acct == null) {
@@ -99,24 +122,14 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
     }
 
     try {
-      SerializedUserAccount sua =  new SerializedUserAccount();
-      sua.setUserAccountType(acct.getType());
-      sua.setSerializedData(objMapper.writeValueAsString(acct));
-      return ResponseEntity.ok(sua);
+      TypedUserAccount tua = new TypedUserAccount();
+      tua.setUserAccountType(acct.getType());
+      tua.setSerializedData(objMapper.writeValueAsString(tua));
+      return ResponseEntity.ok(tua);
     } catch (JsonProcessingException e) {
       log.error("Could not serialize user account", e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
-  }
-
-  @Override
-  public ResponseEntity<List<String>> getUserAccountNames() {
-    List<String> userNames = getAccountManager().getUsers()
-        .stream()
-        .map(UserAccount::getName)
-        .collect(Collectors.toList());
-
-    return ResponseEntity.ok(userNames);
   }
 
   @Override
@@ -130,7 +143,8 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
   }
 
   @Override
-  public ResponseEntity<Void> updateUserAccount(String username, SerializedUserAccount userAccount) {
+  public ResponseEntity<Void> updateUserAccount(String username, TypedUserAccount tua) {
+    // TODO
     return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
   }
 }
