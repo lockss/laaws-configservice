@@ -38,7 +38,7 @@ import org.lockss.account.AccountManager;
 import org.lockss.account.UserAccount;
 import org.lockss.app.LockssDaemon;
 import org.lockss.laaws.config.api.UsersApiDelegate;
-import org.lockss.laaws.config.model.TypedUserAccount;
+import org.lockss.laaws.config.TypedUserAccount;
 import org.lockss.log.L4JLogger;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
