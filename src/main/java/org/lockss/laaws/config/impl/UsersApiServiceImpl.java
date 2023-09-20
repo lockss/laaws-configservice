@@ -34,11 +34,8 @@ package org.lockss.laaws.config.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.lockss.account.AccountManager;
 import org.lockss.account.UserAccount;
-import org.lockss.app.LockssDaemon;
 import org.lockss.laaws.config.api.UsersApiDelegate;
-import org.lockss.laaws.config.TypedUserAccount;
 import org.lockss.log.L4JLogger;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,8 +43,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 @Service
@@ -58,63 +55,45 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
   @Autowired
   private ObjectMapper objMapper;
 
-  protected AccountManager getAccountManager() {
-    return LockssDaemon.getLockssDaemon().getAccountManager();
-  }
-
   @Override
-  public ResponseEntity<List<TypedUserAccount>> addUserAccounts(List<TypedUserAccount> userAccounts) {
+  public ResponseEntity<String> addUserAccounts(String userAccountsJson) {
     try {
-      for (TypedUserAccount tua : userAccounts) {
-        Class<?> cls = Class.forName(tua.getUserAccountType());
+      UserAccount[] userAccounts = objMapper
+          .readerFor(UserAccount[].class)
+          .readValue(userAccountsJson);
 
-        if (!cls.isInstance(UserAccount.class)) {
-          log.error("User account type must be a subclass of UserAccount");
-          return ResponseEntity.badRequest().build();
+      List<UserAccount> successfullyAdded = new ArrayList<>();
+
+      for (UserAccount acct : userAccounts) {
+        try {
+          getStateManager().storeUserAccount(acct);
+          successfullyAdded.add(acct);
+        } catch (IOException e) {
+          log.error("Could not add user account: {}", acct);
         }
-
-        UserAccount acct = (UserAccount) objMapper.readValue(tua.getSerializedData(),
-            // FIXME: This seems dangerous; refactor to use a whitelist of classes
-            Class.forName(tua.getUserAccountType()));
-
-        getAccountManager().addUser(acct);
       }
-      return ResponseEntity.ok().build();
-    } catch (ClassNotFoundException e) {
-      log.error("Unknown user account type", e);
-      return ResponseEntity.badRequest().build();
+
+      return ResponseEntity.ok(objMapper.writeValueAsString(successfullyAdded));
     } catch (JsonProcessingException e) {
       log.error("Error deserializing user account", e);
       return ResponseEntity.badRequest().build();
-    } catch (AccountManager.NotStoredException | AccountManager.NotAddedException e) {
-      log.error("Could not store user account", e);
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
   }
 
   @Override
-  public ResponseEntity<List<TypedUserAccount>> getUserAccounts() {
-    Collection<UserAccount> userAccounts = getAccountManager().getUsers();
-    List<TypedUserAccount> tuas = new ArrayList<>(userAccounts.size());
-
+  public ResponseEntity<String> getUserAccounts() {
     try {
-      for (UserAccount acct : userAccounts) {
-        TypedUserAccount tua = new TypedUserAccount();
-        tua.setUserAccountType(acct.getType());
-        tua.setSerializedData(objMapper.writeValueAsString(tua));
-        tuas.add(tua);
-      }
+      Iterable<UserAccount> userAccounts = getStateManager().getUserAccounts();
+      return ResponseEntity.ok(objMapper.writeValueAsString(userAccounts));
     } catch (JsonProcessingException e) {
       log.error("Could not serialize user account", e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
-
-    return ResponseEntity.ok(tuas);
   }
 
   @Override
-  public ResponseEntity<TypedUserAccount> getUserAccount(String username) {
-    UserAccount acct = getAccountManager().getUserOrNull(username);
+  public ResponseEntity<String> getUserAccount(String username) {
+    UserAccount acct = getStateManager().getUserAccount(username);
 
     if (acct == null) {
       log.warn("User not found");
@@ -122,10 +101,7 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
     }
 
     try {
-      TypedUserAccount tua = new TypedUserAccount();
-      tua.setUserAccountType(acct.getType());
-      tua.setSerializedData(objMapper.writeValueAsString(tua));
-      return ResponseEntity.ok(tua);
+      return ResponseEntity.ok(objMapper.writeValueAsString(acct));
     } catch (JsonProcessingException e) {
       log.error("Could not serialize user account", e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -134,17 +110,22 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
 
   @Override
   public ResponseEntity<Void> removeUserAccount(String username) {
-    if (!getAccountManager().deleteUser(username)) {
-      log.warn("User not removed");
-      // Q: Something else?
-    }
-
+    UserAccount acct = getStateManager().getUserAccount(username);
+    getStateManager().removeUserAccount(acct);
     return ResponseEntity.ok().build();
   }
 
   @Override
-  public ResponseEntity<Void> updateUserAccount(String username, TypedUserAccount tua) {
-    // TODO
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+  public ResponseEntity<String> updateUserAccount(String username, String userAccountUpdates, String cookie) {
+    try {
+      UserAccount result = getStateManager().updateUserAccountFromJson(username, userAccountUpdates, cookie);
+      return ResponseEntity.ok(objMapper.writeValueAsString(result));
+    } catch (JsonProcessingException e) {
+      log.error("Could not serialize user account", e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    } catch (IOException e) {
+      log.error("Could not update user account", e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
   }
 }
