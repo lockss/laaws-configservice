@@ -1310,7 +1310,12 @@ paths:
           description: "The user account details to be updated"
           required: true
           schema:
-            $ref: '#/definitions/typedUserAccount'
+            type: string
+        - name: 'X-Lockss-Request-Cookie'
+          in: header
+          description: The LOCKSS-specific request cookie header
+          required: false
+          type: string
       responses:
         200:
           description: "Updated user account"
