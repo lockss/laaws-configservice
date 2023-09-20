@@ -1294,7 +1294,7 @@ paths:
           description: Not Found
         500:
           description: Internal Server Error
-    put:
+    patch:
       tags:
         - users
       summary: "Update properties of an existing user account"
