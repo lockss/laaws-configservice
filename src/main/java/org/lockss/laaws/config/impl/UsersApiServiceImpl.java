@@ -33,10 +33,12 @@ POSSIBILITY OF SUCH DAMAGE.
 package org.lockss.laaws.config.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.lockss.account.UserAccount;
 import org.lockss.laaws.config.api.UsersApiDelegate;
 import org.lockss.log.L4JLogger;
+import org.lockss.plugin.AuUtil;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -84,6 +86,8 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
   public ResponseEntity<String> getUserAccounts() {
     try {
       Iterable<UserAccount> userAccounts = getStateManager().getUserAccounts();
+      AuUtil.setFieldsOnly(objMapper);
+
       return ResponseEntity.ok(objMapper.writeValueAsString(userAccounts));
     } catch (JsonProcessingException e) {
       log.error("Could not serialize user account", e);
