@@ -33,6 +33,7 @@ POSSIBILITY OF SUCH DAMAGE.
 package org.lockss.laaws.config.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.collections4.IterableUtils;
 import org.lockss.app.LockssDaemon;
 import org.lockss.laaws.config.api.UsernamesApiDelegate;
 import org.lockss.log.L4JLogger;
@@ -60,8 +61,7 @@ public class UsernamesApiServiceImpl extends BaseSpringApiServiceImpl
   @Override
   public ResponseEntity<List<String>> getUserAccountNames() {
     List<String> usernames =
-        (List<String>) getStateManager().getUserAccountNames();
-
+        IterableUtils.toList(getStateManager().getUserAccountNames());
     return ResponseEntity.ok(usernames);
   }
 }
