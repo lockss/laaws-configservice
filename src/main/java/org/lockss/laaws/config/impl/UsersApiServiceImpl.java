@@ -97,6 +97,8 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
     }
 
     try {
+      ObjectMapper objMapper = new ObjectMapper();
+      AuUtil.setFieldsOnly(objMapper);
       return ResponseEntity.ok(objMapper.writeValueAsString(acct));
     } catch (JsonProcessingException e) {
       log.error("Could not serialize user account", e);
