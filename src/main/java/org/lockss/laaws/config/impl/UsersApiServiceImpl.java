@@ -83,19 +83,6 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
   }
 
   @Override
-  public ResponseEntity<String> getUserAccounts() {
-    try {
-      Iterable<UserAccount> userAccounts = getStateManager().getUserAccounts();
-      AuUtil.setFieldsOnly(objMapper);
-
-      return ResponseEntity.ok(objMapper.writeValueAsString(userAccounts));
-    } catch (JsonProcessingException e) {
-      log.error("Could not serialize user account", e);
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
-  }
-
-  @Override
   public ResponseEntity<String> getUserAccount(String username) {
     UserAccount acct = getStateManager().getUserAccount(username);
 
