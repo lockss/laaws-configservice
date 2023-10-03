@@ -64,6 +64,11 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
           .readerFor(UserAccount[].class)
           .readValue(userAccountsJson);
 
+      if (userAccounts == null) {
+        log.error("User accounts missing from request");
+        return ResponseEntity.badRequest().build();
+      }
+
       List<UserAccount> successfullyAdded = new ArrayList<>();
 
       for (UserAccount acct : userAccounts) {
