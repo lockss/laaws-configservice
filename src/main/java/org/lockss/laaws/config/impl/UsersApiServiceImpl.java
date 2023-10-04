@@ -35,6 +35,7 @@ package org.lockss.laaws.config.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import org.lockss.account.UserAccount;
 import org.lockss.laaws.config.api.UsersApiDelegate;
 import org.lockss.log.L4JLogger;
@@ -80,7 +81,8 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
         }
       }
 
-      return ResponseEntity.ok(objMapper.writeValueAsString(successfullyAdded));
+      ObjectWriter objWriter = UserAccount.getUserAccountObjectWriter();
+      return ResponseEntity.ok(objWriter.writeValueAsString(successfullyAdded));
     } catch (JsonProcessingException e) {
       log.error("Error deserializing user account", e);
       return ResponseEntity.badRequest().build();
@@ -97,9 +99,7 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
     }
 
     try {
-      ObjectMapper objMapper = new ObjectMapper();
-      AuUtil.setFieldsOnly(objMapper);
-      return ResponseEntity.ok(objMapper.writeValueAsString(acct));
+      return ResponseEntity.ok(acct.toJson());
     } catch (JsonProcessingException e) {
       log.error("Could not serialize user account", e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -117,7 +117,7 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
   public ResponseEntity<String> updateUserAccount(String username, String userAccountUpdates, String cookie) {
     try {
       UserAccount result = getStateManager().updateUserAccountFromJson(username, userAccountUpdates, cookie);
-      return ResponseEntity.ok(objMapper.writeValueAsString(result));
+      return ResponseEntity.ok(result.toJson());
     } catch (JsonProcessingException e) {
       log.error("Could not serialize user account", e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
