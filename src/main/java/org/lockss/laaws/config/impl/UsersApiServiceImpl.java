@@ -117,6 +117,9 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
   public ResponseEntity<String> updateUserAccount(String username, String userAccountUpdates, String cookie) {
     try {
       UserAccount result = getStateManager().updateUserAccountFromJson(username, userAccountUpdates, cookie);
+      if (result == null) {
+        return ResponseEntity.notFound().build();
+      }
       return ResponseEntity.ok(result.toJson());
     } catch (JsonProcessingException e) {
       log.error("Could not serialize user account", e);
