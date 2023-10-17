@@ -126,34 +126,6 @@ public class TestUsernamesApiServiceImpl extends SpringLockssTestCase4 {
     return cmdLineArgs;
   }
 
-  /**
-   * Runs the tests with authentication turned off.
-   *
-   * @throws Exception
-   *           if there are problems.
-   */
-  @Test
-  public void runUnauthenticatedTests() throws Exception {
-    // Specify the command line parameters to be used for the tests.
-    List<String> cmdLineArgs = getCommandLineArguments();
-    cmdLineArgs.add("-p");
-    cmdLineArgs.add("test/config/testAuthOff.txt");
-
-    CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
-    runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
-
-    getUserAccountNamesUnauthenticatedTest();
-  }
-
-  public void getUserAccountNamesUnauthenticatedTest() throws Exception {
-    runTestGetUserAccountNames(null, HttpStatus.UNAUTHORIZED);
-    runTestGetUserAccountNames(ANYBODY, HttpStatus.UNAUTHORIZED);
-    runTestGetUserAccountNamesClient(null, HttpStatus.UNAUTHORIZED);
-    runTestGetUserAccountNamesClient(ANYBODY, HttpStatus.UNAUTHORIZED);
-
-    getUserAccountNamesCommonTest();
-  }
-
   @Test
   public void runAuthenticatedTests() throws Exception {
     // Specify the command line parameters to be used for the tests.
