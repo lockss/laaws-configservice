@@ -91,26 +91,34 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
 
   @Override
   public ResponseEntity<String> getUserAccount(String username) {
-    UserAccount acct = getStateManager().getUserAccount(username);
-
-    if (acct == null) {
-      log.warn("User not found");
-      return ResponseEntity.notFound().build();
-    }
-
     try {
+      UserAccount acct = getStateManager().getUserAccount(username);
+
+      if (acct == null) {
+        log.warn("User not found");
+        return ResponseEntity.notFound().build();
+      }
+
       return ResponseEntity.ok(acct.toJson());
     } catch (JsonProcessingException e) {
       log.error("Could not serialize user account", e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    } catch (IOException e) {
+      log.error("Could not get user account", e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
   }
 
   @Override
   public ResponseEntity<Void> removeUserAccount(String username) {
-    UserAccount acct = getStateManager().getUserAccount(username);
-    getStateManager().removeUserAccount(acct);
-    return ResponseEntity.ok().build();
+    try {
+      UserAccount acct = getStateManager().getUserAccount(username);
+      getStateManager().removeUserAccount(acct);
+      return ResponseEntity.ok().build();
+    } catch (IOException e) {
+      log.error("Could not remove user account", e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
   }
 
   @Override

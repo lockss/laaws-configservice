@@ -40,9 +40,11 @@ import org.lockss.log.L4JLogger;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
 import org.lockss.state.StateManager;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.List;
 
 @Service
@@ -60,8 +62,13 @@ public class UsernamesApiServiceImpl extends BaseSpringApiServiceImpl
 
   @Override
   public ResponseEntity<List<String>> getUserAccountNames() {
-    List<String> usernames =
-        IterableUtils.toList(getStateManager().getUserAccountNames());
-    return ResponseEntity.ok(usernames);
+    try {
+      List<String> usernames =
+          IterableUtils.toList(getStateManager().getUserAccountNames());
+      return ResponseEntity.ok(usernames);
+    } catch (IOException e) {
+      log.error("Could not get user account names", e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
   }
 }
