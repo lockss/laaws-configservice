@@ -1,5 +1,4 @@
-# Copyright (c) 2000-2022, Board of Trustees of Leland Stanford Jr. University
-# All rights reserved.
+# Copyright (c) 2000-2023, Board of Trustees of Leland Stanford Jr. University
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -1203,6 +1202,132 @@ paths:
           description: "Unauthorized"
         500:
           description: "Internal Server Error"
+  /usernames:
+    get:
+      tags:
+        - users
+      summary: "Get the usernames configured in the system"
+      description: "Get the usernames configured in the system"
+      operationId: getUserAccountNames
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "A list of usernames configured in the system"
+          schema:
+            type: array
+            items:
+              type: string
+        401:
+          description: Unauthorized
+        500:
+          description: Internal Server Error
+  /users:
+    post:
+      tags:
+        - users
+      summary: "Adds user accounts to the system"
+      description: "Adds user accounts to the system"
+      operationId: addUserAccounts
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: userAccounts
+          in: body
+          description: "An array of user accounts to be stored"
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "Successfully added user accounts"
+          schema:
+            type: string
+        401:
+          description: Unauthorized
+        500:
+          description: Internal Server Error
+  /users/{username}:
+    parameters:
+      - name: 'username'
+        in: path
+        description: "Username"
+        required: true
+        type: string
+    get:
+      tags:
+        - users
+      summary: "Get user account details"
+      description: "Get user account details"
+      operationId: getUserAccount
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "A JSON serialization containing details of the user account"
+          schema:
+            type: string
+        400:
+          description: Bad Request
+        401:
+          description: Unauthorized
+        404:
+          description: Not Found
+        500:
+          description: Internal Server Error
+    patch:
+      tags:
+        - users
+      summary: "Update properties of an existing user account"
+      description: "Update properties of an existing user account"
+      operationId: updateUserAccount
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: userAccount
+          in: body
+          description: "The user account details to be updated"
+          required: true
+          schema:
+            type: string
+        - name: 'X-Lockss-Request-Cookie'
+          in: header
+          description: The LOCKSS-specific request cookie header
+          required: false
+          type: string
+      responses:
+        200:
+          description: "Updated user account"
+          schema:
+            type: string
+        400:
+          description: Bad Request
+        401:
+          description: Unauthorized
+        404:
+          description: Not Found
+        500:
+          description: Internal Server Error
+    delete:
+      tags:
+        - users
+      summary: "Remove a user account from the system"
+      description: "Remove a user account from the system"
+      operationId: removeUserAccount
+      responses:
+        200:
+          description: "Removed user account"
+        401:
+          description: Unauthorized
+        404:
+          description: Not Found
+        500:
+          description: Internal Server Error
+
 securityDefinitions:
   basicAuth:
     description: "HTTP Basic Authentication. Works over `HTTP` and `HTTPS`"
