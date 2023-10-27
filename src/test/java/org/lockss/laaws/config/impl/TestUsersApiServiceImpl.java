@@ -680,8 +680,8 @@ public class TestUsersApiServiceImpl extends SpringLockssTestCase4 {
       assertEquals(expectedStatus.value(), lrhe.getHttpStatusCode());
       assertEquals(expectedStatus.getReasonPhrase(),
           lrhe.getHttpStatusMessage());
-    } catch (LockssRestException lre) {
-      fail("Should have thrown LockssRestHttpException");
+    } catch (IOException e) {
+      fail("Unexpected IOException", e);
     }
 
     return result;
@@ -720,9 +720,8 @@ public class TestUsersApiServiceImpl extends SpringLockssTestCase4 {
       assertEquals(expectedStatus.value(), lrhe.getHttpStatusCode());
       assertEquals(expectedStatus.getReasonPhrase(),
           lrhe.getHttpStatusMessage());
-    } catch (LockssRestException lre) {
-      fail("Should have thrown LockssRestHttpException");
     } catch (IOException e) {
+      fail("Unexpected IOException", e);
     }
 
     return result;
@@ -754,8 +753,8 @@ public class TestUsersApiServiceImpl extends SpringLockssTestCase4 {
       assertEquals(expectedStatus.value(), lrhe.getHttpStatusCode());
       assertEquals(expectedStatus.getReasonPhrase(),
           lrhe.getHttpStatusMessage());
-    } catch (LockssRestException lre) {
-      fail("Should have thrown LockssRestHttpException");
+    } catch (IOException e) {
+      fail("Unexpected IOException", e);
     }
   }
 
