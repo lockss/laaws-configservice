@@ -722,6 +722,7 @@ public class TestUsersApiServiceImpl extends SpringLockssTestCase4 {
           lrhe.getHttpStatusMessage());
     } catch (LockssRestException lre) {
       fail("Should have thrown LockssRestHttpException");
+    } catch (IOException e) {
     }
 
     return result;
@@ -735,19 +736,16 @@ public class TestUsersApiServiceImpl extends SpringLockssTestCase4 {
    * @param expectedStatus An HttpStatus with the HTTP status of the result.
    * @return a String with the stored Archival Unit state.
    */
-  private UserAccount runTestDeleteUserAccountClient(String username,
+  private void runTestDeleteUserAccountClient(String username,
                                                      Credentials credentials,
                                                      HttpStatus expectedStatus) {
     log.debug2("username = {}", username);
     log.debug2("credentials = {}", credentials);
     log.debug2("expectedStatus = {}", expectedStatus);
 
-    UserAccount result = null;
-
     try {
       // Make the request and get the result.
-      result = getRestConfigClient(credentials).deleteUserAccount(username);
-      log.debug2("result = {}", result);
+      getRestConfigClient(credentials).deleteUserAccount(username);
 
       if (!RestUtil.isSuccess(expectedStatus)) {
         fail("Should have thrown LockssRestHttpException");
@@ -759,8 +757,6 @@ public class TestUsersApiServiceImpl extends SpringLockssTestCase4 {
     } catch (LockssRestException lre) {
       fail("Should have thrown LockssRestHttpException");
     }
-
-    return result;
   }
 
   private UserAccount makeUser() throws Exception {
