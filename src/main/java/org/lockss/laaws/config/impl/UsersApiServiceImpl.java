@@ -61,7 +61,7 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
   @Override
   public ResponseEntity<String> addUserAccounts(String userAccountsJson) {
     try {
-      UserAccount[] userAccounts = objMapper
+      UserAccount[] userAccounts = UserAccount.getUserAccountObjectMapper()
           .readerFor(UserAccount[].class)
           .readValue(userAccountsJson);
 
