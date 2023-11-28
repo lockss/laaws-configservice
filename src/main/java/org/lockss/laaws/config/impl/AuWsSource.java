@@ -31,11 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package org.lockss.laaws.config.impl;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 import org.lockss.app.LockssDaemon;
 import org.lockss.config.CurrentConfig;
 import org.lockss.crawler.CrawlManagerStatus;
@@ -119,6 +116,7 @@ public class AuWsSource extends AuWsResult {
   private boolean isBulkContentPopulated = false;
   private boolean peerAgreementsPopulated = false;
   private boolean urlsPopulated = false;
+  private boolean accessUrlsPopulated = false;
   private boolean substanceUrlsPopulated = false;
   private boolean articleUrlsPopulated = false;
   private boolean journalTitlePopulated;
@@ -866,6 +864,16 @@ public class AuWsSource extends AuWsResult {
       return 1.0f;
     }
     return resultWeightMap.getMatch(url, 1.0f);
+  }
+
+  @Override
+  public Collection<String> getAccessUrls() {
+    if (!accessUrlsPopulated) {
+      setAccessUrls(au.getAccessUrls());
+      accessUrlsPopulated = true;
+    }
+
+    return super.getAccessUrls();
   }
 
   @Override

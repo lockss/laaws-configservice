@@ -112,6 +112,7 @@ public class AuHelper {
   static String IS_BULK_CONTENT = "isBulkContent";
   static String PEER_AGREEMENTS = "peerAgreements";
   static String URLS = "urls";
+  static String ACCESS_URLS = "accessUrls";
   static String SUBSTANCE_URLS = "substanceUrls";
   static String ARTICLE_URLS = "articleUrls";
   static String JOURNAL_TITLE = "journalTitle";
@@ -162,6 +163,7 @@ public class AuHelper {
       add(IS_BULK_CONTENT);
       add(PEER_AGREEMENTS);
       add(URLS);
+      add(ACCESS_URLS);
       add(SUBSTANCE_URLS);
       add(ARTICLE_URLS);
       add(JOURNAL_TITLE);
