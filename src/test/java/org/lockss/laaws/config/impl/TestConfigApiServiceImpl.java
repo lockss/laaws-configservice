@@ -55,15 +55,14 @@ import org.lockss.util.rest.multipart.NamedByteArrayResource;
 import org.lockss.util.time.TimeBase;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -1396,13 +1395,14 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
           .exchange(uri, HttpMethod.GET, requestEntity, MultipartMessage.class);
 
       // Get the response status.
-      HttpStatus statusCode = response.getStatusCode();
-      assertEquals(expectedStatus, statusCode);
+      HttpStatusCode statusCode = response.getStatusCode();
+      HttpStatus status = HttpStatus.valueOf(statusCode.value());
+      assertEquals(expectedStatus, status);
 
       MultipartResponse parsedResponse = null;
 
       // Check whether it is a success response.
-      if (isSuccess(statusCode)) {
+      if (isSuccess(status)) {
         // Yes: Parse it.
         parsedResponse = new MultipartResponse(response);
       }
@@ -2555,13 +2555,14 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
           .exchange(uri, HttpMethod.GET, requestEntity, MultipartMessage.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
 
     MultipartResponse parsedResponse = null;
 
     // Check whether it is a success response.
-    if (isSuccess(statusCode)) {
+    if (isSuccess(status)) {
       // Yes: Parse it.
       parsedResponse = new MultipartResponse(response);
     }
@@ -2671,11 +2672,12 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	.exchange(uri, HttpMethod.GET, requestEntity, OffsetDateTime.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
 
     // Check whether it is a success response.
-    if (isSuccess(statusCode)) {
+    if (isSuccess(status)) {
       // Yes: Convert OffsetDateTime to milliseconds since epoch
       long lastUpdateTime = response.getBody().toInstant().toEpochMilli();
 
@@ -2792,11 +2794,12 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	.exchange(uri, HttpMethod.GET, requestEntity, String.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
 
     // Check whether it is a success response.
-    if (isSuccess(statusCode)) {
+    if (isSuccess(status)) {
       // Yes: Parse it.
       ObjectMapper mapper = new ObjectMapper();
       List<String> result = mapper.readValue((String)response.getBody(),
@@ -3879,8 +3882,9 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	.exchange(uri, HttpMethod.PUT, requestEntity, Void.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
 
     log.debug2("Done");
   }
@@ -4087,11 +4091,12 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	.exchange(uri, HttpMethod.PUT, requestEntity, Void.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
 
     // Check whether it is a success response.
-    if (isSuccess(statusCode)) {
+    if (isSuccess(status)) {
       // Yes: The count of configuration reloading requests should have been
       // increased by 1.
       assertEquals(configReloadRequestCounter + 1,
