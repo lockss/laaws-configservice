@@ -1,31 +1,3 @@
-# Copyright (c) 2000-2023, Board of Trustees of Leland Stanford Jr. University
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice,
-# this list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-#
-# 3. Neither the name of the copyright holder nor the names of its contributors
-# may be used to endorse or promote products derived from this software without
-# specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-
 openapi: 3.0.3
 info:
   title: LOCKSS Configuration Service REST API
@@ -94,14 +66,26 @@ paths:
                 type: string
                 format: binary
         "304":
-          "description": "Not Modified"
-          "content": {}
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+          description: Not Modified
+          content: {}
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "406":
+          description: Not Acceptable
+          content: {}
+        "412":
+          description: Precondition failed
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
     put:
       tags:
       - config
@@ -153,12 +137,27 @@ paths:
         "200":
           description: OK
           content: {}
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "412":
+          description: Precondition failed
+          content: {}
+        "415":
+          description: Unsupported Media Type
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /config/url:
     get:
       tags:
@@ -201,18 +200,34 @@ paths:
               schema:
                 type: string
                 format: binary
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "304":
+          description: Not Modified
+          content: {}
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "406":
+          description: Not Acceptable
+          content: {}
+        "412":
+          description: Precondition failed
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /config/loadedurls:
     get:
       tags:
       - config
       summary: Get the URLs from which the configuration was loaded
-      description: "Get the URLs from which the configuration was actuallyloaded, reflecting any failover to local copies"
+      description: "Get the URLs from which the configuration was actually loaded,
+        reflecting any failover to local copies"
       operationId: getLoadedUrlList
       responses:
         "200":
@@ -223,12 +238,12 @@ paths:
                 type: array
                 items:
                   type: string
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /config/lastupdatetime:
     get:
       tags:
@@ -244,12 +259,12 @@ paths:
               schema:
                 type: string
                 format: date-time
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /config/reload:
     put:
       tags:
@@ -261,12 +276,15 @@ paths:
         "200":
           description: OK
           content: {}
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /config/platform:
     get:
       tags:
@@ -281,20 +299,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/platformConfigurationWsResult'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /auids:
     post:
       tags:
       - aus
       summary: Calculate an AUID for a hypothetical AU
-      description: Calculate an AUID for a hypothetical AU, given either a plugin
+      description: "Calculate an AUID for a hypothetical AU, given either a plugin
         ID and an auConfig map (for traditional AUs), or a handle and an optional
-        plugin ID for NamedAUs
+        plugin ID for NamedAUs"
       operationId: calculateAuid
       requestBody:
         content:
@@ -321,12 +339,21 @@ paths:
             text/plain:
               schema:
                 type: string
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /aus:
     get:
       tags:
@@ -343,12 +370,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/auConfiguration'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /aus/{auid}:
     get:
       tags:
@@ -370,12 +397,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/auConfiguration'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
     put:
       tags:
       - aus
@@ -400,12 +433,24 @@ paths:
         "200":
           description: OK
           content: {}
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "415":
+          description: Unsupported Media Type
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
       x-codegen-request-body-name: auConfiguration
     delete:
       tags:
@@ -428,12 +473,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/auConfiguration'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /aus/add:
     post:
       tags:
@@ -459,12 +513,21 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/contentConfigurationResult'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "415":
+          description: Unsupported Media Type
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
       x-codegen-request-body-name: auIds
   /aus/deactivate:
     put:
@@ -491,12 +554,21 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/contentConfigurationResult'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "415":
+          description: Unsupported Media Type
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
       x-codegen-request-body-name: auIds
   /aus/reactivate:
     put:
@@ -523,12 +595,21 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/contentConfigurationResult'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "415":
+          description: Unsupported Media Type
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
       x-codegen-request-body-name: auIds
   /aus/delete:
     delete:
@@ -555,12 +636,21 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/contentConfigurationResult'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "415":
+          description: Unsupported Media Type
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
       x-codegen-request-body-name: auIds
   /aus/{auid}/mddisable:
     put:
@@ -585,12 +675,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/requestAuControlResult'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "409":
+          description: Conflict
+          content: {}
+        "415":
+          description: Unsupported Media Type
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /aus/{auid}/mdenable:
     put:
       tags:
@@ -614,12 +719,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/requestAuControlResult'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "409":
+          description: Conflict
+          content: {}
+        "415":
+          description: Unsupported Media Type
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /austates/{auid}:
     get:
       tags:
@@ -641,12 +761,18 @@ paths:
             application/json:
               schema:
                 type: string
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
     patch:
       tags:
       - aus
@@ -676,12 +802,24 @@ paths:
         "200":
           description: OK
           content: {}
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "415":
+          description: Unsupported Media Type
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
       x-codegen-request-body-name: auState
   /auagreements/{auid}:
     get:
@@ -705,12 +843,18 @@ paths:
             application/json:
               schema:
                 type: string
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
     patch:
       tags:
       - aus
@@ -741,12 +885,24 @@ paths:
         "200":
           description: OK
           content: {}
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "415":
+          description: Unsupported Media Type
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
       x-codegen-request-body-name: auAgreements
   /aususpecturls/{auid}:
     get:
@@ -770,12 +926,18 @@ paths:
             application/json:
               schema:
                 type: string
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
     put:
       tags:
       - aus
@@ -807,12 +969,24 @@ paths:
         "200":
           description: OK
           content: {}
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "415":
+          description: Unsupported Media Type
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
       x-codegen-request-body-name: auSuspectUrlVersions
   /noaupeers/{auid}:
     get:
@@ -836,12 +1010,18 @@ paths:
             application/json:
               schema:
                 type: string
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
     put:
       tags:
       - aus
@@ -872,12 +1052,24 @@ paths:
         "200":
           description: OK
           content: {}
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "403":
+          description: Forbidden
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "415":
+          description: Unsupported Media Type
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
       x-codegen-request-body-name: noAuPeerSet
   /ws/tdbaus:
     get:
@@ -902,12 +1094,15 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/tdbAuWsResult'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /ws/tdbtitles:
     get:
       tags:
@@ -931,12 +1126,15 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/tdbTitleWsResult'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /ws/tdbpublishers:
     get:
       tags:
@@ -960,12 +1158,15 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/tdbPublisherWsResult'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /ws/plugins:
     get:
       tags:
@@ -989,12 +1190,15 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/pluginWsResult'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /ws/auqueries:
     get:
       tags:
@@ -1018,12 +1222,15 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/auWsResult'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /austatuses/{auid}:
     get:
       tags:
@@ -1045,12 +1252,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/auStatus'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /ausubstances/{auid}:
     put:
       tags:
@@ -1073,12 +1286,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/checkSubstanceResult'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
   /status:
     get:
       tags:
@@ -1093,169 +1312,168 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/apiStatus'
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
-  "/usernames":
-    "get":
-      "tags":
-        - "users"
-      "summary": "Get the usernames configured in the system"
-      "description": "Get the usernames configured in the system"
-      "operationId": "getUserAccountNames"
-      "responses":
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
+  /usernames:
+    get:
+      tags:
+      - users
+      summary: Get the usernames configured in the system
+      description: Get the usernames configured in the system
+      operationId: getUserAccountNames
+      responses:
         "200":
-          "description": "A list of usernames configured in the system"
-          "content":
-            "application/json":
-              "schema":
-                "type": "array"
-                "items":
-                  "type": "string"
-        default:
-          description: The resulting error payload.
+          description: A list of usernames configured in the system
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/errorResult'
-  "/users":
-    "post":
-      "tags":
-        - "users"
-      "summary": "Adds user accounts to the system"
-      "description": "Adds user accounts to the system"
-      "operationId": "addUserAccounts"
-      "requestBody":
-        "description": "An array of user accounts to be stored"
-        "content":
-          "application/json":
-            "schema":
-              "type": "string"
-        "required": true
-      "responses":
+                type: array
+                items:
+                  type: string
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
+  /users:
+    post:
+      tags:
+      - users
+      summary: Adds user accounts to the system
+      description: Adds user accounts to the system
+      operationId: addUserAccounts
+      requestBody:
+        description: An array of user accounts to be stored
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
         "200":
-          "description": "Successfully added user accounts"
-          "content":
-            "application/json":
-              "schema":
-                "type": "string"
-        default:
-          description: The resulting error payload.
+          description: Successfully added user accounts
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/errorResult'
-      "x-codegen-request-body-name": "userAccounts"
-  "/users/{username}":
-    "get":
-      "tags":
-        - "users"
-      "summary": "Get user account details"
-      "description": "Get user account details"
-      "operationId": "getUserAccount"
-      "parameters":
-        -
-          "name": "username"
-          "in": "path"
-          "description": "Username"
-          "required": true
-          "schema":
-            "type": "string"
-      "responses":
+                type: string
+        "401":
+          description: Unauthorized
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
+      x-codegen-request-body-name: userAccounts
+  /users/{username}:
+    get:
+      tags:
+      - users
+      summary: Get user account details
+      description: Get user account details
+      operationId: getUserAccount
+      parameters:
+      - name: username
+        in: path
+        description: Username
+        required: true
+        schema:
+          type: string
+      responses:
         "200":
-          "description": "A JSON serialization containing details of the user account"
-          "content":
-            "application/json":
-              "schema":
-                "type": "string"
-        default:
-          description: The resulting error payload.
+          description: A JSON serialization containing details of the user account
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/errorResult'
-    "delete":
-      "tags":
-        - "users"
-      "summary": "Remove a user account from the system"
-      "description": "Remove a user account from the system"
-      "operationId": "removeUserAccount"
-      "parameters":
-        -
-          "name": "username"
-          "in": "path"
-          "description": "Username"
-          "required": true
-          "schema":
-            "type": "string"
-      "responses":
+                type: string
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
+    delete:
+      tags:
+      - users
+      summary: Remove a user account from the system
+      description: Remove a user account from the system
+      operationId: removeUserAccount
+      parameters:
+      - name: username
+        in: path
+        description: Username
+        required: true
+        schema:
+          type: string
+      responses:
         "200":
-          "description": "Removed user account"
-          "content": {}
-        default:
-          description: The resulting error payload.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/errorResult'
-    "patch":
-      "tags":
-        - "users"
-      "summary": "Update properties of an existing user account"
-      "description": "Update properties of an existing user account"
-      "operationId": "updateUserAccount"
-      "parameters":
-        -
-          "name": "username"
-          "in": "path"
-          "description": "Username"
-          "required": true
-          "schema":
-            "type": "string"
-        -
-          "name": "X-Lockss-Request-Cookie"
-          "in": "header"
-          "description": "The LOCKSS-specific request cookie header"
-          "schema":
-            "type": "string"
-      "requestBody":
-        "description": "The user account details to be updated"
-        "content":
-          "application/json":
-            "schema":
-              "type": "string"
-        "required": true
-      "responses":
+          description: Removed user account
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
+    patch:
+      tags:
+      - users
+      summary: Update properties of an existing user account
+      description: Update properties of an existing user account
+      operationId: updateUserAccount
+      parameters:
+      - name: username
+        in: path
+        description: Username
+        required: true
+        schema:
+          type: string
+      - name: X-Lockss-Request-Cookie
+        in: header
+        description: The LOCKSS-specific request cookie header
+        schema:
+          type: string
+      requestBody:
+        description: The user account details to be updated
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
         "200":
-          "description": "Updated user account"
-          "content":
-            "application/json":
-              "schema":
-                "type": "string"
-        default:
-          description: The resulting error payload.
+          description: Updated user account
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/errorResult'
-      "x-codegen-request-body-name": "userAccount"
+                type: string
+        "400":
+          description: Bad Request
+          content: {}
+        "401":
+          description: Unauthorized
+          content: {}
+        "404":
+          description: Not Found
+          content: {}
+        "500":
+          description: Internal Server Error
+          content: {}
+      x-codegen-request-body-name: userAccount
 components:
   schemas:
-    errorResult:
-      type: object
-      required:
-      - message
-      - code
-      properties:
-        message:
-          type: string
-        code:
-          type: integer
-        rootCause:
-          type: string
     platformConfigurationWsResult:
       required:
       - hostName
@@ -1548,3 +1766,4 @@ components:
       type: http
       description: HTTP Basic Authentication. Works over `HTTP` and `HTTPS`
       scheme: basic
+x-original-swagger-version: "2.0"
