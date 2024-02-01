@@ -3240,7 +3240,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	HttpStatus.UNAUTHORIZED);
 
     // Unauthorized credentials.
-    runTestPutConfig("a=b", SECTION_NAME_PLUGIN, MediaType.MULTIPART_FORM_DATA, null,
+    runTestPutConfig("a=b", SECTION_NAME_PLUGIN, null, null,
 	CONTENT_ADMIN, HttpStatus.FORBIDDEN);
 
     // Bad Content-Type header.
