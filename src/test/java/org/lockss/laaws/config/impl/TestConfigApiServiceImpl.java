@@ -236,7 +236,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-//    runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
+//    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
     runMethodsNotAllowedUnAuthenticatedTest();
     getConfigSectionUnAuthenticatedTest();
     getConfigUrlUnAuthenticatedTest();
@@ -266,7 +266,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-    // runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
+    // runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
     runMethodsNotAllowedAuthenticatedTest();
     getConfigSectionAuthenticatedTest();
     getConfigUrlAuthenticatedTest();
@@ -3249,7 +3249,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	HttpStatus.UNAUTHORIZED);
 
     // Unauthorized credentials.
-    runTestPutConfig("a=b", SECTION_NAME_PLUGIN, null, null,
+    runTestPutConfig("a=b", SECTION_NAME_PLUGIN, MediaType.MULTIPART_FORM_DATA, null,
 	CONTENT_ADMIN, HttpStatus.FORBIDDEN);
 
     // Bad Content-Type header.
