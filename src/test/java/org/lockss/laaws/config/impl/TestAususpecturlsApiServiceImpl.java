@@ -180,7 +180,7 @@ public class TestAususpecturlsApiServiceImpl extends SpringLockssTestCase4 {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-//    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
     runMethodsNotAllowedUnAuthenticatedTest();
     getAuSuspectUrlVersionsUnAuthenticatedTest();
     putAuSuspectUrlVersionsUnAuthenticatedTest();
@@ -206,7 +206,7 @@ public class TestAususpecturlsApiServiceImpl extends SpringLockssTestCase4 {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-//    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
     runMethodsNotAllowedAuthenticatedTest();
     getAuSuspectUrlVersionsAuthenticatedTest();
     putAuSuspectUrlVersionsAuthenticatedTest();

@@ -91,5 +91,3 @@ fixImport org.lockss.laaws.config.model.PluginWsResult org.lockss.ws.entities.Pl
 fixImport org.lockss.laaws.config.model.TdbAuWsResult org.lockss.ws.entities.TdbAuWsResult $WS_API
 fixImport org.lockss.laaws.config.model.TdbPublisherWsResult org.lockss.ws.entities.TdbPublisherWsResult $WS_API
 fixImport org.lockss.laaws.config.model.TdbTitleWsResult org.lockss.ws.entities.TdbTitleWsResult $WS_API
-
-rm src/generated/java/org/lockss/laaws/config/config/SwaggerDocumentationConfig.java

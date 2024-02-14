@@ -157,7 +157,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-//    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
     runMethodsNotAllowedUnAuthenticatedTest();
     putAuConfigUnAuthenticatedTest();
     getAuConfigUnAuthenticatedTest();
@@ -184,7 +184,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-//    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
     runMethodsNotAllowedAuthenticatedTest();
     putAuConfigAuthenticatedTest();
     getAuConfigAuthenticatedTest();
