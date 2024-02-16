@@ -58,33 +58,15 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: The named configuration file
           content:
             multipart/form-data:
               schema:
                 type: string
                 format: binary
-        "304":
-          description: Not Modified
-          content: {}
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "406":
-          description: Not Acceptable
-          content: {}
-        "412":
-          description: Precondition failed
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
     put:
       tags:
@@ -126,7 +108,6 @@ paths:
             schema:
               required:
               - configFile
-              type: object
               properties:
                 configFile:
                   type: string
@@ -134,29 +115,11 @@ paths:
                   format: binary
         required: true
       responses:
-        "200":
+        200:
           description: OK
           content: {}
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "412":
-          description: Precondition failed
-          content: {}
-        "415":
-          description: Unsupported Media Type
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /config/url:
     get:
@@ -193,41 +156,23 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: The configuration file for the URL
           content:
             multipart/form-data:
               schema:
                 type: string
                 format: binary
-        "304":
-          description: Not Modified
-          content: {}
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "406":
-          description: Not Acceptable
-          content: {}
-        "412":
-          description: Precondition failed
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /config/loadedurls:
     get:
       tags:
       - config
       summary: Get the URLs from which the configuration was loaded
-      description: "Get the URLs from which the configuration was actually loaded,
-        reflecting any failover to local copies"
+      description: Get the URLs from which the configuration was actually loaded,
+        reflecting any failover to local copies
       operationId: getLoadedUrlList
       responses:
         "200":
@@ -238,11 +183,8 @@ paths:
                 type: array
                 items:
                   type: string
-        "401":
-          description: Unauthorized
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /config/lastupdatetime:
     get:
@@ -252,18 +194,15 @@ paths:
       description: Get the timestamp when the configuration was last updated
       operationId: getLastUpdateTime
       responses:
-        "200":
+        200:
           description: The timestamp when the configuration was last updated
           content:
             application/json:
               schema:
                 type: string
                 format: date-time
-        "401":
-          description: Unauthorized
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /config/reload:
     put:
@@ -273,17 +212,11 @@ paths:
       description: Request that the stored configuration is reloaded
       operationId: putConfigReload
       responses:
-        "200":
+        200:
           description: OK
           content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /config/platform:
     get:
@@ -293,32 +226,28 @@ paths:
       description: Get the platform configuration
       operationId: getPlatformConfig
       responses:
-        "200":
+        200:
           description: The platform configuration
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/platformConfigurationWsResult'
-        "401":
-          description: Unauthorized
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /auids:
     post:
       tags:
       - aus
       summary: Calculate an AUID for a hypothetical AU
-      description: "Calculate an AUID for a hypothetical AU, given either a plugin
+      description: Calculate an AUID for a hypothetical AU, given either a plugin
         ID and an auConfig map (for traditional AUs), or a handle and an optional
-        plugin ID for NamedAUs"
+        plugin ID for NamedAUs
       operationId: calculateAuid
       requestBody:
         content:
           application/x-www-form-urlencoded:
             schema:
-              type: object
               properties:
                 pluginId:
                   type: string
@@ -330,7 +259,7 @@ paths:
                   description: The configuration information for this au (as a json
                     map).
       responses:
-        "200":
+        200:
           description: Map containing the resulting AUID
           content:
             application/json:
@@ -339,20 +268,8 @@ paths:
             text/plain:
               schema:
                 type: string
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /aus:
     get:
@@ -362,7 +279,7 @@ paths:
       description: Get the configuration of all AUs
       operationId: getAllAuConfig
       responses:
-        "200":
+        200:
           description: The configuration of all AUs
           content:
             application/json:
@@ -370,11 +287,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/auConfiguration'
-        "401":
-          description: Unauthorized
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /aus/{auid}:
     get:
@@ -386,28 +300,19 @@ paths:
       parameters:
       - name: auid
         in: path
-        description: The identifier of the AU for which the configuration is requested
+        description: The identifier of the AU for which the configuration is\ \ requested
         required: true
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: The configuration of the specified AU
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/auConfiguration'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
     put:
       tags:
@@ -430,26 +335,11 @@ paths:
               $ref: '#/components/schemas/auConfiguration'
         required: true
       responses:
-        "200":
+        200:
           description: OK
           content: {}
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "415":
-          description: Unsupported Media Type
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
       x-codegen-request-body-name: auConfiguration
     delete:
@@ -461,32 +351,20 @@ paths:
       parameters:
       - name: auid
         in: path
-        description: The identifier of the AU for which the configuration is to
+        description: The identifier of the AU for which the configuration is\ \ to
           be deleted
         required: true
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: The deleted configuration of the specified AU
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/auConfiguration'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /aus/add:
     post:
@@ -505,7 +383,7 @@ paths:
                 type: string
         required: true
       responses:
-        "200":
+        200:
           description: Information about the added AUs
           content:
             application/json:
@@ -513,20 +391,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/contentConfigurationResult'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "415":
-          description: Unsupported Media Type
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
       x-codegen-request-body-name: auIds
   /aus/deactivate:
@@ -546,7 +412,7 @@ paths:
                 type: string
         required: true
       responses:
-        "200":
+        200:
           description: Information about the deactivated AUs
           content:
             application/json:
@@ -554,20 +420,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/contentConfigurationResult'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "415":
-          description: Unsupported Media Type
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
       x-codegen-request-body-name: auIds
   /aus/reactivate:
@@ -587,7 +441,7 @@ paths:
                 type: string
         required: true
       responses:
-        "200":
+        200:
           description: Information about the reactivated AUs
           content:
             application/json:
@@ -595,20 +449,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/contentConfigurationResult'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "415":
-          description: Unsupported Media Type
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
       x-codegen-request-body-name: auIds
   /aus/delete:
@@ -628,7 +470,7 @@ paths:
                 type: string
         required: true
       responses:
-        "200":
+        200:
           description: Information about the deleted AUs
           content:
             application/json:
@@ -636,20 +478,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/contentConfigurationResult'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "415":
-          description: Unsupported Media Type
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
       x-codegen-request-body-name: auIds
   /aus/{auid}/mddisable:
@@ -668,33 +498,15 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: Information about the AU for which metadata extraction has
             been disabled
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/requestAuControlResult'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "409":
-          description: Conflict
-          content: {}
-        "415":
-          description: Unsupported Media Type
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /aus/{auid}/mdenable:
     put:
@@ -712,33 +524,15 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: Information about the AU for which metadata extraction has
             been enabled
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/requestAuControlResult'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "409":
-          description: Conflict
-          content: {}
-        "415":
-          description: Unsupported Media Type
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /austates/{auid}:
     get:
@@ -755,23 +549,14 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: The state of the specified AU
           content:
             application/json:
               schema:
                 type: string
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
     patch:
       tags:
@@ -799,26 +584,11 @@ paths:
               type: string
         required: true
       responses:
-        "200":
+        200:
           description: OK
           content: {}
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "415":
-          description: Unsupported Media Type
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
       x-codegen-request-body-name: auState
   /auagreements/{auid}:
@@ -837,23 +607,14 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: The poll agreements of the specified AU
           content:
             application/json:
               schema:
                 type: string
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
     patch:
       tags:
@@ -882,26 +643,11 @@ paths:
               type: string
         required: true
       responses:
-        "200":
+        200:
           description: OK
           content: {}
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "415":
-          description: Unsupported Media Type
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
       x-codegen-request-body-name: auAgreements
   /aususpecturls/{auid}:
@@ -920,23 +666,14 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: The suspect URL versions of the specified AU
           content:
             application/json:
               schema:
                 type: string
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
     put:
       tags:
@@ -966,26 +703,11 @@ paths:
               type: string
         required: true
       responses:
-        "200":
+        200:
           description: OK
           content: {}
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "415":
-          description: Unsupported Media Type
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
       x-codegen-request-body-name: auSuspectUrlVersions
   /noaupeers/{auid}:
@@ -1004,23 +726,14 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: The NoAuPeerSet object of the specified AU
           content:
             application/json:
               schema:
                 type: string
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
     put:
       tags:
@@ -1049,26 +762,11 @@ paths:
               type: string
         required: true
       responses:
-        "200":
+        200:
           description: OK
           content: {}
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "403":
-          description: Forbidden
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "415":
-          description: Unsupported Media Type
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
       x-codegen-request-body-name: noAuPeerSet
   /ws/tdbaus:
@@ -1086,7 +784,7 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: Information about the requested TDB AUs
           content:
             application/json:
@@ -1094,14 +792,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/tdbAuWsResult'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /ws/tdbtitles:
     get:
@@ -1118,7 +810,7 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: Information about the requested TDB Titles
           content:
             application/json:
@@ -1126,21 +818,15 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/tdbTitleWsResult'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /ws/tdbpublishers:
     get:
       tags:
       - tdb
       summary: Query the TDB for Publishers
-      description: Query the TDB for Publishers that meet a set of specified conditions
+      description: Query the TDB for Publishers that meet a set of specifie conditions
       operationId: getTdbPublishers
       parameters:
       - name: tdbPublisherQuery
@@ -1158,14 +844,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/tdbPublisherWsResult'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /ws/plugins:
     get:
@@ -1182,7 +862,7 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: Information about the requested plugins
           content:
             application/json:
@@ -1190,14 +870,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/pluginWsResult'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /ws/auqueries:
     get:
@@ -1214,7 +888,7 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: Information about the requested archival units
           content:
             application/json:
@@ -1222,14 +896,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/auWsResult'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /austatuses/{auid}:
     get:
@@ -1246,23 +914,14 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: The status of the specified AU
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/auStatus'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /ausubstances/{auid}:
     put:
@@ -1280,23 +939,14 @@ paths:
         schema:
           type: string
       responses:
-        "200":
+        200:
           description: The substance check of the specified AU
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/checkSubstanceResult'
-        "400":
-          description: Bad Request
-          content: {}
-        "401":
-          description: Unauthorized
-          content: {}
-        "404":
-          description: Not Found
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /status:
     get:
@@ -1306,17 +956,14 @@ paths:
       description: Get the status of the service
       operationId: getStatus
       responses:
-        "200":
+        200:
           description: The status of the service
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/apiStatus'
-        "401":
-          description: Unauthorized
-          content: {}
-        "500":
-          description: Internal Server Error
+        default:
+          description: The resulting error payload.
           content: {}
   /usernames:
     get:
