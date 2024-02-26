@@ -464,7 +464,7 @@ paths:
           description: Not Found
         '500':
           description: Internal Server Error
-  '/aus/add':
+  '/ws/aus/add':
     post:
       tags:
         - aus
@@ -501,7 +501,7 @@ paths:
           description: Unsupported Media Type
         '500':
           description: Internal Server Error
-  '/aus/deactivate':
+  '/ws/aus/deactivate':
     put:
       tags:
         - aus
@@ -538,7 +538,7 @@ paths:
           description: Unsupported Media Type
         '500':
           description: Internal Server Error
-  '/aus/reactivate':
+  '/ws/aus/reactivate':
     put:
       tags:
         - aus
@@ -575,7 +575,7 @@ paths:
           description: Unsupported Media Type
         '500':
           description: Internal Server Error
-  '/aus/delete':
+  '/ws/aus/delete':
     delete:
       tags:
         - aus
