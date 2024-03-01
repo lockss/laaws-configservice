@@ -151,7 +151,7 @@ public class TestAuidsApiServiceImpl extends SpringLockssTestCase4 {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-    runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
     calculateAuidUnAuthenticatedTest();
     log.debug2("Done");
   }
@@ -174,7 +174,7 @@ public class TestAuidsApiServiceImpl extends SpringLockssTestCase4 {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-    runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
     calculateAuidAuthenticatedTest();
 
     log.debug2("Done");
