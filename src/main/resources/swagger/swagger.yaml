@@ -11,54 +11,54 @@ info:
     url: https://opensource.org/licenses/BSD-3-Clause
   version: 2.0.0
 servers:
-- url: https://laaws.lockss.org:443/
+  - url: https://laaws.lockss.org:443/
 security:
-- basicAuth: []
+  - basicAuth: []
 tags:
-- name: Default
-  description: Default section
-- name: config
-  description: Tasks on the configuration
-- name: aus
-  description: Tasks on the archival units (AUs)
+  - name: Default
+    description: Default section
+  - name: config
+    description: Tasks on the configuration
+  - name: aus
+    description: Tasks on the archival units (AUs)
 paths:
   /config/file/{sectionName}:
     get:
       tags:
-      - config
+        - config
       summary: Get the named configuration file
       description: Get the configuration file stored for a given name
       operationId: getSectionConfig
       parameters:
-      - name: sectionName
-        in: path
-        description: The name of the section for which the configuration file is
-          requested
-        required: true
-        schema:
-          type: string
-      - name: If-Match
-        in: header
-        description: The If-Match header
-        schema:
-          type: string
-      - name: If-Modified-Since
-        in: header
-        description: The If-Match header
-        schema:
-          type: string
-      - name: If-None-Match
-        in: header
-        description: The If-Match header
-        schema:
-          type: string
-      - name: If-Unmodified-Since
-        in: header
-        description: The If-Match header
-        schema:
-          type: string
+        - name: sectionName
+          in: path
+          description: The name of the section for which the configuration file is
+            requested
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-Modified-Since
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-None-Match
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-Unmodified-Since
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: The named configuration file
           content:
             multipart/form-data:
@@ -70,44 +70,45 @@ paths:
           content: {}
     put:
       tags:
-      - config
+        - config
       summary: Store the named configuration file
       description: Store the configuration file for a given name
       operationId: putConfig
       parameters:
-      - name: sectionName
-        in: path
-        description: The name of the section for which the configuration file is
-          to be stored
-        required: true
-        schema:
-          type: string
-      - name: If-Match
-        in: header
-        description: The If-Match header
-        schema:
-          type: string
-      - name: If-Modified-Since
-        in: header
-        description: The If-Match header
-        schema:
-          type: string
-      - name: If-None-Match
-        in: header
-        description: The If-Match header
-        schema:
-          type: string
-      - name: If-Unmodified-Since
-        in: header
-        description: The If-Match header
-        schema:
-          type: string
+        - name: sectionName
+          in: path
+          description: The name of the section for which the configuration file is
+            to be stored
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-Modified-Since
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-None-Match
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-Unmodified-Since
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
       requestBody:
         content:
           multipart/form-data:
             schema:
               required:
-              - configFile
+                - configFile
+              type: object
               properties:
                 configFile:
                   type: string
@@ -115,7 +116,7 @@ paths:
                   format: binary
         required: true
       responses:
-        200:
+        "200":
           description: OK
           content: {}
         default:
@@ -124,39 +125,39 @@ paths:
   /config/url:
     get:
       tags:
-      - config
+        - config
       summary: Get the configuration file for a URL
       description: Get the configuration file stored for a given URL
       operationId: getUrlConfig
       parameters:
-      - name: url
-        in: query
-        description: The URL for which the configuration is requested
-        required: true
-        schema:
-          type: string
-      - name: If-Match
-        in: header
-        description: The If-Match header
-        schema:
-          type: string
-      - name: If-Modified-Since
-        in: header
-        description: The If-Match header
-        schema:
-          type: string
-      - name: If-None-Match
-        in: header
-        description: The If-Match header
-        schema:
-          type: string
-      - name: If-Unmodified-Since
-        in: header
-        description: The If-Match header
-        schema:
-          type: string
+        - name: url
+          in: query
+          description: The URL for which the configuration is requested
+          required: true
+          schema:
+            type: string
+        - name: If-Match
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-Modified-Since
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-None-Match
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
+        - name: If-Unmodified-Since
+          in: header
+          description: The If-Match header
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: The configuration file for the URL
           content:
             multipart/form-data:
@@ -169,7 +170,7 @@ paths:
   /config/loadedurls:
     get:
       tags:
-      - config
+        - config
       summary: Get the URLs from which the configuration was loaded
       description: Get the URLs from which the configuration was actually loaded,
         reflecting any failover to local copies
@@ -189,12 +190,12 @@ paths:
   /config/lastupdatetime:
     get:
       tags:
-      - config
+        - config
       summary: Get the timestamp when the configuration was last updated
       description: Get the timestamp when the configuration was last updated
       operationId: getLastUpdateTime
       responses:
-        200:
+        "200":
           description: The timestamp when the configuration was last updated
           content:
             application/json:
@@ -207,12 +208,12 @@ paths:
   /config/reload:
     put:
       tags:
-      - config
+        - config
       summary: Request a configuration reload
       description: Request that the stored configuration is reloaded
       operationId: putConfigReload
       responses:
-        200:
+        "200":
           description: OK
           content: {}
         default:
@@ -221,12 +222,12 @@ paths:
   /config/platform:
     get:
       tags:
-      - config
+        - config
       summary: Get the platform configuration
       description: Get the platform configuration
       operationId: getPlatformConfig
       responses:
-        200:
+        "200":
           description: The platform configuration
           content:
             application/json:
@@ -238,7 +239,7 @@ paths:
   /auids:
     post:
       tags:
-      - aus
+        - aus
       summary: Calculate an AUID for a hypothetical AU
       description: Calculate an AUID for a hypothetical AU, given either a plugin
         ID and an auConfig map (for traditional AUs), or a handle and an optional
@@ -248,6 +249,7 @@ paths:
         content:
           application/x-www-form-urlencoded:
             schema:
+              type: object
               properties:
                 pluginId:
                   type: string
@@ -259,7 +261,7 @@ paths:
                   description: The configuration information for this au (as a json
                     map).
       responses:
-        200:
+        "200":
           description: Map containing the resulting AUID
           content:
             application/json:
@@ -274,12 +276,12 @@ paths:
   /aus:
     get:
       tags:
-      - aus
+        - aus
       summary: Get the configurations of all AUs
       description: Get the configuration of all AUs
       operationId: getAllAuConfig
       responses:
-        200:
+        "200":
           description: The configuration of all AUs
           content:
             application/json:
@@ -293,19 +295,19 @@ paths:
   /aus/{auid}:
     get:
       tags:
-      - aus
+        - aus
       summary: Get the configuration of an AU
       description: Get the configuration of an AU given the AU identifier
       operationId: getAuConfig
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the AU for which the configuration is\ \ requested
-        required: true
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the configuration is\ \ requested
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: The configuration of the specified AU
           content:
             application/json:
@@ -316,17 +318,17 @@ paths:
           content: {}
     put:
       tags:
-      - aus
+        - aus
       summary: Store the configuration of an AU
       description: Store the configuration of an AU given the AU identifier
       operationId: putAuConfig
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the AU for this configuration.
-        required: true
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the AU for this configuration.
+          required: true
+          schema:
+            type: string
       requestBody:
         description: The Archival Unit configuration to be stored
         content:
@@ -335,7 +337,7 @@ paths:
               $ref: '#/components/schemas/auConfiguration'
         required: true
       responses:
-        200:
+        "200":
           description: OK
           content: {}
         default:
@@ -344,20 +346,20 @@ paths:
       x-codegen-request-body-name: auConfiguration
     delete:
       tags:
-      - aus
+        - aus
       summary: Delete the configuration of an AU
       description: Delete the configuration of an AU given the AU identifier
       operationId: deleteAuConfig
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the AU for which the configuration is\ \ to
-          be deleted
-        required: true
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the configuration is\ \ to
+            be deleted
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: The deleted configuration of the specified AU
           content:
             application/json:
@@ -366,10 +368,10 @@ paths:
         default:
           description: The resulting error payload.
           content: {}
-  /aus/add:
+  /ws/aus/add:
     post:
       tags:
-      - aus
+        - aus
       summary: Add AUs
       description: Add a group of AUs given their identifiers
       operationId: postAus
@@ -383,7 +385,7 @@ paths:
                 type: string
         required: true
       responses:
-        200:
+        "200":
           description: Information about the added AUs
           content:
             application/json:
@@ -395,10 +397,10 @@ paths:
           description: The resulting error payload.
           content: {}
       x-codegen-request-body-name: auIds
-  /aus/deactivate:
+  /ws/aus/deactivate:
     put:
       tags:
-      - aus
+        - aus
       summary: Deactivate AUs
       description: Deactivate a group of AUs given their identifiers
       operationId: putAusDeactivate
@@ -412,7 +414,7 @@ paths:
                 type: string
         required: true
       responses:
-        200:
+        "200":
           description: Information about the deactivated AUs
           content:
             application/json:
@@ -424,10 +426,10 @@ paths:
           description: The resulting error payload.
           content: {}
       x-codegen-request-body-name: auIds
-  /aus/reactivate:
+  /ws/aus/reactivate:
     put:
       tags:
-      - aus
+        - aus
       summary: Reactivate AUs
       description: Reactivate a group of AUs given their identifiers
       operationId: putAusReactivate
@@ -441,7 +443,7 @@ paths:
                 type: string
         required: true
       responses:
-        200:
+        "200":
           description: Information about the reactivated AUs
           content:
             application/json:
@@ -453,10 +455,10 @@ paths:
           description: The resulting error payload.
           content: {}
       x-codegen-request-body-name: auIds
-  /aus/delete:
+  /ws/aus/delete:
     delete:
       tags:
-      - aus
+        - aus
       summary: Delete AUs
       description: Delete a group of AUs given their identifiers
       operationId: deleteAusDelete
@@ -470,7 +472,7 @@ paths:
                 type: string
         required: true
       responses:
-        200:
+        "200":
           description: Information about the deleted AUs
           content:
             application/json:
@@ -485,20 +487,20 @@ paths:
   /aus/{auid}/mddisable:
     put:
       tags:
-      - aus
+        - aus
       summary: Disable AU metadata extraction
       description: Disable the metadata extraction for an AU given its identifier
       operationId: putAusMdDisable
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the Archival Units for which metadata extraction
-          is to be disabled
-        required: true
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the Archival Units for which metadata extraction
+            is to be disabled
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: Information about the AU for which metadata extraction has
             been disabled
           content:
@@ -511,20 +513,20 @@ paths:
   /aus/{auid}/mdenable:
     put:
       tags:
-      - aus
+        - aus
       summary: Enable AU metadata extraction
       description: Enable the metadata extraction for an AU given its identifier
       operationId: putAusMdEnable
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the Archival Units for which metadata extraction
-          is to be enabled
-        required: true
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the Archival Units for which metadata extraction
+            is to be enabled
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: Information about the AU for which metadata extraction has
             been enabled
           content:
@@ -537,19 +539,19 @@ paths:
   /austates/{auid}:
     get:
       tags:
-      - aus
+        - aus
       summary: Get the state of an AU
       description: Get the state of an AU given the AU identifier
       operationId: getAuState
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the AU for which the state is requested
-        required: true
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the state is requested
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: The state of the specified AU
           content:
             application/json:
@@ -560,22 +562,22 @@ paths:
           content: {}
     patch:
       tags:
-      - aus
+        - aus
       summary: Update the state of an AU
       description: Update the state of an AU given the AU identifier
       operationId: patchAuState
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the AU for which the state is to be updated
-        required: true
-        schema:
-          type: string
-      - name: X-Lockss-Request-Cookie
-        in: header
-        description: The LOCKSS-specific request cookie header
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the state is to be updated
+          required: true
+          schema:
+            type: string
+        - name: X-Lockss-Request-Cookie
+          in: header
+          description: The LOCKSS-specific request cookie header
+          schema:
+            type: string
       requestBody:
         description: The parts of the Archival Unit state to be updated
         content:
@@ -584,7 +586,7 @@ paths:
               type: string
         required: true
       responses:
-        200:
+        "200":
           description: OK
           content: {}
         default:
@@ -594,20 +596,20 @@ paths:
   /auagreements/{auid}:
     get:
       tags:
-      - aus
+        - aus
       summary: Get the poll agreements of an AU
       description: Get the poll agreements of an AU given the AU identifier
       operationId: getAuAgreements
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the AU for which the poll agreements are
-          requested
-        required: true
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the poll agreements are
+            requested
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: The poll agreements of the specified AU
           content:
             application/json:
@@ -618,23 +620,23 @@ paths:
           content: {}
     patch:
       tags:
-      - aus
+        - aus
       summary: Update the poll agreements of an AU
       description: Update the poll agreements of an AU given the AU identifier
       operationId: patchAuAgreements
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the AU for which the poll agreements are
-          to be updated
-        required: true
-        schema:
-          type: string
-      - name: X-Lockss-Request-Cookie
-        in: header
-        description: The LOCKSS-specific request cookie header
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the poll agreements are
+            to be updated
+          required: true
+          schema:
+            type: string
+        - name: X-Lockss-Request-Cookie
+          in: header
+          description: The LOCKSS-specific request cookie header
+          schema:
+            type: string
       requestBody:
         description: The parts of the Archival Unit poll agreements to be updated
         content:
@@ -643,7 +645,7 @@ paths:
               type: string
         required: true
       responses:
-        200:
+        "200":
           description: OK
           content: {}
         default:
@@ -653,20 +655,20 @@ paths:
   /aususpecturls/{auid}:
     get:
       tags:
-      - aus
+        - aus
       summary: Get the suspect URL versions of an AU
       description: Get the suspect URL versions of an AU given the AU identifier
       operationId: getAuSuspectUrlVersions
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the AU for which the suspect URL versions
-          are requested
-        required: true
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the suspect URL versions
+            are requested
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: The suspect URL versions of the specified AU
           content:
             application/json:
@@ -677,23 +679,23 @@ paths:
           content: {}
     put:
       tags:
-      - aus
+        - aus
       summary: Update the suspect URL versions of an AU
       description: Update the suspect URL versions of an AU given the AU identifier
       operationId: putAuSuspectUrlVersions
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the AU for which the suspect URL versions
-          are to be updated
-        required: true
-        schema:
-          type: string
-      - name: X-Lockss-Request-Cookie
-        in: header
-        description: The LOCKSS-specific request cookie header
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the suspect URL versions
+            are to be updated
+          required: true
+          schema:
+            type: string
+        - name: X-Lockss-Request-Cookie
+          in: header
+          description: The LOCKSS-specific request cookie header
+          schema:
+            type: string
       requestBody:
         description: The parts of the Archival Unit suspect URL versions to be
           updated
@@ -703,7 +705,7 @@ paths:
               type: string
         required: true
       responses:
-        200:
+        "200":
           description: OK
           content: {}
         default:
@@ -713,20 +715,20 @@ paths:
   /noaupeers/{auid}:
     get:
       tags:
-      - aus
+        - aus
       summary: Get the NoAuPeerSet object of an AU
       description: Get the NoAuPeerSet object of an AU given the AU identifier
       operationId: getNoAuPeers
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the AU for which the NoAuPeerSet object
-          is requested
-        required: true
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the NoAuPeerSet object
+            is requested
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: The NoAuPeerSet object of the specified AU
           content:
             application/json:
@@ -737,23 +739,23 @@ paths:
           content: {}
     put:
       tags:
-      - aus
+        - aus
       summary: Update the NoAuPeerSet object of an AU
       description: Update the NoAuPeerSet object of an AU given the AU identifier
       operationId: putNoAuPeers
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the AU for which the NoAuPeerSet object
-          is to be updated
-        required: true
-        schema:
-          type: string
-      - name: X-Lockss-Request-Cookie
-        in: header
-        description: The LOCKSS-specific request cookie header
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the NoAuPeerSet object
+            is to be updated
+          required: true
+          schema:
+            type: string
+        - name: X-Lockss-Request-Cookie
+          in: header
+          description: The LOCKSS-specific request cookie header
+          schema:
+            type: string
       requestBody:
         description: The parts of the Archival Unit NoAuPeerSet object to be updated
         content:
@@ -762,7 +764,7 @@ paths:
               type: string
         required: true
       responses:
-        200:
+        "200":
           description: OK
           content: {}
         default:
@@ -772,19 +774,19 @@ paths:
   /ws/tdbaus:
     get:
       tags:
-      - tdb
+        - tdb
       summary: Query the TDB for AUs
       description: Query the TDB for AUs that meet a set of specified conditions
       operationId: getTdbAus
       parameters:
-      - name: tdbAuQuery
-        in: query
-        description: The query that specifies the TDB AUs to be returned
-        required: true
-        schema:
-          type: string
+        - name: tdbAuQuery
+          in: query
+          description: The query that specifies the TDB AUs to be returned
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: Information about the requested TDB AUs
           content:
             application/json:
@@ -798,19 +800,19 @@ paths:
   /ws/tdbtitles:
     get:
       tags:
-      - tdb
+        - tdb
       summary: Query the TDB for Titles
       description: Query the TDB for Titles that meet a set of specified conditions
       operationId: getTdbTitles
       parameters:
-      - name: tdbTitleQuery
-        in: query
-        description: The query that specifies the TDB Titles to be returned
-        required: true
-        schema:
-          type: string
+        - name: tdbTitleQuery
+          in: query
+          description: The query that specifies the TDB Titles to be returned
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: Information about the requested TDB Titles
           content:
             application/json:
@@ -824,17 +826,17 @@ paths:
   /ws/tdbpublishers:
     get:
       tags:
-      - tdb
+        - tdb
       summary: Query the TDB for Publishers
       description: Query the TDB for Publishers that meet a set of specifie conditions
       operationId: getTdbPublishers
       parameters:
-      - name: tdbPublisherQuery
-        in: query
-        description: The query that specifies the TDB Publishers to be returned
-        required: true
-        schema:
-          type: string
+        - name: tdbPublisherQuery
+          in: query
+          description: The query that specifies the TDB Publishers to be returned
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: Information about the requested TDB Publishers
@@ -850,19 +852,19 @@ paths:
   /ws/plugins:
     get:
       tags:
-      - plugins
+        - plugins
       summary: Query for plugin properties
       description: Query for plugins that meet a set of specified conditions
       operationId: getPlugins
       parameters:
-      - name: pluginQuery
-        in: query
-        description: The query that specifies the plugins to be returned
-        required: true
-        schema:
-          type: string
+        - name: pluginQuery
+          in: query
+          description: The query that specifies the plugins to be returned
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: Information about the requested plugins
           content:
             application/json:
@@ -876,19 +878,19 @@ paths:
   /ws/auqueries:
     get:
       tags:
-      - aus
+        - aus
       summary: Query for archival unit properties
       description: Query for archival units that meet a set of specified conditions
       operationId: getAuqueries
       parameters:
-      - name: auQuery
-        in: query
-        description: The query that specifies the archival units to be returned
-        required: true
-        schema:
-          type: string
+        - name: auQuery
+          in: query
+          description: The query that specifies the archival units to be returned
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: Information about the requested archival units
           content:
             application/json:
@@ -902,19 +904,19 @@ paths:
   /austatuses/{auid}:
     get:
       tags:
-      - aus
+        - aus
       summary: Get the status of an AU
       description: Get the status of an AU given the AU identifier
       operationId: getAuStatus
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the AU for which the status is requested
-        required: true
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the status is requested
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: The status of the specified AU
           content:
             application/json:
@@ -926,20 +928,20 @@ paths:
   /ausubstances/{auid}:
     put:
       tags:
-      - aus
+        - aus
       summary: Update the substance of an AU
       description: Update the substance of an AU given the AU identifier
       operationId: putAuSubstanceCheck
       parameters:
-      - name: auid
-        in: path
-        description: The identifier of the AU for which the substance check is
-          requested
-        required: true
-        schema:
-          type: string
+        - name: auid
+          in: path
+          description: The identifier of the AU for which the substance check is
+            requested
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: The substance check of the specified AU
           content:
             application/json:
@@ -951,12 +953,12 @@ paths:
   /status:
     get:
       tags:
-      - status
+        - status
       summary: Get the status of the service
       description: Get the status of the service
       operationId: getStatus
       responses:
-        200:
+        "200":
           description: The status of the service
           content:
             application/json:
@@ -968,7 +970,7 @@ paths:
   /usernames:
     get:
       tags:
-      - users
+        - users
       summary: Get the usernames configured in the system
       description: Get the usernames configured in the system
       operationId: getUserAccountNames
@@ -990,7 +992,7 @@ paths:
   /users:
     post:
       tags:
-      - users
+        - users
       summary: Adds user accounts to the system
       description: Adds user accounts to the system
       operationId: addUserAccounts
@@ -1018,17 +1020,17 @@ paths:
   /users/{username}:
     get:
       tags:
-      - users
+        - users
       summary: Get user account details
       description: Get user account details
       operationId: getUserAccount
       parameters:
-      - name: username
-        in: path
-        description: Username
-        required: true
-        schema:
-          type: string
+        - name: username
+          in: path
+          description: Username
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: A JSON serialization containing details of the user account
@@ -1050,17 +1052,17 @@ paths:
           content: {}
     delete:
       tags:
-      - users
+        - users
       summary: Remove a user account from the system
       description: Remove a user account from the system
       operationId: removeUserAccount
       parameters:
-      - name: username
-        in: path
-        description: Username
-        required: true
-        schema:
-          type: string
+        - name: username
+          in: path
+          description: Username
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: Removed user account
@@ -1076,22 +1078,22 @@ paths:
           content: {}
     patch:
       tags:
-      - users
+        - users
       summary: Update properties of an existing user account
       description: Update properties of an existing user account
       operationId: updateUserAccount
       parameters:
-      - name: username
-        in: path
-        description: Username
-        required: true
-        schema:
-          type: string
-      - name: X-Lockss-Request-Cookie
-        in: header
-        description: The LOCKSS-specific request cookie header
-        schema:
-          type: string
+        - name: username
+          in: path
+          description: Username
+          required: true
+          schema:
+            type: string
+        - name: X-Lockss-Request-Cookie
+          in: header
+          description: The LOCKSS-specific request cookie header
+          schema:
+            type: string
       requestBody:
         description: The user account details to be updated
         content:
@@ -1123,7 +1125,7 @@ components:
   schemas:
     platformConfigurationWsResult:
       required:
-      - hostName
+        - hostName
       type: object
       properties:
         hostName:
@@ -1132,8 +1134,8 @@ components:
       description: The configuration of the platform
     auConfiguration:
       required:
-      - auConfig
-      - auId
+        - auConfig
+        - auId
       type: object
       properties:
         auId:
@@ -1148,10 +1150,10 @@ components:
       description: The encapsulation of an Archival Unit configuration
     contentConfigurationResult:
       required:
-      - auId
-      - isSuccess
-      - message
-      - name
+        - auId
+        - isSuccess
+        - message
+        - name
       type: object
       properties:
         auId:
@@ -1250,7 +1252,7 @@ components:
       description: The properties of a TDB Title
     tdbPublisherWsResult:
       required:
-      - name
+        - name
       type: object
       properties:
         name:
@@ -1259,15 +1261,15 @@ components:
       description: The properties of a TDB Publisher
     pluginWsResult:
       required:
-      - auCount
-      - definition
-      - name
-      - pluginId
-      - publishingPlatform
-      - registry
-      - type
-      - url
-      - version
+        - auCount
+        - definition
+        - name
+        - pluginId
+        - publishingPlatform
+        - registry
+        - type
+        - url
+        - version
       type: object
       properties:
         pluginId:
@@ -1303,7 +1305,7 @@ components:
       description: The properties of a plugin
     auWsResult:
       required:
-      - auId
+        - auId
       type: object
       properties:
         auId:
@@ -1312,9 +1314,9 @@ components:
       description: The properties of an archival unit
     requestAuControlResult:
       required:
-      - errorMessage
-      - id
-      - success
+        - errorMessage
+        - id
+        - success
       type: object
       properties:
         id:
@@ -1329,7 +1331,7 @@ components:
       description: The result of an archival unit generic control request
     auStatus:
       required:
-      - volume
+        - volume
       type: object
       properties:
         volume:
@@ -1338,10 +1340,10 @@ components:
       description: The status of an archival unit
     checkSubstanceResult:
       required:
-      - errorMessage
-      - id
-      - newState
-      - oldState
+        - errorMessage
+        - id
+        - newState
+        - oldState
       type: object
       properties:
         id:
@@ -1351,24 +1353,24 @@ components:
           type: string
           description: An indication of whether the result is successful
           enum:
-          - Unknown
-          - "Yes"
-          - "No"
+            - Unknown
+            - "Yes"
+            - "No"
         newState:
           type: string
           description: An indication of whether the result is successful
           enum:
-          - Unknown
-          - "Yes"
-          - "No"
+            - Unknown
+            - "Yes"
+            - "No"
         errorMessage:
           type: string
           description: The error message as a result of the operation
       description: The status of an archival unit
     apiStatus:
       required:
-      - apiVersion
-      - ready
+        - apiVersion
+        - ready
       type: object
       properties:
         apiVersion:
@@ -1400,13 +1402,13 @@ components:
           type: string
           description: Enum indicating progress of plugin/AU processing at startup.
           enum:
-          - NONE
-          - PLUGINS_CRAWLING
-          - PLUGINS_COLLECTED
-          - PLUGINS_LOADING
-          - PLUGINS_LOADED
-          - AUS_STARTING
-          - AUS_STARTED
+            - NONE
+            - PLUGINS_CRAWLING
+            - PLUGINS_COLLECTED
+            - PLUGINS_LOADING
+            - PLUGINS_LOADED
+            - AUS_STARTING
+            - AUS_STARTED
       description: The status information of the service
   securitySchemes:
     basicAuth:
