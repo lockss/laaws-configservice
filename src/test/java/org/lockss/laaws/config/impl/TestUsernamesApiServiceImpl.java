@@ -40,6 +40,7 @@ import org.lockss.account.BasicUserAccount;
 import org.lockss.account.UserAccount;
 import org.lockss.app.LockssDaemon;
 import org.lockss.config.RestConfigClient;
+import org.lockss.laaws.config.ConfigApplication;
 import org.lockss.log.L4JLogger;
 import org.lockss.spring.test.SpringLockssTestCase4;
 import org.lockss.state.StateManager;
@@ -63,7 +64,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    classes = {ConfigApplication.class},
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class TestUsernamesApiServiceImpl extends SpringLockssTestCase4 {
   private static L4JLogger log = L4JLogger.getLogger();
 

@@ -36,6 +36,7 @@ import org.lockss.config.ConfigManager;
 import org.lockss.config.HttpRequestPreconditions;
 import org.lockss.config.RestConfigClient;
 import org.lockss.config.RestConfigSection;
+import org.lockss.laaws.config.ConfigApplication;
 import org.lockss.log.L4JLogger;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
 import org.lockss.spring.test.SpringLockssTestCase4;
@@ -86,7 +87,9 @@ import static org.lockss.laaws.config.impl.ConfigApiServiceImpl.*;
  * Test class for org.lockss.laaws.config.api.ConfigApiController.
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    classes = {ConfigApplication.class},
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
   private static final L4JLogger log = L4JLogger.getLogger();
 
