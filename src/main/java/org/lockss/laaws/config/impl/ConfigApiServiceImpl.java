@@ -388,8 +388,7 @@ public class ConfigApiServiceImpl
     } catch (Exception e) {
       String message = "Cannot getLoadedUrlList()";
       log.error(message, e);
-      return new ResponseEntity<List<String>>(new ArrayList<String>(),
-	  HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new LockssRestServiceException(HttpStatus.INTERNAL_SERVER_ERROR, e);
     }
   }
 
@@ -463,7 +462,7 @@ public class ConfigApiServiceImpl
       canonicalSectionName = validateSectionName(sectionName, AccessType.WRITE);
       log.trace("canonicalSectionName = {}", () -> canonicalSectionName);
     } catch (MalformedParametersException mpe) {
-      return new ResponseEntity<Void>(HttpStatus.BAD_REQUEST);
+      throw new LockssRestServiceException(HttpStatus.BAD_REQUEST, mpe.getMessage()/*, parsedRequest*/);
     }
 
     try {
