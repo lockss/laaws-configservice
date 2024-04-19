@@ -113,6 +113,7 @@ public class ConfigApiServiceImpl
   static final String SECTION_NAME_EXPERT = "expert";
   static final String SECTION_NAME_ALERT = "alert";
   static final String SECTION_NAME_CRONSTATE = "cronstate";
+  static final String SECTION_NAME_MIGRATION = "migration";
 
   private static L4JLogger log = L4JLogger.getLogger();
 
@@ -133,6 +134,7 @@ public class ConfigApiServiceImpl
 	put(SECTION_NAME_EXPERT, CONFIG_FILE_EXPERT_CLUSTER);
 	put(SECTION_NAME_ALERT, AlertManagerImpl.CONFIG_FILE_ALERT_CONFIG);
 	put(SECTION_NAME_CRONSTATE, Cron.CONFIG_FILE_CRON_STATE);
+	put(SECTION_NAME_MIGRATION, CONFIG_FILE_MIGRATION);
       }
   };
 
