@@ -29,7 +29,6 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --> 
-# LOCKSS Configuration Service [![Build Status](https://travis-ci.org/lockss/laaws-configservice.svg?branch=master)](https://travis-ci.org/lockss/laaws-configservice)
 This is the REST Web Service that provides configuration information to the
 other REST Web Services in the LOCKSS cluster.
 
