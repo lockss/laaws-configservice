@@ -1,8 +1,9 @@
 # `laaws-configuration-service` Release Notes
 
 ## Changes Since 2.0.4.1
-* Remove leftover travis.ci support
-* Add OpenApi3 support.
+* Remove  Travis CI
+* Move to OpenAPI 3
+* Move to Java 17
 * Move to springdoc
 * Move TypedUserAccount into lockss-core
 
