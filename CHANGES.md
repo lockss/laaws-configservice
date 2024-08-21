@@ -1,6 +1,6 @@
 # `laaws-configuration-service` Release Notes
 
-## Changes Since 2.0.4.1
+## Changes Since 2.0.5.0
 * Remove  Travis CI
 * Move to OpenAPI 3
 * Move to Java 17
