@@ -33,15 +33,6 @@ package org.lockss.laaws.config.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -49,37 +40,37 @@ import org.lockss.app.LockssDaemon;
 import org.lockss.config.AuConfiguration;
 import org.lockss.config.RestConfigClient;
 import org.lockss.db.DbException;
+import org.lockss.laaws.config.ConfigApplication;
 import org.lockss.log.L4JLogger;
 import org.lockss.plugin.PluginManager;
-import org.lockss.plugin.AuUtil;
-import org.lockss.plugin.definable.NamedArchivalUnit;
-import org.lockss.util.MapUtil;
+import org.lockss.spring.test.SpringLockssTestCase4;
 import org.lockss.util.rest.RestUtil;
 import org.lockss.util.rest.exception.LockssRestException;
 import org.lockss.util.rest.exception.LockssRestHttpException;
-import org.lockss.spring.test.SpringLockssTestCase4;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.context.embedded.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ApplicationContext;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.test.context.junit4.SpringRunner;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.util.*;
 
 /**
  * Test class for org.lockss.laaws.config.api.AusApiController.
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    classes = {ConfigApplication.class},
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
   private static L4JLogger log = L4JLogger.getLogger();
 
@@ -169,7 +160,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-    runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
     runMethodsNotAllowedUnAuthenticatedTest();
     putAuConfigUnAuthenticatedTest();
     getAuConfigUnAuthenticatedTest();
@@ -196,7 +187,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-    runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
     runMethodsNotAllowedAuthenticatedTest();
     putAuConfigAuthenticatedTest();
     getAuConfigAuthenticatedTest();
@@ -360,7 +351,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
 
     HttpEntity<String> requestEntity = null;
 
@@ -392,13 +383,14 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<String> response = new TestRestTemplate(restTemplate)
+    ResponseEntity<String> response = new TestRestTemplate(templateBuilder)
 	.exchange(uri, method, requestEntity, String.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertFalse(RestUtil.isSuccess(statusCode));
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertFalse(RestUtil.isSuccess(status));
+    assertEquals(expectedStatus, status);
   }
 
   /**
@@ -829,7 +821,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
@@ -867,12 +859,13 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<?> response = new TestRestTemplate(restTemplate)
+    ResponseEntity<?> response = new TestRestTemplate(templateBuilder)
 	.exchange(uri, HttpMethod.PUT, requestEntity, String.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
   }
 
   /**
@@ -1113,7 +1106,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
@@ -1146,16 +1139,17 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
 
     // Make the request and get the response. 
     ResponseEntity<AuConfiguration> response =
-	new TestRestTemplate(restTemplate). exchange(uri, HttpMethod.GET,
+	new TestRestTemplate(templateBuilder). exchange(uri, HttpMethod.GET,
 	    requestEntity, AuConfiguration.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
 
     AuConfiguration result = null;
 
-    if (RestUtil.isSuccess(statusCode)) {
+    if (RestUtil.isSuccess(status)) {
       result = response.getBody();
     }
 
@@ -1388,7 +1382,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
 
     HttpEntity<Collection<AuConfiguration>> requestEntity = null;
 
@@ -1421,17 +1415,18 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<?> response = new TestRestTemplate(restTemplate)
+    ResponseEntity<?> response = new TestRestTemplate(templateBuilder)
 	.exchange(uri, HttpMethod.GET, requestEntity, String.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
 
     Collection<AuConfiguration> result = null;
 
     // Check whether it is a success response.
-    if (RestUtil.isSuccess(statusCode)) {
+    if (RestUtil.isSuccess(status)) {
       // Yes: Parse it.
       ObjectMapper mapper = new ObjectMapper();
       result = mapper.readValue((String)response.getBody(),
@@ -1819,7 +1814,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
@@ -1852,16 +1847,17 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
 
     // Make the request and get the response. 
     ResponseEntity<AuConfiguration> response =
-	new TestRestTemplate(restTemplate). exchange(uri, HttpMethod.DELETE,
+	new TestRestTemplate(templateBuilder). exchange(uri, HttpMethod.DELETE,
 	    requestEntity, AuConfiguration.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
 
     AuConfiguration result = null;
 
-    if (RestUtil.isSuccess(statusCode)) {
+    if (RestUtil.isSuccess(status)) {
       // Verify independently.
       assertNull(LockssDaemon.getLockssDaemon().getPluginManager()
 	  .getStoredAuConfiguration(auId));

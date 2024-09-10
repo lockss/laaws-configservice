@@ -43,13 +43,11 @@ fixImport org.lockss.laaws.config.model.ApiStatus org.lockss.util.rest.status.Ap
 # Edit AusApiDelegate.java.
 AUS_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/AusApiDelegate.java
 fixImport org.lockss.laaws.config.model.AuConfiguration org.lockss.config.AuConfiguration $AUS_API_DELEGATE
-fixImport org.lockss.laaws.config.model.ContentConfigurationResult org.lockss.ws.entities.ContentConfigurationResult $AUS_API_DELEGATE
 fixImport org.lockss.laaws.config.model.RequestAuControlResult org.lockss.ws.entities.RequestAuControlResult $AUS_API_DELEGATE
 
 # Edit AusApi.java.
 AUS_API=src/generated/java/org/lockss/laaws/config/api/AusApi.java
 fixImport org.lockss.laaws.config.model.AuConfiguration org.lockss.config.AuConfiguration $AUS_API
-fixImport org.lockss.laaws.config.model.ContentConfigurationResult org.lockss.ws.entities.ContentConfigurationResult $AUS_API
 fixImport org.lockss.laaws.config.model.RequestAuControlResult org.lockss.ws.entities.RequestAuControlResult $AUS_API
 
 # Edit ConfigApiDelegate.java.
@@ -83,6 +81,7 @@ fixImport org.lockss.laaws.config.model.PluginWsResult org.lockss.ws.entities.Pl
 fixImport org.lockss.laaws.config.model.TdbAuWsResult org.lockss.ws.entities.TdbAuWsResult $WS_API_DELEGATE
 fixImport org.lockss.laaws.config.model.TdbPublisherWsResult org.lockss.ws.entities.TdbPublisherWsResult $WS_API_DELEGATE
 fixImport org.lockss.laaws.config.model.TdbTitleWsResult org.lockss.ws.entities.TdbTitleWsResult $WS_API_DELEGATE
+fixImport org.lockss.laaws.config.model.ContentConfigurationResult org.lockss.ws.entities.ContentConfigurationResult $WS_API_DELEGATE
 
 # Edit WsApi.java.
 WS_API=src/generated/java/org/lockss/laaws/config/api/WsApi.java
@@ -91,3 +90,4 @@ fixImport org.lockss.laaws.config.model.PluginWsResult org.lockss.ws.entities.Pl
 fixImport org.lockss.laaws.config.model.TdbAuWsResult org.lockss.ws.entities.TdbAuWsResult $WS_API
 fixImport org.lockss.laaws.config.model.TdbPublisherWsResult org.lockss.ws.entities.TdbPublisherWsResult $WS_API
 fixImport org.lockss.laaws.config.model.TdbTitleWsResult org.lockss.ws.entities.TdbTitleWsResult $WS_API
+fixImport org.lockss.laaws.config.model.ContentConfigurationResult org.lockss.ws.entities.ContentConfigurationResult $WS_API

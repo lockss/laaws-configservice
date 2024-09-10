@@ -113,6 +113,7 @@ public class ConfigApiServiceImpl
   static final String SECTION_NAME_EXPERT = "expert";
   static final String SECTION_NAME_ALERT = "alert";
   static final String SECTION_NAME_CRONSTATE = "cronstate";
+  static final String SECTION_NAME_MIGRATION = "migration";
 
   private static L4JLogger log = L4JLogger.getLogger();
 
@@ -133,6 +134,7 @@ public class ConfigApiServiceImpl
 	put(SECTION_NAME_EXPERT, CONFIG_FILE_EXPERT_CLUSTER);
 	put(SECTION_NAME_ALERT, AlertManagerImpl.CONFIG_FILE_ALERT_CONFIG);
 	put(SECTION_NAME_CRONSTATE, Cron.CONFIG_FILE_CRON_STATE);
+	put(SECTION_NAME_MIGRATION, CONFIG_FILE_MIGRATION);
       }
   };
 
@@ -386,8 +388,7 @@ public class ConfigApiServiceImpl
     } catch (Exception e) {
       String message = "Cannot getLoadedUrlList()";
       log.error(message, e);
-      return new ResponseEntity<List<String>>(new ArrayList<String>(),
-	  HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new LockssRestServiceException(HttpStatus.INTERNAL_SERVER_ERROR, e);
     }
   }
 
@@ -461,7 +462,7 @@ public class ConfigApiServiceImpl
       canonicalSectionName = validateSectionName(sectionName, AccessType.WRITE);
       log.trace("canonicalSectionName = {}", () -> canonicalSectionName);
     } catch (MalformedParametersException mpe) {
-      return new ResponseEntity<Void>(HttpStatus.BAD_REQUEST);
+      throw new LockssRestServiceException(HttpStatus.BAD_REQUEST, mpe.getMessage()/*, parsedRequest*/);
     }
 
     try {

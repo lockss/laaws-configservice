@@ -36,6 +36,7 @@ import org.lockss.config.ConfigManager;
 import org.lockss.config.HttpRequestPreconditions;
 import org.lockss.config.RestConfigClient;
 import org.lockss.config.RestConfigSection;
+import org.lockss.laaws.config.ConfigApplication;
 import org.lockss.log.L4JLogger;
 import org.lockss.spring.auth.SpringAuthenticationFilter;
 import org.lockss.spring.test.SpringLockssTestCase4;
@@ -55,13 +56,14 @@ import org.lockss.util.rest.multipart.NamedByteArrayResource;
 import org.lockss.util.time.TimeBase;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.context.embedded.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.*;
+import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -74,6 +76,8 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.MalformedParametersException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
 import java.util.*;
 
 import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
@@ -83,9 +87,11 @@ import static org.lockss.laaws.config.impl.ConfigApiServiceImpl.*;
  * Test class for org.lockss.laaws.config.api.ConfigApiController.
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    classes = {ConfigApplication.class},
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
-  private static L4JLogger log = L4JLogger.getLogger();
+  private static final L4JLogger log = L4JLogger.getLogger();
 
   private static final String EMPTY_STRING = "";
   private static final String NUMBER = "1234567890";
@@ -233,7 +239,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-    runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
+    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
     runMethodsNotAllowedUnAuthenticatedTest();
     getConfigSectionUnAuthenticatedTest();
     getConfigUrlUnAuthenticatedTest();
@@ -263,7 +269,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
     runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
 
-    runGetSwaggerDocsTest(getTestUrlTemplate("/v2/api-docs"));
+     runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
     runMethodsNotAllowedAuthenticatedTest();
     getConfigSectionAuthenticatedTest();
     getConfigUrlAuthenticatedTest();
@@ -429,7 +435,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
 
     HttpEntity<String> requestEntity = null;
 
@@ -461,9 +467,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    TestRestTemplate testRestTemplate = new TestRestTemplate(restTemplate);
-
-    restTemplate.setErrorHandler(new LockssResponseErrorHandler(restTemplate.getMessageConverters()));
+    TestRestTemplate testRestTemplate = new TestRestTemplate(templateBuilder);
 
     try {
       ResponseEntity<String> response = testRestTemplate
@@ -1299,13 +1303,14 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
 
     // Add our MultipartMessageHttpMessageConverter
+//    templateBuilder.additionalMessageConverters(new MultipartMessageHttpMessageConverter());
     List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
     messageConverters.add(new MultipartMessageHttpMessageConverter());
-    messageConverters.addAll(restTemplate.getMessageConverters());
-    restTemplate.setMessageConverters(messageConverters);
+    messageConverters.addAll(new RestTemplate().getMessageConverters());
+    templateBuilder = templateBuilder.messageConverters(messageConverters);
 
     HttpEntity<String> requestEntity = null;
 
@@ -1347,7 +1352,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
         headers.setAccept(Arrays.asList(acceptContentType, MediaType.APPLICATION_JSON));
       } else {
         // No: Set it to accept errors at least.
-        headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
       }
 
       // Check whether there is a custom If-Match header.
@@ -1386,24 +1391,21 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response.
-    TestRestTemplate testTemplate = new TestRestTemplate(restTemplate);
-
-    // TestRestTemplate sets the error handler to NoOpResponseErrorHandler in its
-    // constructor - we set it back to our LockssResponseErrorHandler here:
-    restTemplate.setErrorHandler(new LockssResponseErrorHandler(restTemplate.getMessageConverters()));
+    TestRestTemplate testTemplate = new TestRestTemplate(templateBuilder);
 
     try {
       ResponseEntity<MultipartMessage> response = testTemplate
           .exchange(uri, HttpMethod.GET, requestEntity, MultipartMessage.class);
 
       // Get the response status.
-      HttpStatus statusCode = response.getStatusCode();
-      assertEquals(expectedStatus, statusCode);
+      HttpStatusCode statusCode = response.getStatusCode();
+      HttpStatus status = HttpStatus.valueOf(statusCode.value());
+      assertEquals(expectedStatus, status);
 
       MultipartResponse parsedResponse = null;
 
       // Check whether it is a success response.
-      if (isSuccess(statusCode)) {
+      if (isSuccess(status)) {
         // Yes: Parse it.
         parsedResponse = new MultipartResponse(response);
       }
@@ -1503,7 +1505,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	getRestConfigClient(credentials).getConfigSection(input);
 
     // Check the response status.
-    assertEquals(expectedStatus, output.getStatusCode());
+    assertEquals(expectedStatus, output.getStatus());
 
     // Check the error message.
     String errorMessage = output.getErrorMessage();
@@ -2459,12 +2461,14 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
 
-    // Set the multipart/form-data converter as the only one.
-    List<HttpMessageConverter<?>> messageConverters = restTemplate.getMessageConverters();
+    // Add our MultipartMessageHttpMessageConverter
+//    templateBuilder.additionalMessageConverters(new MultipartMessageHttpMessageConverter());
+    List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
     messageConverters.add(new MultipartMessageHttpMessageConverter());
-    restTemplate.setMessageConverters(messageConverters);
+    messageConverters.addAll(new RestTemplate().getMessageConverters());
+    templateBuilder = templateBuilder.messageConverters(messageConverters);
 
     HttpEntity<String> requestEntity = null;
 
@@ -2507,7 +2511,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	    MediaType.APPLICATION_JSON));
       } else {
 	// No: Set it to accept errors at least.
-	headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+	headers.setAccept(List.of(MediaType.APPLICATION_JSON));
       }
 
       // Check whether there is a custom If-Match header.
@@ -2547,19 +2551,21 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 
     try {
       // Make the request and get the response.
-      TestRestTemplate testTemplate = new TestRestTemplate(restTemplate);
-      restTemplate.setErrorHandler(new LockssResponseErrorHandler(restTemplate.getMessageConverters()));
+      TestRestTemplate testTemplate = new TestRestTemplate(templateBuilder);
+//      templateBuilder.setErrorHandler(new LockssResponseErrorHandler(templateBuilder.getMessageConverters()));
+
       ResponseEntity<MultipartMessage> response = testTemplate
           .exchange(uri, HttpMethod.GET, requestEntity, MultipartMessage.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
 
     MultipartResponse parsedResponse = null;
 
     // Check whether it is a success response.
-    if (isSuccess(statusCode)) {
+    if (isSuccess(status)) {
       // Yes: Parse it.
       parsedResponse = new MultipartResponse(response);
     }
@@ -2645,7 +2651,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
 
     HttpEntity<String> requestEntity = null;
 
@@ -2665,18 +2671,18 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<?> response = new TestRestTemplate(restTemplate)
-	.exchange(uri, HttpMethod.GET, requestEntity, String.class);
+    ResponseEntity<OffsetDateTime> response = new TestRestTemplate(templateBuilder)
+	.exchange(uri, HttpMethod.GET, requestEntity, OffsetDateTime.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
 
     // Check whether it is a success response.
-    if (isSuccess(statusCode)) {
-      // Yes: Parse it.
-      long lastUpdateTime =
-	  (long)(Double.parseDouble((String)response.getBody()) * 1000);
+    if (isSuccess(status)) {
+      // Yes: Convert OffsetDateTime to milliseconds since epoch
+      long lastUpdateTime = response.getBody().toInstant().toEpochMilli();
 
       // Validate it.
       assertEquals(ConfigManager.getConfigManager().getLastUpdateTime(),
@@ -2767,7 +2773,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
 
     HttpEntity<String> requestEntity = null;
 
@@ -2787,15 +2793,16 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<?> response = new TestRestTemplate(restTemplate)
+    ResponseEntity<?> response = new TestRestTemplate(templateBuilder)
 	.exchange(uri, HttpMethod.GET, requestEntity, String.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
 
     // Check whether it is a success response.
-    if (isSuccess(statusCode)) {
+    if (isSuccess(status)) {
       // Yes: Parse it.
       ObjectMapper mapper = new ObjectMapper();
       List<String> result = mapper.readValue((String)response.getBody(),
@@ -2926,29 +2933,29 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     try {
       runTestPutConfig("a1=b3", SECTION_NAME_PLUGIN,
 	  MediaType.APPLICATION_JSON, null, null, HttpStatus.BAD_REQUEST);
-      fail("Should have thrown HttpMessageNotWritableException");
-    } catch (HttpMessageNotWritableException hmnwe) {
-      assertTrue(hmnwe.getMessage().startsWith("Could not write JSON: "
-	  + "No serializer found for class java.io.ByteArrayInputStream"));
+      fail("Should have thrown HttpMessageConversionException");
+    } catch (HttpMessageConversionException e) {
+      // FIXME
+      assertMatchesRE("Type definition error", e.getMessage());
     }
 
     try {
       runTestPutConfig("a1=b3", SECTION_NAME_PLUGIN,
 	  MediaType.APPLICATION_JSON, null, ANYBODY, HttpStatus.BAD_REQUEST);
-      fail("Should have thrown HttpMessageNotWritableException");
-    } catch (HttpMessageNotWritableException hmnwe) {
-      assertTrue(hmnwe.getMessage().startsWith("Could not write JSON: "
-	  + "No serializer found for class java.io.ByteArrayInputStream"));
+      fail("Should have thrown HttpMessageConversionException");
+    } catch (HttpMessageConversionException e) {
+      // FIXME
+      assertMatchesRE("Type definition error", e.getMessage());
     }
 
     try {
       runTestPutConfig("a1=b3", SECTION_NAME_PLUGIN,
 	  MediaType.APPLICATION_JSON, null, CONTENT_ADMIN,
 	  HttpStatus.BAD_REQUEST);
-      fail("Should have thrown HttpMessageNotWritableException");
-    } catch (HttpMessageNotWritableException hmnwe) {
-      assertTrue(hmnwe.getMessage().startsWith("Could not write JSON: "
-	  + "No serializer found for class java.io.ByteArrayInputStream"));
+      fail("Should have thrown HttpMessageConversionException");
+    } catch (HttpMessageConversionException e) {
+      // FIXME
+      assertMatchesRE("Type definition error", e.getMessage());
     }
 
     // Success.
@@ -3044,10 +3051,10 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
       hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
       runTestPutConfig("a3=b3", SECTION_NAME_PLUGIN,
 	  MediaType.APPLICATION_JSON, hrp, null, HttpStatus.BAD_REQUEST);
-      fail("Should have thrown HttpMessageNotWritableException");
-    } catch (HttpMessageNotWritableException hmnwe) {
-      assertTrue(hmnwe.getMessage().startsWith("Could not write JSON: "
-	  + "No serializer found for class java.io.ByteArrayInputStream"));
+      fail("Should have thrown HttpMessageConversionException");
+    } catch (HttpMessageConversionException e) {
+      // FIXME
+      assertMatchesRE("Type definition error", e.getMessage());
     }
 
     try {
@@ -3055,10 +3062,10 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
       hrp = new HttpRequestPreconditions(ifMatch, null, null, null);
       runTestPutConfig("a3=b3", SECTION_NAME_PLUGIN,
 	  MediaType.APPLICATION_JSON, hrp, ANYBODY, HttpStatus.BAD_REQUEST);
-      fail("Should have thrown HttpMessageNotWritableException");
-    } catch (HttpMessageNotWritableException hmnwe) {
-      assertTrue(hmnwe.getMessage().startsWith("Could not write JSON: "
-	  + "No serializer found for class java.io.ByteArrayInputStream"));
+      fail("Should have thrown HttpMessageConversionException");
+    } catch (HttpMessageConversionException e) {
+      // FIXME
+      assertMatchesRE("Type definition error", e.getMessage());
     }
 
     try {
@@ -3067,10 +3074,10 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
       runTestPutConfig("a3=b3", SECTION_NAME_PLUGIN,
 	  MediaType.APPLICATION_JSON, hrp, CONTENT_ADMIN,
 	  HttpStatus.BAD_REQUEST);
-      fail("Should have thrown HttpMessageNotWritableException");
-    } catch (HttpMessageNotWritableException hmnwe) {
-      assertTrue(hmnwe.getMessage().startsWith("Could not write JSON: "
-	  + "No serializer found for class java.io.ByteArrayInputStream"));
+      fail("Should have thrown HttpMessageConversionException");
+    } catch (HttpMessageConversionException e) {
+      // FIXME
+      assertMatchesRE("Type definition error", e.getMessage());
     }
 
     // Modified since creation time.
@@ -3252,20 +3259,20 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     try {
       runTestPutConfig("a=b", SECTION_NAME_PLUGIN,
 	  MediaType.APPLICATION_JSON, null, null, HttpStatus.UNAUTHORIZED);
-      fail("Should have thrown HttpMessageNotWritableException");
-    } catch (HttpMessageNotWritableException hmnwe) {
-      assertTrue(hmnwe.getMessage().startsWith("Could not write JSON: "
-	  + "No serializer found for class java.io.ByteArrayInputStream"));
+      fail("Should have thrown HttpMessageConversionException");
+    } catch (HttpMessageConversionException e) {
+      // FIXME
+      assertMatchesRE("Type definition error", e.getMessage());
     }
 
     // Bad Content-Type header.
     try {
       runTestPutConfig("a=b", SECTION_NAME_PLUGIN,
 	  MediaType.APPLICATION_JSON, null, ANYBODY, HttpStatus.UNAUTHORIZED);
-      fail("Should have thrown HttpMessageNotWritableException");
-    } catch (HttpMessageNotWritableException hmnwe) {
-      assertTrue(hmnwe.getMessage().startsWith("Could not write JSON: "
-	  + "No serializer found for class java.io.ByteArrayInputStream"));
+      fail("Should have thrown HttpMessageConversionException");
+    } catch (HttpMessageConversionException e) {
+      // FIXME
+      assertMatchesRE("Type definition error", e.getMessage());
     }
 
     // Bad Content-Type header.
@@ -3273,10 +3280,10 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
       runTestPutConfig("a=b", SECTION_NAME_PLUGIN,
 	  MediaType.APPLICATION_JSON, null, CONTENT_ADMIN,
 	  HttpStatus.UNAUTHORIZED);
-      fail("Should have thrown HttpMessageNotWritableException");
-    } catch (HttpMessageNotWritableException hmnwe) {
-      assertTrue(hmnwe.getMessage().startsWith("Could not write JSON: "
-	  + "No serializer found for class java.io.ByteArrayInputStream"));
+      fail("Should have thrown HttpMessageConversionException");
+    } catch (HttpMessageConversionException e) {
+      // FIXME
+      assertMatchesRE("Type definition error", e.getMessage());
     }
 
     // Missing credentials.
@@ -3496,9 +3503,9 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     String filePath =
 	getTempDirPath() + "/cache/config/" + ConfigManager.CONFIG_FILE_EXPERT_CLUSTER;
 
-    assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
-	.conditionallyReadCacheConfigFile(filePath, null)
-	.getInputStream()).indexOf("testKey1=testValue1") == 0);
+    assertEquals(0, StringUtil.fromInputStream(ConfigManager.getConfigManager()
+        .conditionallyReadCacheConfigFile(filePath, null)
+        .getInputStream()).indexOf("testKey1=testValue1"));
 
     // Modified at different time than passed If-Unmodified-Since header.
     hrp = new HttpRequestPreconditions(null, null, null, NUMBER);
@@ -3564,9 +3571,9 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     assertTrue(beforeWrite <= Long.parseLong(part.getLastModified()));
 
     // Independent verification.
-    assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
-	.conditionallyReadCacheConfigFile(filePath, null).getInputStream())
-	.indexOf("testKey1=testValue1\ntestKey2=testValue2") == 0);
+    assertEquals(0, StringUtil.fromInputStream(ConfigManager.getConfigManager()
+            .conditionallyReadCacheConfigFile(filePath, null).getInputStream())
+        .indexOf("testKey1=testValue1\ntestKey2=testValue2"));
 
     // Modified at same time as passed If-Match ETag and same time as passed
     // If-Unmodified-Since header using the REST service client..
@@ -3590,7 +3597,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 
     RestConfigClient restConfigClient = getRestConfigClient(USER_ADMIN);
     RestConfigSection output2 = restConfigClient.getConfigSection(input);
-    assertEquals(HttpStatus.OK, output2.getStatusCode());
+    assertEquals(HttpStatus.OK, output2.getStatus());
     assertEquals("testKey2=testValue2\ntestKey3=testValue3",
 	StringUtil.fromInputStream(output2.getInputStream()));
 
@@ -3599,9 +3606,9 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     assertTrue(beforeWrite <= Long.parseLong(output2.getLastModified()));
 
     // Independent verification.
-    assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
-	.conditionallyReadCacheConfigFile(filePath, null).getInputStream())
-	.indexOf("testKey2=testValue2\ntestKey3=testValue3") == 0);
+    assertEquals(0, StringUtil.fromInputStream(ConfigManager.getConfigManager()
+            .conditionallyReadCacheConfigFile(filePath, null).getInputStream())
+        .indexOf("testKey2=testValue2\ntestKey3=testValue3"));
 
     // Write file with matching timestamp using the REST service client.
     HttpRequestPreconditions preconditions = new HttpRequestPreconditions();
@@ -3610,21 +3617,21 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     output2.setHttpRequestPreconditions(preconditions);
 
     String content = "testKey3=testValue3";
-    output2.setInputStream(new ByteArrayInputStream(content.getBytes("UTF-8")));
+    output2.setInputStream(new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)));
     output2.setContentLength(content.length());
     beforeWrite = TimeBase.nowMs();
 
     RestConfigSection output3 = restConfigClient.putConfigSection(output2);
-    assertEquals(HttpStatus.OK, output3.getStatusCode());
+    assertEquals(HttpStatus.OK, output3.getStatus());
 
     // Verify the part last modification timestamps.
     verifyRestConfigSectionModificationTimestamps(output3, null);
     assertTrue(beforeWrite <= Long.parseLong(output3.getLastModified()));
 
     // Independent verification.
-    assertTrue(StringUtil.fromInputStream(ConfigManager.getConfigManager()
-	.conditionallyReadCacheConfigFile(filePath, null).getInputStream())
-	.indexOf("testKey3=testValue3") == 0);
+    assertEquals(0, StringUtil.fromInputStream(ConfigManager.getConfigManager()
+            .conditionallyReadCacheConfigFile(filePath, null).getInputStream())
+        .indexOf("testKey3=testValue3"));
 
     // Cannot modify virtual sections.
     ifMatch = ListUtil.list(ZERO_PRECONDITION);
@@ -3690,7 +3697,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     output3 = runTestPutConfigSectionClient(
 	"testKey5=testValue5", SECTION_NAME_ACCESS_GROUPS, hrp,
 	USER_ADMIN, HttpStatus.OK, null);
-    assertEquals(HttpStatus.OK, output3.getStatusCode());
+    assertEquals(HttpStatus.OK, output3.getStatus());
 
     // Verify the part last modification timestamps.
     verifyRestConfigSectionModificationTimestamps(output3, null);
@@ -3703,14 +3710,14 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     output3.setHttpRequestPreconditions(preconditions);
 
     RestConfigSection output4 = restConfigClient.getConfigSection(output3);
-    assertEquals(HttpStatus.NOT_MODIFIED, output4.getStatusCode());
+    assertEquals(HttpStatus.NOT_MODIFIED, output4.getStatus());
 
     // Read file with non-matching timestamp using the REST service client.
     preconditions.setIfNoneMatch(ListUtil.list(
 	ALPHA_PRECONDITION, NUMERIC_PRECONDITION));
 
     output4 = restConfigClient.getConfigSection(output3);
-    assertEquals(HttpStatus.OK, output4.getStatusCode());
+    assertEquals(HttpStatus.OK, output4.getStatus());
 
     // Verify the part last modification timestamps.
     verifyRestConfigSectionModificationTimestamps(output4, null);
@@ -3782,7 +3789,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
 
     HttpEntity<MultiValueMap<String, Object>> requestEntity = null;
 
@@ -3844,7 +3851,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
       }
 
       // Set the "Accept" header to accept errors at least.
-      headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+      headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
       // Check whether there is a custom If-Match header.
       if (ifMatch != null) {
@@ -3883,12 +3890,13 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<?> response = new TestRestTemplate(restTemplate)
+    ResponseEntity<?> response = new TestRestTemplate(templateBuilder)
 	.exchange(uri, HttpMethod.PUT, requestEntity, Void.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
 
     log.debug2("Done");
   }
@@ -3931,7 +3939,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 
     if (config != null) {
       input.setInputStream(
-	  new ByteArrayInputStream(config.getBytes("UTF-8")));
+	  new ByteArrayInputStream(config.getBytes(StandardCharsets.UTF_8)));
       input.setContentLength(config.length());
     }
 
@@ -3942,7 +3950,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	getRestConfigClient(credentials).putConfigSection(input);
 
     // Check the response status.
-    assertEquals(expectedStatus, output.getStatusCode());
+    assertEquals(expectedStatus, output.getStatus());
 
     // Check the error message.
     String errorMessage = output.getErrorMessage();
@@ -4065,7 +4073,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplate restTemplate = RestUtil.getRestTemplate();
+    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
 
     HttpEntity<String> requestEntity = null;
 
@@ -4091,15 +4099,16 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	configManager.getConfigReloadRequestCounter();
 
     // Make the request and get the response. 
-    ResponseEntity<?> response = new TestRestTemplate(restTemplate)
+    ResponseEntity<?> response = new TestRestTemplate(templateBuilder)
 	.exchange(uri, HttpMethod.PUT, requestEntity, Void.class);
 
     // Get the response status.
-    HttpStatus statusCode = response.getStatusCode();
-    assertEquals(expectedStatus, statusCode);
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
 
     // Check whether it is a success response.
-    if (isSuccess(statusCode)) {
+    if (isSuccess(status)) {
       // Yes: The count of configuration reloading requests should have been
       // increased by 1.
       assertEquals(configReloadRequestCounter + 1,
