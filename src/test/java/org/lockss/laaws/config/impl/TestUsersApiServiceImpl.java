@@ -42,7 +42,8 @@ import org.lockss.laaws.config.ConfigApplication;
 import org.lockss.log.L4JLogger;
 import org.lockss.spring.test.SpringLockssTestCase4;
 import org.lockss.state.StateManager;
-import org.lockss.util.ListUtil;
+import org.lockss.plugin.AuUtil;
+import org.lockss.util.*;
 import org.lockss.util.rest.RestUtil;
 import org.lockss.util.rest.exception.LockssRestException;
 import org.lockss.util.rest.exception.LockssRestHttpException;
@@ -58,12 +59,12 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.fasterxml.jackson.core.type.*;
+import com.fasterxml.jackson.databind.*;
+
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Tests for {@link UsersApiServiceImpl}.
@@ -164,6 +165,7 @@ public class TestUsersApiServiceImpl extends SpringLockssTestCase4 {
     UserAccount acct1 = makeUser();
     UserAccount acct2 = makeUser();
     UserAccount acct3 = makeUser();
+    UserAccount acct4 = makeUser();
 
     assertNull(stateManager.getUserAccount(acct1.getName()));
     assertNull(stateManager.getUserAccount(acct2.getName()));
@@ -179,7 +181,26 @@ public class TestUsersApiServiceImpl extends SpringLockssTestCase4 {
 
     runTestPostUserAccounts(Collections.emptyList(), USER_ADMIN, HttpStatus.OK);
     runTestPostUserAccountsClient(Collections.emptyList(), USER_ADMIN, HttpStatus.OK);
-    runTestPostUserAccounts(ListUtil.list(acct1, acct2), USER_ADMIN, HttpStatus.OK);
+    String json =
+      runTestPostUserAccounts(ListUtil.list(acct1, acct2), USER_ADMIN, HttpStatus.OK);
+    ObjectMapper mapper = new ObjectMapper();
+    List<Map<String,Object>> res =
+      mapper.readValue(json, new TypeReference<List<Map<String,Object>>>(){});
+    log.debug("Result: {}", res);
+    assertEquals(SetUtil.set(acct1.getName(), acct2.getName()),
+                 SetUtil.set(res.get(0).get("userName"),
+                             res.get(1).get("userName")));
+
+    // Add two again, one of which already exists.  Should be OK but
+    // with only one returned result.
+    json =
+      runTestPostUserAccounts(ListUtil.list(acct1, acct4), USER_ADMIN, HttpStatus.OK);
+    res =
+      mapper.readValue(json, new TypeReference<List<Map<String,Object>>>(){});
+    log.debug("Result: {}", res);
+    assertEquals(1, res.size());
+    assertEquals(acct4.getName(), res.get(0).get("userName"));
+
     runTestPostUserAccountsClient(ListUtil.list(acct3), USER_ADMIN, HttpStatus.OK);
 
     assertNotNull(stateManager.getUserAccount(acct1.getName()));
