@@ -76,8 +76,8 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
         try {
           getStateManager().storeUserAccount(acct);
           successfullyAdded.add(acct);
-        } catch (IOException e) {
-          log.error("Could not add user account: {}", acct);
+        } catch (IOException | IllegalStateException e) {
+          log.error("Could not add user account: {}: {}", acct.getName(), e);
         }
       }
 
