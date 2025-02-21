@@ -967,6 +967,36 @@ paths:
         default:
           description: The resulting error payload.
           content: {}
+  /daemonstatus/{tableId}:
+    get:
+      tags:
+        - status
+      summary: Get the requested status table
+      description: Get the requested status table
+      operationId: getStatusTable
+      parameters:
+        - name: tableId
+          in: path
+          description: The identifier of the requested status table
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: query
+          description: Optional table parameter.
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The status of the service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/statusTable'
+        default:
+          description: The resulting error payload.
+          content: {}
   /usernames:
     get:
       tags:
@@ -1123,6 +1153,12 @@ paths:
       x-codegen-request-body-name: userAccount
 components:
   schemas:
+    statusTable:
+      type: object
+      properties:
+        name:
+          type: string
+      description: LOCKSS status table
     platformConfigurationWsResult:
       required:
         - hostName
