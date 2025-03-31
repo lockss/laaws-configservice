@@ -29,6 +29,7 @@ paths:
       summary: Get the named configuration file
       description: Get the configuration file stored for a given name
       operationId: getSectionConfig
+      # roles: ROLE_USER_ADMIN
       parameters:
         - name: sectionName
           in: path
@@ -74,6 +75,7 @@ paths:
       summary: Store the named configuration file
       description: Store the configuration file for a given name
       operationId: putConfig
+      # roles: ROLE_USER_ADMIN, if section name is "proxyIpAccess" then also accept ROLE_CONTENT_ADMIN
       parameters:
         - name: sectionName
           in: path
@@ -129,6 +131,7 @@ paths:
       summary: Get the configuration file for a URL
       description: Get the configuration file stored for a given URL
       operationId: getUrlConfig
+      # roles: ROLE_USER_ADMIN
       parameters:
         - name: url
           in: query
@@ -175,6 +178,7 @@ paths:
       description: Get the URLs from which the configuration was actually loaded,
         reflecting any failover to local copies
       operationId: getLoadedUrlList
+      # roles: ROLE_CAUTIOUS
       responses:
         "200":
           description: The URLs from which the configuration was loaded
@@ -194,6 +198,7 @@ paths:
       summary: Get the timestamp when the configuration was last updated
       description: Get the timestamp when the configuration was last updated
       operationId: getLastUpdateTime
+      # roles: ROLE_CAUTIOUS
       responses:
         "200":
           description: The timestamp when the configuration was last updated
@@ -212,6 +217,7 @@ paths:
       summary: Request a configuration reload
       description: Request that the stored configuration is reloaded
       operationId: putConfigReload
+      # roles: ROLE_USER_ADMIN
       responses:
         "200":
           description: OK
@@ -226,6 +232,7 @@ paths:
       summary: Get the platform configuration
       description: Get the platform configuration
       operationId: getPlatformConfig
+      # roles: ROLE_CAUTIOUS
       responses:
         "200":
           description: The platform configuration
@@ -245,6 +252,7 @@ paths:
         ID and an auConfig map (for traditional AUs), or a handle and an optional
         plugin ID for NamedAUs
       operationId: calculateAuid
+      # roles: ROLE_ANY
       requestBody:
         content:
           application/x-www-form-urlencoded:
@@ -280,6 +288,7 @@ paths:
       summary: Get the configurations of all AUs
       description: Get the configuration of all AUs
       operationId: getAllAuConfig
+      # roles: ROLE_AU_ADMIN
       responses:
         "200":
           description: The configuration of all AUs
@@ -299,6 +308,7 @@ paths:
       summary: Get the configuration of an AU
       description: Get the configuration of an AU given the AU identifier
       operationId: getAuConfig
+      # roles: ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -322,6 +332,7 @@ paths:
       summary: Store the configuration of an AU
       description: Store the configuration of an AU given the AU identifier
       operationId: putAuConfig
+      # roles: ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -350,6 +361,7 @@ paths:
       summary: Delete the configuration of an AU
       description: Delete the configuration of an AU given the AU identifier
       operationId: deleteAuConfig
+      # roles: ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -375,6 +387,7 @@ paths:
       summary: Add AUs
       description: Add a group of AUs given their identifiers
       operationId: postAus
+      # roles: ROLE_AU_ADMIN
       requestBody:
         description: The identifiers of the Archival Units to be added
         content:
@@ -404,6 +417,7 @@ paths:
       summary: Deactivate AUs
       description: Deactivate a group of AUs given their identifiers
       operationId: putAusDeactivate
+      # roles: ROLE_AU_ADMIN
       requestBody:
         description: The identifiers of the Archival Units to be deactivated
         content:
@@ -433,6 +447,7 @@ paths:
       summary: Reactivate AUs
       description: Reactivate a group of AUs given their identifiers
       operationId: putAusReactivate
+      # roles: ROLE_AU_ADMIN
       requestBody:
         description: The identifiers of the Archival Units to be reactivated
         content:
@@ -462,6 +477,7 @@ paths:
       summary: Delete AUs
       description: Delete a group of AUs given their identifiers
       operationId: deleteAusDelete
+      # roles: ROLE_AU_ADMIN
       requestBody:
         description: The identifiers of the Archival Units to be deleted
         content:
@@ -491,6 +507,7 @@ paths:
       summary: Disable AU metadata extraction
       description: Disable the metadata extraction for an AU given its identifier
       operationId: putAusMdDisable
+      # roles: ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -517,6 +534,7 @@ paths:
       summary: Enable AU metadata extraction
       description: Enable the metadata extraction for an AU given its identifier
       operationId: putAusMdEnable
+      # roles: ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -543,6 +561,7 @@ paths:
       summary: Get the state of an AU
       description: Get the state of an AU given the AU identifier
       operationId: getAuState
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -566,6 +585,7 @@ paths:
       summary: Update the state of an AU
       description: Update the state of an AU given the AU identifier
       operationId: patchAuState
+      # roles: ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -600,6 +620,7 @@ paths:
       summary: Get the poll agreements of an AU
       description: Get the poll agreements of an AU given the AU identifier
       operationId: getAuAgreements
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -624,6 +645,7 @@ paths:
       summary: Update the poll agreements of an AU
       description: Update the poll agreements of an AU given the AU identifier
       operationId: patchAuAgreements
+      # roles: ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -659,6 +681,7 @@ paths:
       summary: Get the suspect URL versions of an AU
       description: Get the suspect URL versions of an AU given the AU identifier
       operationId: getAuSuspectUrlVersions
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -683,6 +706,7 @@ paths:
       summary: Update the suspect URL versions of an AU
       description: Update the suspect URL versions of an AU given the AU identifier
       operationId: putAuSuspectUrlVersions
+      # roles: ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -719,6 +743,7 @@ paths:
       summary: Get the NoAuPeerSet object of an AU
       description: Get the NoAuPeerSet object of an AU given the AU identifier
       operationId: getNoAuPeers
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -743,6 +768,7 @@ paths:
       summary: Update the NoAuPeerSet object of an AU
       description: Update the NoAuPeerSet object of an AU given the AU identifier
       operationId: putNoAuPeers
+      # roles: ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -778,6 +804,7 @@ paths:
       summary: Query the TDB for AUs
       description: Query the TDB for AUs that meet a set of specified conditions
       operationId: getTdbAus
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
       parameters:
         - name: tdbAuQuery
           in: query
@@ -804,6 +831,7 @@ paths:
       summary: Query the TDB for Titles
       description: Query the TDB for Titles that meet a set of specified conditions
       operationId: getTdbTitles
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
       parameters:
         - name: tdbTitleQuery
           in: query
@@ -830,6 +858,7 @@ paths:
       summary: Query the TDB for Publishers
       description: Query the TDB for Publishers that meet a set of specifie conditions
       operationId: getTdbPublishers
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
       parameters:
         - name: tdbPublisherQuery
           in: query
@@ -856,6 +885,7 @@ paths:
       summary: Query for plugin properties
       description: Query for plugins that meet a set of specified conditions
       operationId: getPlugins
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
       parameters:
         - name: pluginQuery
           in: query
@@ -882,6 +912,7 @@ paths:
       summary: Query for archival unit properties
       description: Query for archival units that meet a set of specified conditions
       operationId: getAuqueries
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
       parameters:
         - name: auQuery
           in: query
@@ -908,6 +939,7 @@ paths:
       summary: Get the status of an AU
       description: Get the status of an AU given the AU identifier
       operationId: getAuStatus
+      # roles: ROLE_CONTENT_ACCESS, ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -932,6 +964,7 @@ paths:
       summary: Update the substance of an AU
       description: Update the substance of an AU given the AU identifier
       operationId: putAuSubstanceCheck
+      # roles: ROLE_AU_ADMIN
       parameters:
         - name: auid
           in: path
@@ -957,6 +990,7 @@ paths:
       summary: Get the status of the service
       description: Get the status of the service
       operationId: getStatus
+      # no credentials needed
       responses:
         "200":
           description: The status of the service
@@ -974,6 +1008,7 @@ paths:
       summary: Get the usernames configured in the system
       description: Get the usernames configured in the system
       operationId: getUserAccountNames
+      # roles: ROLE_USER_ADMIN
       responses:
         "200":
           description: A list of usernames configured in the system
@@ -996,6 +1031,7 @@ paths:
       summary: Adds user accounts to the system
       description: Adds user accounts to the system
       operationId: addUserAccounts
+      # roles: ROLE_USER_ADMIN
       requestBody:
         description: An array of user accounts to be stored
         content:
@@ -1024,6 +1060,7 @@ paths:
       summary: Get user account details
       description: Get user account details
       operationId: getUserAccount
+      # roles: ROLE_USER_ADMIN
       parameters:
         - name: username
           in: path
@@ -1056,6 +1093,7 @@ paths:
       summary: Remove a user account from the system
       description: Remove a user account from the system
       operationId: removeUserAccount
+      # roles: ROLE_USER_ADMIN
       parameters:
         - name: username
           in: path
@@ -1082,6 +1120,7 @@ paths:
       summary: Update properties of an existing user account
       description: Update properties of an existing user account
       operationId: updateUserAccount
+      # roles: ROLE_USER_ADMIN
       parameters:
         - name: username
           in: path

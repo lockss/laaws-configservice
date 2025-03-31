@@ -32,7 +32,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.lockss.laaws.config.impl;
 
 import java.io.IOException;
-import java.security.AccessControlException;
 import org.lockss.app.LockssDaemon;
 import org.lockss.laaws.config.api.AustatesApiDelegate;
 import org.lockss.log.L4JLogger;
@@ -73,6 +72,8 @@ public class AustatesApiServiceImpl extends BaseSpringApiServiceImpl
       // Yes: Notify the client.
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
+
+    AuthUtil.checkHasRole(Roles.ROLE_CONTENT_ACCESS, Roles.ROLE_AU_ADMIN);
 
     try {
       // Validate the AUId.
@@ -124,13 +125,7 @@ public class AustatesApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check for required role
-    try {
-      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
-    } catch (AccessControlException ace) {
-      log.warn(ace.getMessage());
-      return getErrorResponseEntity(HttpStatus.FORBIDDEN, null, ace);
-    }
+    AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
 
     try {
       // Validate the input parameters.
@@ -222,32 +217,5 @@ public class AustatesApiServiceImpl extends BaseSpringApiServiceImpl
 
     // Success.
     return null;
-  }
-
-  /**
-   * Provides the response entity when there is an error.
-   * 
-   * @param status
-   *          An HttpStatus with the error HTTP status.
-   * @param message
-   *          A String with the error message.
-   * @param e
-   *          An Exception with theerror exception.
-   * @return a {@code ResponseEntity<String>} with the error response entity.
-   */
-  private ResponseEntity<String> getErrorResponseEntity(HttpStatus status,
-      String message, Exception e) {
-    String errorMessage = message;
-
-    if (e != null) {
-      if (errorMessage == null) {
-	errorMessage = e.getMessage();
-      } else {
-	errorMessage = errorMessage + " - " + e.getMessage();
-      }
-    }
-
-    return new ResponseEntity<String>(JsonUtil.toJsonError(status.value(),
-	errorMessage), status);
   }
 }

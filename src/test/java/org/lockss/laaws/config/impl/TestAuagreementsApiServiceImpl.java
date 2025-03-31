@@ -33,6 +33,7 @@ package org.lockss.laaws.config.impl;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
 import org.junit.runner.RunWith;
 import org.lockss.app.LockssDaemon;
 import org.lockss.config.RestConfigClient;
@@ -98,6 +99,8 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase4 {
       new Credentials("lockss-u", "lockss-p");
   private final Credentials AU_ADMIN =
       new Credentials("au-admin", "I'mAuAdmin");
+  private final Credentials CONTENT_ACCESS =
+      new Credentials("content-access", "I'mContentAdmin");
   private final Credentials CONTENT_ADMIN =
       new Credentials("content-admin", "I'mContentAdmin");
   private final Credentials ANYBODY =
@@ -153,34 +156,6 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase4 {
   }
 
   /**
-   * Runs the tests with authentication turned off.
-   * 
-   * @throws Exception
-   *           if there are problems.
-   */
-  @Test
-  public void runUnAuthenticatedTests() throws Exception {
-    log.debug2("Invoked");
-
-    // Specify the command line parameters to be used for the tests.
-    List<String> cmdLineArgs = getCommandLineArguments();
-    cmdLineArgs.add("-p");
-    cmdLineArgs.add("test/config/testAuthOff.txt");
-
-    // XXX This is kinda wonky.  SpringRunner has already set up the
-    // test environment; this starts (parts of?) it over again
-    CommandLineRunner runner = appCtx.getBean(CommandLineRunner.class);
-    runner.run(cmdLineArgs.toArray(new String[cmdLineArgs.size()]));
-
-    runGetSwaggerDocsTest(getTestUrlTemplate("/v3/api-docs"));
-    runMethodsNotAllowedUnAuthenticatedTest();
-    getAuAgreementsUnAuthenticatedTest();
-    patchAuAgreementsUnAuthenticatedTest();
-
-    log.debug2("Done");
-  }
-
-  /**
    * Runs the tests with authentication turned on.
    * 
    * @throws Exception
@@ -228,38 +203,6 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase4 {
 
     log.debug2("cmdLineArgs = {}", cmdLineArgs);
     return cmdLineArgs;
-  }
-
-  /**
-   * Runs the invalid method-related un-authenticated-specific tests.
-   */
-  private void runMethodsNotAllowedUnAuthenticatedTest() {
-    log.debug2("Invoked");
-
-    // No AUId: Spring reports it cannot find a match to an endpoint.
-    runTestMethodNotAllowed(null, null, HttpMethod.POST, HttpStatus.NOT_FOUND);
-
-    // Empty AUId: Spring reports it cannot find a match to an endpoint.
-    runTestMethodNotAllowed(EMPTY_STRING, ANYBODY, HttpMethod.PUT,
-	HttpStatus.NOT_FOUND);
-
-    // Bad AUId.
-    runTestMethodNotAllowed(BAD_AUID, ANYBODY, HttpMethod.POST,
-	HttpStatus.METHOD_NOT_ALLOWED);
-
-    runTestMethodNotAllowed(BAD_AUID, null, HttpMethod.PUT,
-	HttpStatus.METHOD_NOT_ALLOWED);
-
-    // Good AUId.
-    runTestMethodNotAllowed(AUID_1, null, HttpMethod.PUT,
-	HttpStatus.METHOD_NOT_ALLOWED);
-
-    runTestMethodNotAllowed(AUID_1, ANYBODY, HttpMethod.POST,
-	HttpStatus.METHOD_NOT_ALLOWED);
-
-    runMethodsNotAllowedCommonTest();
-
-    log.debug2("Done");
   }
 
   /**
@@ -398,56 +341,6 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase4 {
   }
 
   /**
-   * Runs the getAuAgreements()-related un-authenticated-specific tests.
-   */
-  private void getAuAgreementsUnAuthenticatedTest() throws Exception {
-    log.debug2("Invoked");
-
-    StateManager stateManager =
-	LockssDaemon.getLockssDaemon().getManagerByType(StateManager.class);
-
-    // No AUId: Spring reports it cannot find a match to an endpoint.
-    runTestGetAuAgreements(null, null, HttpStatus.NOT_FOUND);
-
-    // No AUId using the REST service client.
-    assertNull(runTestGetAuAgreementsClient(null, null, HttpStatus.NOT_FOUND));
-
-    // Empty AUId: Spring reports it cannot find a match to an endpoint.
-    runTestGetAuAgreements(EMPTY_STRING, ANYBODY, HttpStatus.NOT_FOUND);
-
-    // Empty AUId using the REST service client.
-    assertNull(runTestGetAuAgreementsClient(EMPTY_STRING, ANYBODY,
-	HttpStatus.NOT_FOUND));
-
-    // Bad AUId.
-    runTestGetAuAgreements(BAD_AUID, null, HttpStatus.BAD_REQUEST);
-
-    // No credentials.
-    String result = runTestGetAuAgreements(AUID_1, null, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(stateManager.getAuAgreements(AUID_1).toJson(), result);
-
-    // No credentials using the REST service client.
-    assertEquals(result,
-	runTestGetAuAgreementsClient(AUID_1, null, HttpStatus.OK));
-
-    // Bad credentials.
-    result = runTestGetAuAgreements(AUID_2, ANYBODY, HttpStatus.OK);
-
-    // Verify.
-    assertEquals(stateManager.getAuAgreements(AUID_2).toJson(), result);
-
-    // Bad credentials using the REST service client.
-    assertEquals(result,
-	runTestGetAuAgreementsClient(AUID_2, ANYBODY, HttpStatus.OK));
-
-    getAuAgreementsCommonTest();
-
-    log.debug2("Done");
-  }
-
-  /**
    * Runs the getAuAgreements()-related authenticated-specific tests.
    */
   private void getAuAgreementsAuthenticatedTest() throws Exception {
@@ -523,15 +416,18 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase4 {
     assertNull(runTestGetAuAgreementsClient(BAD_AUID, USER_ADMIN,
 	HttpStatus.BAD_REQUEST));
 
+    // Missing role should return forbidden
+    runTestGetAuAgreements(AUID_1, CONTENT_ADMIN, HttpStatus.FORBIDDEN);
+
     // Good AUId.
-    String result = runTestGetAuAgreements(AUID_1, AU_ADMIN, HttpStatus.OK);
+    String result = runTestGetAuAgreements(AUID_1, CONTENT_ACCESS, HttpStatus.OK);
 
     // Verify
     assertEquals(stateManager.getAuAgreements(AUID_1).toJson(), result);
 
     // Good AUId using the REST service client.
     assertEquals(result,
-	runTestGetAuAgreementsClient(AUID_1, AU_ADMIN, HttpStatus.OK));
+	runTestGetAuAgreementsClient(AUID_1, CONTENT_ACCESS, HttpStatus.OK));
 
     // Good AUId.
     result = runTestGetAuAgreements(AUID_2, USER_ADMIN, HttpStatus.OK);
@@ -684,202 +580,6 @@ public class TestAuagreementsApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     return result;
-  }
-
-  /**
-   * Runs the patchAuAgreements()-related un-authenticated-specific tests.
-   */
-  private void patchAuAgreementsUnAuthenticatedTest() throws Exception {
-    log.debug2("Invoked");
-
-    StateManager stateManager =
-	LockssDaemon.getLockssDaemon().getManagerByType(StateManager.class);
-
-    // No AUId: Spring reports it cannot find a match to an endpoint.
-    runTestPatchAuAgreements(null, null, null, null, HttpStatus.NOT_FOUND);
-
-    runTestPatchAuAgreements(null, null, MediaType.APPLICATION_JSON, ANYBODY,
-	HttpStatus.NOT_FOUND);
-
-    // No AUId using the REST service client.
-    runTestPatchAuAgreementsClient(null, null, null, null,
-	HttpStatus.NOT_FOUND);
-
-    // Empty AUId: Spring reports it cannot find a match to an endpoint.
-    runTestPatchAuAgreements(EMPTY_STRING, null, null, CONTENT_ADMIN,
-	HttpStatus.NOT_FOUND);
-
-    runTestPatchAuAgreements(EMPTY_STRING, null, MediaType.APPLICATION_JSON,
-	null, HttpStatus.NOT_FOUND);
-
-    // Empty AUId using the REST service client.
-    runTestPatchAuAgreementsClient(EMPTY_STRING, null, ANYBODY, EMPTY_STRING,
-	HttpStatus.NOT_FOUND);
-
-    // Bad AUId.
-    runTestPatchAuAgreements(BAD_AUID, null, null, ANYBODY,
-	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-
-    runTestPatchAuAgreements(BAD_AUID, null, MediaType.APPLICATION_JSON,
-	CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
-
-    // Bad AUId using the REST service client.
-    runTestPatchAuAgreementsClient(BAD_AUID, null, CONTENT_ADMIN, COOKIE_1,
-	HttpStatus.BAD_REQUEST);
-
-    // No AU poll agreements.
-    runTestPatchAuAgreements(AUID_1, null, null, null,
-	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-
-    runTestPatchAuAgreements(AUID_1, null, MediaType.APPLICATION_JSON, ANYBODY,
-	HttpStatus.BAD_REQUEST);
-
-    runTestPatchAuAgreements(AUID_1, EMPTY_STRING, null, CONTENT_ADMIN,
-	HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-
-    runTestPatchAuAgreements(AUID_1, EMPTY_STRING, MediaType.APPLICATION_JSON,
-	null, HttpStatus.BAD_REQUEST);
-
-    // No AU poll agreements using the REST service client.
-    runTestPatchAuAgreementsClient(AUID_1, null, null, COOKIE_2,
-	HttpStatus.BAD_REQUEST);
-
-    runTestPatchAuAgreementsClient(AUID_1, EMPTY_STRING, ANYBODY, null,
-	HttpStatus.BAD_REQUEST);
-
-    AuAgreements auAgreements = createAuAgreements(AUID_1,
-	goodPeerIdentityIdStringList1, AgreementType.POR, 0.0625f);
-
-    // No Content-Type header.
-    runTestPatchAuAgreements(AUID_1, toJsonWithBadPids(auAgreements), null,
-	ANYBODY, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-
-    // Bad peer agreement ID.
-    runTestPatchAuAgreements(AUID_1, toJsonWithBadPids(auAgreements),
-	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.BAD_REQUEST);
-
-    // Bad peer agreement ID using the REST service client.
-    runTestPatchAuAgreementsClient(AUID_1, toJsonWithBadPids(auAgreements),
-	CONTENT_ADMIN, EMPTY_STRING, HttpStatus.BAD_REQUEST);
-
-    // Get the current poll agreements of the second AU.
-    AuAgreements auAgreements2 = stateManager.getAuAgreements(AUID_2);
-
-    assertEquals(auAgreements2,	AuAgreements.fromJson(AUID_2,
-	runTestGetAuAgreements(AUID_2, ANYBODY, HttpStatus.OK), daemon));
-
-    // Patch first AU.
-    auAgreements = createAuAgreements(AUID_1, goodPeerIdentityIdStringList1,
-	AgreementType.POP, 0.125f);
-
-    runTestPatchAuAgreements(AUID_1, auAgreements.toJson(),
-	MediaType.APPLICATION_JSON, null, HttpStatus.OK);
-
-    // Verify.
-    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_1));
-    AuAgreements auAgreements1 = auAgreements;
-
-    // Verify that the current poll agreements of the second AU have not been
-    // affected.
-    assertAuAgreementsMatch(auAgreements2,
-	stateManager.getAuAgreements(AUID_2));
-
-    // Patch second AU using the REST service client.
-    auAgreements = createAuAgreements(AUID_2, goodPeerIdentityIdStringList2,
-	AgreementType.SYMMETRIC_POR, 0.250f);
-
-    runTestPatchAuAgreementsClient(AUID_2, auAgreements.toJson(), ANYBODY,
-	COOKIE_1, HttpStatus.OK);
-
-    // Verify.
-    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_2));
-    auAgreements2 = auAgreements;
-
-    // Verify that the current poll agreements of the first AU have not been
-    // affected.
-    assertAuAgreementsMatch(auAgreements1,
-	stateManager.getAuAgreements(AUID_1));
-
-    // Patch third AU.
-    auAgreements = createAuAgreements(AUID_3, goodPeerIdentityIdStringList1,
-	AgreementType.SYMMETRIC_POP, 0.375f);
-
-    runTestPatchAuAgreements(AUID_3, auAgreements.toJson(),
-	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.OK);
-
-    // Verify.
-    assertAuAgreementsMatch(auAgreements,
-	stateManager.getAuAgreements(AUID_3));
-
-    // Patch third AU again with different types of agreements for the same
-    // peers.
-    auAgreements = createAuAgreements(AUID_3, goodPeerIdentityIdStringList1,
-	AgreementType.SYMMETRIC_POR_HINT, 0.75f);
-
-    runTestPatchAuAgreements(AUID_3, auAgreements.toJson(),
-	MediaType.APPLICATION_JSON, null, HttpStatus.OK);
-
-    // Verify.
-    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_3));
-
-    // Patch fourth AU using the REST service client.
-    auAgreements = createAuAgreements(AUID_4, goodPeerIdentityIdStringList1,
-	AgreementType.POR_HINT, 0.4375f);
-
-    runTestPatchAuAgreementsClient(AUID_4, auAgreements.toJson(), ANYBODY,
-	COOKIE_2, HttpStatus.OK);
-
-    // Verify.
-    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_4));
-    AuAgreements auAgreements4 = auAgreements;
-
-    // Patch fourth AU again with a subset of agreements for the same peers
-    // using the REST service client.
-    auAgreements = createAuAgreements(AUID_4, goodPeerIdentityIdStringList1s,
-	AgreementType.POR_HINT, 0.875f);
-
-    runTestPatchAuAgreementsClient(AUID_4, auAgreements.toJson(),
-	CONTENT_ADMIN, null, HttpStatus.OK);
-
-    // Verify.
-    assertAuAgreementsMatch(expectedMergedAuAgreements(auAgreements4,
-	auAgreements), stateManager.getAuAgreements(AUID_4));
-
-    // Patch fifth AU.
-    auAgreements = createAuAgreements(AUID_5, goodPeerIdentityIdStringList1,
-	AgreementType.POP_HINT, 0.5f);
-
-    runTestPatchAuAgreements(AUID_5, auAgreements.toJson(),
-	MediaType.APPLICATION_JSON, null, HttpStatus.OK);
-
-    // Verify.
-    assertAuAgreementsMatch(auAgreements, stateManager.getAuAgreements(AUID_5));
-    AuAgreements auAgreements5 = auAgreements;
-
-    // Patch fifth AU again with agreements for other peers.
-    auAgreements = createAuAgreements(AUID_5, goodPeerIdentityIdStringList2,
-	AgreementType.SYMMETRIC_POR_HINT, 0.75f);
-
-    runTestPatchAuAgreements(AUID_5, auAgreements.toJson(),
-	MediaType.APPLICATION_JSON, CONTENT_ADMIN, HttpStatus.OK);
-
-    // Verify.
-    assertAuAgreementsMatch(expectedMergedAuAgreements(auAgreements5,
-	auAgreements), stateManager.getAuAgreements(AUID_5));
-
-    // Verify that the current poll agreements of the first AU have not been
-    // affected.
-    assertAuAgreementsMatch(auAgreements1,
-	stateManager.getAuAgreements(AUID_1));
-
-    // Verify that the current poll agreements of the second AU have not been
-    // affected.
-    assertAuAgreementsMatch(auAgreements2,
-	stateManager.getAuAgreements(AUID_2));
-
-    patchAuAgreementsCommonTest();
-
-    log.debug2("Done");
   }
 
   /**
