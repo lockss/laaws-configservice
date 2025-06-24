@@ -1121,6 +1121,38 @@ paths:
           description: Internal Server Error
           content: {}
       x-codegen-request-body-name: userAccount
+  /utils/normalizeUrl:
+    get:
+      tags:
+        - utils
+      summary: Normalize URL
+      description: Performs a LOCKSS URL normalization
+      operationId: normalizeUrl
+      parameters:
+        - name: url
+          in: query
+          description: URL to normalize
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The LOCKSS normalized URL
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        "400":
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Internal Server Error
+          content: {}
 components:
   schemas:
     platformConfigurationWsResult:
