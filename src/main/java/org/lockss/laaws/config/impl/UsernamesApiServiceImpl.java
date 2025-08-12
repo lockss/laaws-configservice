@@ -37,7 +37,10 @@ import org.apache.commons.collections4.IterableUtils;
 import org.lockss.app.LockssDaemon;
 import org.lockss.laaws.config.api.UsernamesApiDelegate;
 import org.lockss.log.L4JLogger;
+import org.lockss.spring.auth.AuthUtil;
+import org.lockss.spring.auth.Roles;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
+import org.lockss.spring.error.LockssRestServiceException;
 import org.lockss.state.StateManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -62,6 +65,12 @@ public class UsernamesApiServiceImpl extends BaseSpringApiServiceImpl
 
   @Override
   public ResponseEntity<List<String>> getUserAccountNames() {
+    if (!waitConfig()) {
+      throw new LockssRestServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Not ready");
+    }
+
+    AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
+
     try {
       List<String> usernames =
           IterableUtils.toList(getStateManager().getUserAccountNames());
