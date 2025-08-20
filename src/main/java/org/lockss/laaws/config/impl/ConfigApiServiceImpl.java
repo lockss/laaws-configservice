@@ -41,7 +41,6 @@ import java.io.IOException;
 import java.lang.reflect.MalformedParametersException;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
-import java.security.AccessControlException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -187,6 +186,8 @@ public class ConfigApiServiceImpl
       throw new LockssRestServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Not ready", parsedRequest);
     }
 
+    AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
+
       HttpRequestPreconditions preconditions;
 
       // Validate the precondition headers.
@@ -298,7 +299,9 @@ public class ConfigApiServiceImpl
       throw new LockssRestServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Not ready", parsedRequest);
     }
 
-      HttpRequestPreconditions preconditions;
+    AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
+
+    HttpRequestPreconditions preconditions;
 
       // Validate the precondition headers.
       try {
@@ -350,6 +353,8 @@ public class ConfigApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
+    AuthUtil.checkHasRole(Roles.ROLE_CAUTIOUS);
+
     try {
       long millis = getConfigManager().getLastUpdateTime();
       log.trace("millis = {}", () -> millis);
@@ -380,6 +385,8 @@ public class ConfigApiServiceImpl
       // Yes: Notify the client.
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
+
+    AuthUtil.checkHasRole(Roles.ROLE_CAUTIOUS);
 
     try {
       List<String> result = (List<String>)getConfigManager().getLoadedUrlList();
@@ -429,12 +436,13 @@ public class ConfigApiServiceImpl
       return new ResponseEntity<String>("Not Ready", HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check for required role.
-    try {
-      AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
-    } catch (AccessControlException ace) {
-      log.warn(ace.getMessage());
-      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
+    // TODO: Needs to be enhanced with a map from section name to role(s)
+    switch (sectionName) {
+      case SECTION_NAME_PROXY_IP_ACCESS:
+        AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN, Roles.ROLE_CONTENT_ADMIN);
+        break;
+      default:
+        AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
     }
 
     HttpRequestPreconditions preconditions;
@@ -523,13 +531,7 @@ public class ConfigApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check for required role
-    try {
-      AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
-    } catch (AccessControlException ace) {
-      log.warn(ace.getMessage());
-      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
-    }
+    AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
 
     try {
       getConfigManager().requestReload();
@@ -556,6 +558,8 @@ public class ConfigApiServiceImpl
       return new ResponseEntity<String>("Not Ready",
 					HttpStatus.SERVICE_UNAVAILABLE);
     }
+
+    AuthUtil.checkHasRole(Roles.ROLE_CAUTIOUS);
 
     PlatformConfigurationWsResult result = new PlatformConfigurationWsResult();
 

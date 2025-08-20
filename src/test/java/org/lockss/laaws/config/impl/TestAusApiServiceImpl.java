@@ -1002,16 +1002,16 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     runTestGetAuConfigClient(UNKNOWN_AUID, ANYBODY, HttpStatus.UNAUTHORIZED);
 
     AuConfiguration result =
-	runTestGetAuConfig(GOOD_AUID_1, CONTENT_ADMIN, HttpStatus.OK);
+	runTestGetAuConfig(GOOD_AUID_1, AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1), result);
 
     // Using the REST service client.
     assertEquals(result,
-	runTestGetAuConfigClient(GOOD_AUID_1, CONTENT_ADMIN, HttpStatus.OK));
+	runTestGetAuConfigClient(GOOD_AUID_1, AU_ADMIN, HttpStatus.OK));
 
-    result = runTestGetAuConfig(UNKNOWN_AUID, CONTENT_ADMIN, HttpStatus.OK);
+    result = runTestGetAuConfig(UNKNOWN_AUID, AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertNull(result);
@@ -1021,7 +1021,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
 
     // Using the REST service client.
     assertEquals(result,
-	runTestGetAuConfigClient(UNKNOWN_AUID, CONTENT_ADMIN, HttpStatus.OK));
+	runTestGetAuConfigClient(UNKNOWN_AUID, AU_ADMIN, HttpStatus.OK));
 
     getAuConfigCommonTest();
 
@@ -1268,16 +1268,16 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     runTestGetAllAuConfigClient(ANYBODY, HttpStatus.UNAUTHORIZED);
 
     Collection<AuConfiguration> configOutput =
-	runTestGetAllAuConfig(CONTENT_ADMIN, HttpStatus.OK);
+	runTestGetAllAuConfig(AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(2, configOutput.size());
 
     assertTrue(configOutput.contains(
-	runTestGetAuConfig(GOOD_AUID_1, CONTENT_ADMIN, HttpStatus.OK)));
+	runTestGetAuConfig(GOOD_AUID_1, AU_ADMIN, HttpStatus.OK)));
 
     assertTrue(configOutput.contains(
-	runTestGetAuConfig(GOOD_AUID_2, CONTENT_ADMIN, HttpStatus.OK)));
+	runTestGetAuConfig(GOOD_AUID_2, AU_ADMIN, HttpStatus.OK)));
 
     // Verify independently.
     assertTrue(configOutput.contains(
@@ -1288,7 +1288,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
 
     // Using the REST service client.
     assertEquals(configOutput,
-	runTestGetAllAuConfigClient(CONTENT_ADMIN, HttpStatus.OK));
+	runTestGetAllAuConfigClient(AU_ADMIN, HttpStatus.OK));
 
     getAllAuConfigCommonTest();
 
