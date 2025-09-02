@@ -56,6 +56,7 @@ public class ConfigApplication extends BaseSpringBootApplication
   private static final ManagerDesc[] myManagerDescs = {
     ACCOUNT_MANAGER_DESC,
     CONFIG_DB_MANAGER_DESC,
+      NETWORK_POLICY_MANAGER_DESC,
     PLUGIN_MANAGER_DESC,
     STATE_MANAGER_DESC,
     IDENTITY_MANAGER_DESC,
