@@ -56,7 +56,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
     <!-- Is a Spring project -->
     <build.java.spring.skip>false</build.java.spring.skip>
-    <build.java.package>org.lockss.laaws.config</build.java.package>
+    <build.java.projectAbbr>config</build.java.projectAbbr>
     <build.java.mainClass>${build.java.package}.ConfigApplication</build.java.mainClass>
 
     <!-- Is a Docker project -->
