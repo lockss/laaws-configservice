@@ -41,12 +41,20 @@ info:
 security:
   - basicAuth: []
 tags:
-  - name: Default
-    description: Default section
-  - name: config
-    description: Tasks on the configuration
   - name: aus
-    description: Tasks on the archival units (AUs)
+    description: Archival unit (AU) operations
+  - name: config
+    description: Configuration operations
+  - name: plugin
+    description: Plugin operations
+  - name: status
+    description: Status operations
+  - name: tdb
+    description: Title database (TDB) operations
+  - name: users
+    description: User operations
+  - name: utils
+    description: Miscellaneous operations
 paths:
   /config/file/{sectionName}:
     get:
