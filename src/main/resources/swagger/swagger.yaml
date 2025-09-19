@@ -38,8 +38,6 @@ info:
     name: BSD-3-Clause
     url: https://opensource.org/licenses/BSD-3-Clause
   version: 2.0.0
-servers:
-  - url: https://laaws.lockss.org:443/
 security:
   - basicAuth: []
 tags:
@@ -1512,6 +1510,6 @@ components:
   securitySchemes:
     basicAuth:
       type: http
-      description: HTTP Basic Authentication. Works over `HTTP` and `HTTPS`
+      description: HTTP Basic Authentication. Works over HTTP and HTTPS.
       scheme: basic
-x-original-swagger-version: "2.0"
+
