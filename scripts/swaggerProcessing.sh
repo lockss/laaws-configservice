@@ -35,6 +35,11 @@ JAVA_SRC=$1
 sed -i.backup "s/import $2/import $3/" $JAVA_SRC && rm $JAVA_SRC.backup
 }
 
+function fixResponseCode1234() {
+JAVA_SRC=$1
+sed -i.backup 's/responseCode = "1234"/responseCode = "default"/' $JAVA_SRC && rm $JAVA_SRC.backup
+}
+
 # Edit StatusApiDelegate.java.
 STATUS_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/StatusApiDelegate.java
 fixImport $STATUS_API_DELEGATE org.lockss.laaws.config.model.ApiStatus org.lockss.util.rest.status.ApiStatus
@@ -42,6 +47,7 @@ fixImport $STATUS_API_DELEGATE org.lockss.laaws.config.model.ApiStatus org.locks
 # Edit StatusApi.java.
 STATUS_API=src/generated/java/org/lockss/laaws/config/api/StatusApi.java
 fixImport $STATUS_API org.lockss.laaws.config.model.ApiStatus org.lockss.util.rest.status.ApiStatus
+fixResponseCode1234 $STATUS_API
 
 # Edit AusApiDelegate.java.
 AUS_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/AusApiDelegate.java
@@ -52,14 +58,16 @@ fixImport $AUS_API_DELEGATE org.lockss.laaws.config.model.RequestAuControlResult
 AUS_API=src/generated/java/org/lockss/laaws/config/api/AusApi.java
 fixImport $AUS_API org.lockss.laaws.config.model.AuConfiguration org.lockss.config.AuConfiguration
 fixImport $AUS_API org.lockss.laaws.config.model.RequestAuControlResult org.lockss.ws.entities.RequestAuControlResult
+fixResponseCode1234 $AUS_API
 
 # Edit ConfigApiDelegate.java.
 CONFIG_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/ConfigApiDelegate.java
 fixImport $CONFIG_API_DELEGATE org.lockss.laaws.config.model.PlatformConfigurationWsResult org.lockss.ws.entities.PlatformConfigurationWsResult
 
-# Edit AusApi.java.
+# Edit ConfigApi.java.
 CONFIG_API=src/generated/java/org/lockss/laaws/config/api/ConfigApi.java
 fixImport $CONFIG_API org.lockss.laaws.config.model.PlatformConfigurationWsResult org.lockss.ws.entities.PlatformConfigurationWsResult
+fixResponseCode1234 $CONFIG_API
 
 # Edit AustatusesApiDelegate.java.
 AUSTATUSES_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/AustatusesApiDelegate.java
@@ -68,6 +76,7 @@ fixImport $AUSTATUSES_API_DELEGATE org.lockss.laaws.config.model.AuStatus org.lo
 # Edit AustatusesApi.java.
 AUSTATUSES_API=src/generated/java/org/lockss/laaws/config/api/AustatusesApi.java
 fixImport $AUSTATUSES_API org.lockss.laaws.config.model.AuStatus org.lockss.ws.entities.AuStatus
+fixResponseCode1234 $AUSTATUSES_API
 
 # Edit AusubstancesApiDelegate.java.
 AUSUBSTANCES_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/AusubstancesApiDelegate.java
@@ -76,6 +85,7 @@ fixImport $AUSUBSTANCES_API_DELEGATE org.lockss.laaws.config.model.CheckSubstanc
 # Edit AusubstancesApi.java.
 AUSUBSTANCES_API=src/generated/java/org/lockss/laaws/config/api/AusubstancesApi.java
 fixImport $AUSUBSTANCES_API org.lockss.laaws.config.model.CheckSubstanceResult org.lockss.ws.entities.CheckSubstanceResult
+fixResponseCode1234 $AUSUBSTANCES_API
 
 # Edit WsApiDelegate.java.
 WS_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/WsApiDelegate.java
@@ -94,3 +104,24 @@ fixImport $WS_API org.lockss.laaws.config.model.TdbAuWsResult org.lockss.ws.enti
 fixImport $WS_API org.lockss.laaws.config.model.TdbPublisherWsResult org.lockss.ws.entities.TdbPublisherWsResult
 fixImport $WS_API org.lockss.laaws.config.model.TdbTitleWsResult org.lockss.ws.entities.TdbTitleWsResult
 fixImport $WS_API org.lockss.laaws.config.model.ContentConfigurationResult org.lockss.ws.entities.ContentConfigurationResult
+fixResponseCode1234 $WS_API
+
+# Edit AustatesApi.java
+AUSTATES_API=src/generated/java/org/lockss/laaws/config/api/AustatesApi.java
+fixResponseCode1234 $AUSTATES_API
+
+# Edit AususpecturlsApi.java
+AUSUSPECTURLS_API=src/generated/java/org/lockss/laaws/config/api/AususpecturlsApi.java
+fixResponseCode1234 $AUSUSPECTURLS_API
+
+# Edit AuagreementsApi.java
+AUAGREEMENTS_API=src/generated/java/org/lockss/laaws/config/api/AuagreementsApi.java
+fixResponseCode1234 $AUAGREEMENTS_API
+
+# Edit AuidsApi.java
+AUIDS_API=src/generated/java/org/lockss/laaws/config/api/AuidsApi.java
+fixResponseCode1234 $AUIDS_API
+
+# Edit NoaupeersApi.java
+NOAUPEERS_API=src/generated/java/org/lockss/laaws/config/api/NoaupeersApi.java
+fixResponseCode1234 $NOAUPEERS_API
