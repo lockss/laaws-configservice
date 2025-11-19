@@ -196,17 +196,17 @@ paths:
             type: string
         - name: If-Modified-Since
           in: header
-          description: The If-Match header
+          description: The If-Modified-Since header
           schema:
             type: string
         - name: If-None-Match
           in: header
-          description: The If-Match header
+          description: The If-None-Match header
           schema:
             type: string
         - name: If-Unmodified-Since
           in: header
-          description: The If-Match header
+          description: The If-Unmodified-Since header
           schema:
             type: string
       responses:
