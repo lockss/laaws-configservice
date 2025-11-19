@@ -211,7 +211,8 @@ paths:
             type: string
       responses:
         "200":
-          description: The configuration file for the URL
+          description: A multipart object with one part named "configFile"
+            containing the configuration file for the URL.
           content:
             multipart/form-data:
               schema:
