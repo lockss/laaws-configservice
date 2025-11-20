@@ -1376,81 +1376,105 @@ components:
     platformConfigurationWsResult:
       description: The configuration of the platform
       type: object
-      required:
-        - hostName
       properties:
         hostName:
           type: string
-          description: name of the host server
+          nullable: true
         ipAddress:
           type: string
+          nullable: true
         groups:
           type: array
+          nullable: true
           items:
             type: string
         project:
           type: string
+          nullable: true
         v3Identity:
           type: string
+          nullable: true
         mailRelay:
           type: string
+          nullable: true
         adminEmail:
           type: string
+          nullable: true
         disks:
           type: array
+          nullable: true
           items:
             type: string
         currentTime:
           type: integer
           format: int64
+          nullable: true
         uptime:
           type: integer
           format: int64
+          nullable: true
         daemonVersion:
           type: object
+          nullable: true
           properties:
             fullVersion:
               type: string
+              nullable: true
             majorVersion:
               type: integer
               format: int32
+              nullable: true
             minorVersion:
               type: integer
               format: int32
+              nullable: true
             buildVersion:
               type: integer
               format: int32
+              nullable: true
         javaVersion:
           type: object
-          propeerties:
+          nullable: true
+          properties:
             version:
               type: string
+              nullable: true
             specificationVersion:
               type: string
+              nullable: true
             runtimeVersion:
               type: string
+              nullable: true
             runtimeName:
               type: string
+              nullable: true
         platform:
           type: object
-          propeerties:
+          properties:
             name:
               type: string
+              nullable: true
             version:
               type: string
+              nullable: true
             suffix:
               type: string
+              nullable: true
         currentWorkingDirectory:
           type: string
+          nullable: true
         properties:
           type: array
+          nullable: true
           items:
             type: string
         buildHost:
           type: string
+          nullable: true
         buildTimestamp:
           type: integer
           format: int64
+          nullable: true
     pluginWsResult:
       required:
         - auCount
