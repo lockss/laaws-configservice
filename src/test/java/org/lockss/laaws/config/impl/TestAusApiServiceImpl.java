@@ -1557,10 +1557,8 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
       // Initialize the request headers.
       HttpHeaders headers = new HttpHeaders();
 
-      // Set up the authentication credentials, if necessary.
-      if (credentials != null) {
-        credentials.setUpBasicAuthentication(headers);
-      }
+      // Set up the authentication credentials
+      credentials.setUpBasicAuthentication(headers);
 
       log.trace("requestHeaders = {}", () -> headers.toSingleValueMap());
 

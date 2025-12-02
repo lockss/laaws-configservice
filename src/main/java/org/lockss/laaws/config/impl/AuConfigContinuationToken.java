@@ -155,7 +155,7 @@ public class AuConfigContinuationToken {
    * Verifies the validity of the members of this class.
    */
   private void validateMembers() {
-    // Validate that both members are both null or both non-null.
+    // Validate that auid is null or iteratorId is null but not both
     if ((auid == null && iteratorId != null)
 	|| (auid != null && iteratorId == null)) {
       String message = "Invalid member combination: auid = '" + auid
