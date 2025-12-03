@@ -30,7 +30,9 @@ src/generated/java/org/lockss/laaws/*/api/NotFoundException.java
 src/generated/java/org/lockss/laaws/*/model/AccessType.java
 src/generated/java/org/lockss/laaws/*/model/ApiStatus.java
 src/generated/java/org/lockss/laaws/*/model/AuConfiguration.java
+src/generated/java/org/lockss/laaws/*/model/AuConfigPageInfo.java
 src/generated/java/org/lockss/laaws/*/model/AuStatus.java
+src/generated/java/org/lockss/laaws/*/model/PageInfo.java
 src/generated/java/org/lockss/laaws/*/model/AuStateBean.java
 src/generated/java/org/lockss/laaws/*/model/AuWsResult.java
 src/generated/java/org/lockss/laaws/*/model/CheckSubstanceResult.java

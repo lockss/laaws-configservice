@@ -58,7 +58,12 @@ fixImport $AUS_API_DELEGATE org.lockss.laaws.config.model.RequestAuControlResult
 AUS_API=src/generated/java/org/lockss/laaws/config/api/AusApi.java
 fixImport $AUS_API org.lockss.laaws.config.model.AuConfiguration org.lockss.config.AuConfiguration
 fixImport $AUS_API org.lockss.laaws.config.model.RequestAuControlResult org.lockss.ws.entities.RequestAuControlResult
+fixImport $AUS_API org.lockss.laaws.config.model.AuConfigPageInfo org.lockss.config.rest.AuConfigPageInfo
 fixResponseCode1234 $AUS_API
+
+# Edit AusApiDelegate.java
+AUS_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/AusApiDelegate.java
+fixImport $AUS_API_DELEGATE org.lockss.laaws.config.model.AuConfigPageInfo org.lockss.config.rest.AuConfigPageInfo
 
 # Edit ConfigApiDelegate.java.
 CONFIG_API_DELEGATE=src/generated/java/org/lockss/laaws/config/api/ConfigApiDelegate.java
