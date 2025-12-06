@@ -82,11 +82,14 @@ implements AustatusesApiDelegate {
       AuStatus result = new AuHelper().getAuStatus(auId);
       log.debug2("result = " + result);
       return new ResponseEntity<AuStatus>(result, HttpStatus.OK);
+    } catch (IllegalArgumentException iae) {
+      String message = "No Archival Unit found for auId = '" + auId + "'";
+      log.warn(message);
+      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     } catch (Exception e) {
       String message = "Cannot getAuStatus() for auId = '" + auId + "'";
       log.error(message, e);
-      return new ResponseEntity<String>(message,
-	  HttpStatus.INTERNAL_SERVER_ERROR);
+      return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }
