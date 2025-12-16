@@ -97,7 +97,7 @@ public class TestUtilsApiServiceImpl extends SpringLockssTestCase4 {
   }
 
   private void assertNormalizedURL(String url, String expectedNormalizedUrl) {
-    String restEndpoint = getTestUrlTemplate("/utils/normalizeUrl?url=" + url);
+    String restEndpoint = getTestUrlTemplate("/utils/normalizeurl?url=" + url);
     ResponseEntity<List> response =
         RestUtil.getRestTemplate().exchange(restEndpoint, HttpMethod.GET, (HttpEntity)null, List.class, new Object[0]);
 
