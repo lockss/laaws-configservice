@@ -30,6 +30,7 @@ openapi: 3.0.3
 info:
   title: LOCKSS Configuration Service REST API
   description: REST API of the LOCKSS Configuration Service
+  version: 2.0.0
   contact:
     name: LOCKSS Support
     url: https://www.lockss.org/
@@ -37,7 +38,22 @@ info:
   license:
     name: BSD-3-Clause
     url: https://opensource.org/licenses/BSD-3-Clause
-  version: 2.0.0
+servers:
+  - url: "{proto}://{hostname}:{port}/"
+    description: LOCKSS Configuration Service
+    variables:
+      proto:
+        description: "The protocol (default: http)."
+        enum:
+          - http
+          - https
+        default: http
+      hostname:
+        description: The service host name (or IP address).
+        default: localhost
+      port:
+        description: "The service port (default: 24620)."
+        default: 24620
 security:
   - basicAuth: []
 tags:
@@ -79,22 +95,23 @@ paths:
             type: string
         - name: If-Modified-Since
           in: header
-          description: The If-Match header
+          description: The If-Modified-Since header
           schema:
             type: string
         - name: If-None-Match
           in: header
-          description: The If-Match header
+          description: The If-None-Match header
           schema:
             type: string
         - name: If-Unmodified-Since
           in: header
-          description: The If-Match header
+          description: The If-Unmodified-Since header
           schema:
             type: string
       responses:
         "200":
-          description: The named configuration file
+          description: A multipart object with one part named "configFile"
+            containing the configuration file corresponding to the section name.
           content:
             multipart/form-data:
               schema:
@@ -180,22 +197,23 @@ paths:
             type: string
         - name: If-Modified-Since
           in: header
-          description: The If-Match header
+          description: The If-Modified-Since header
           schema:
             type: string
         - name: If-None-Match
           in: header
-          description: The If-Match header
+          description: The If-None-Match header
           schema:
             type: string
         - name: If-Unmodified-Since
           in: header
-          description: The If-Match header
+          description: The If-Unmodified-Since header
           schema:
             type: string
       responses:
         "200":
-          description: The configuration file for the URL
+          description: A multipart object with one part named "configFile"
+            containing the configuration file for the URL.
           content:
             multipart/form-data:
               schema:
@@ -323,15 +341,24 @@ paths:
       description: Get the configuration of all AUs
       operationId: getAllAuConfig
       # roles: ROLE_AU_ADMIN
+      parameters:
+        - name: limit
+          in: query
+          description: The requested maximum number of AU configurations per response
+          schema:
+            type: integer
+        - name: continuationToken
+          in: query
+          description: The continuation token of the next page of AU configurations to be returned
+          schema:
+            type: string
       responses:
         "200":
-          description: The configuration of all AUs
+          description: The requested AU configurations
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/auConfiguration'
+                $ref: '#/components/schemas/AuConfigPageInfo'
         default:
           description: The resulting error payload.
           content: {}
@@ -346,7 +373,7 @@ paths:
       parameters:
         - name: auid
           in: path
-          description: The identifier of the AU for which the configuration is\ \ requested
+          description: The identifier of the AU for which the configuration is requested
           required: true
           schema:
             type: string
@@ -356,7 +383,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/auConfiguration'
+                $ref: '#/components/schemas/AuConfiguration'
         default:
           description: The resulting error payload.
           content: {}
@@ -379,7 +406,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/auConfiguration'
+              $ref: '#/components/schemas/AuConfiguration'
         required: true
       responses:
         "200":
@@ -410,7 +437,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/auConfiguration'
+                $ref: '#/components/schemas/AuConfiguration'
         default:
           description: The resulting error payload.
           content: {}
@@ -609,6 +636,7 @@ paths:
           content:
             application/json:
               schema:
+                # Actually AuStateBean serialized as a string (see below)
                 type: string
         default:
           description: The resulting error payload.
@@ -662,6 +690,7 @@ paths:
             requested
           required: true
           schema:
+            # Actually AuAgreements serialized as a string, see below
             type: string
       responses:
         "200":
@@ -698,6 +727,7 @@ paths:
         content:
           application/json:
             schema:
+              # Actually AuAgreements serialized as a string, see below
               type: string
         required: true
       responses:
@@ -723,6 +753,7 @@ paths:
             are requested
           required: true
           schema:
+            # Actually AuSuspectUrlVersions serialized as a string; see below
             type: string
       responses:
         "200":
@@ -760,6 +791,7 @@ paths:
         content:
           application/json:
             schema:
+              # Actually AuSuspectUrlVersions serialized as a string; see below
               type: string
         required: true
       responses:
@@ -792,6 +824,7 @@ paths:
           content:
             application/json:
               schema:
+                # Actually DatedPeerIdSetImpl serialized as a string; see below
                 type: string
         default:
           description: The resulting error payload.
@@ -821,6 +854,7 @@ paths:
         content:
           application/json:
             schema:
+                # Actually DatedPeerIdSetImpl serialized as a string; see below
               type: string
         required: true
       responses:
@@ -987,7 +1021,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/auStatus'
+                $ref: '#/components/schemas/AuStatus'
         default:
           description: The resulting error payload.
           content: {}
@@ -1228,31 +1262,369 @@ paths:
           content: {}
 components:
   schemas:
-    platformConfigurationWsResult:
+    AccessType:
+      # Modeled from org.lockss.state.AuState.AccessType in lockss-core
+      # Used in AuStateBean
+      type: string
+      nullable: true
+      enum:
+        - OpenAccess
+        - Subscription
+    apiStatus:
       required:
-        - hostName
+        - apiVersion
+        - ready
       type: object
       properties:
-        hostName:
+        apiVersion:
           type: string
-          description: name of the host server
-      description: The configuration of the platform
-    auConfiguration:
+          description: The version of the API
+        componentName:
+          type: string
+          description: The name of the component
+        componentVersion:
+          type: string
+          description: The version of the component software
+        lockssVersion:
+          type: string
+          description: The version of the LOCKSS system
+        ready:
+          type: boolean
+          description: The indication of whether the service is available
+        serviceName:
+          type: string
+          description: The name of the service
+        readyTime:
+          type: integer
+          description: The time the service last became ready.
+          format: int64
+        reason:
+          type: string
+          description: The reason the service isn't ready.
+        startupStatus:
+          type: string
+          description: Enum indicating progress of plugin/AU processing at startup.
+          enum:
+            - NONE
+            - PLUGINS_CRAWLING
+            - PLUGINS_COLLECTED
+            - PLUGINS_LOADING
+            - PLUGINS_LOADED
+            - AUS_STARTING
+            - AUS_STARTED
+      description: The status information of the service
+    AuAgreements:
+      # Modeled from org.lockss.protocol.AuAgreements in lockss-core
+      # Returned by org.lockss.laaws.config.impl.AuagreementsApiServiceImpl.getAuAgreements(String) but *not* desclared by GET /auagreements/{auid}
+      # Received by org.lockss.laaws.config.impl.AuagreementsApiServiceImpl.patchAuAgreements(String, String, String) but *not* declared by PATCH /auagreements/{auid}
+      type: object
+      properties:
+        auid:
+          type: string
+          nullable: true
+        rawMap:
+          type: object
+          nullable: true
+          additionalProperties:
+            $ref: '#/components/schemas/PeerAgreements'
+    AuConfiguration:
+      # Modeled from org.lockss.config.AuConfiguration in lockss-core
+      # Returned by org.lockss.laaws.config.impl.AusApiServiceImpl.getAuConfig(String) and declared in GET /aus/{auid}
+      # Returned by org.lockss.laaws.config.impl.AusApiServiceImpl.getAllAuConfig() (Collection) and declared in GET /aus (array)
+      description: The encapsulation of an Archival Unit configuration
       required:
         - auConfig
         - auId
       type: object
       properties:
         auId:
-          type: string
           description: The identifier of the Archival Unit
+          type: string
         auConfig:
+          description: The map of Archival Unit configuration items
           type: object
           additionalProperties:
             type: string
             description: The value of the configuration for the key
-          description: The map of Archival Unit configuration items
-      description: The encapsulation of an Archival Unit configuration
+    AuConfigPageInfo:
+      type: object
+      required:
+        - auConfigs
+        - pageInfo
+      properties:
+        auConfigs:
+          title: AU Configurations
+          description: The AU configurations included in the page
+          type: array
+          items:
+            $ref: '#/components/schemas/AuConfiguration'
+          nullable: false
+        pageInfo:
+          title: Page Information
+          description: Information about the page
+          $ref: '#/components/schemas/PageInfo'
+          nullable: false
+    AuStateBean:
+      # Modeled from org.lockss.state.AuStateBean in lockss-core
+      # Returned by org.lockss.laaws.config.impl.AustatesApiServiceImpl.getAuState(String) but *not* declared in GET /austates/{auid}
+      type: object
+      properties:
+        auCreationTime:
+          type: integer
+          format: int64
+        lastCrawlTime:
+          type: integer
+          format: int64
+        lastCrawlAttempt:
+          type: integer
+          format: int64
+        lastCrawlResultMsg:
+          type: string
+          nullable: true
+        lastCrawlResult:
+          type: integer
+          format: int32
+        lastDeepCrawlTime:
+          type: integer
+          format: int64
+        lastDeepCrawlAttempt:
+          type: integer
+          format: int64
+        lastDeepCrawlResultMsg:
+          type: string
+          nullable: true
+        lastDeepCrawlResult:
+          type: integer
+          format: int32
+        lastDeepCrawlDepth:
+          type: integer
+          format: int32
+        lastTopLevelPollTime:
+          type: integer
+          format: int64
+        lastPollStart:
+          type: integer
+          format: int64
+        lastPollResult:
+          type: integer
+          format: int32
+        pollDuration:
+          type: integer
+          format: int64
+        averageHashDuration:
+          type: integer
+          format: int64
+        clockssSubscriptionStatus:
+          type: integer
+          format: int32
+        v3Agreement:
+          type: number
+          format: double
+        highestV3Agreement:
+          type: number
+          format: double
+        accessType:
+          $ref: '#/components/schemas/AccessType'
+        hasSubstance:
+          $ref: '#/components/schemas/SubstanceCheckerState'
+        substanceVersion:
+          type: string
+          nullable: true
+        metadataVersion:
+          type: string
+          nullable: true
+        lastMetadataIndex:
+          type: integer
+          format: int64
+        lastContentChange:
+          type: integer
+          format: int64
+        lastPoPPoll:
+          type: integer
+          format: int64
+        lastPoPPollResult:
+          type: integer
+          format: int32
+        lastLocalHashScan:
+          type: integer
+          format: int64
+        numAgreePeersLastPoR:
+          type: integer
+          format: int32
+        numWillingRepairers:
+          type: integer
+          format: int32
+        numCurrentSuspectVersions:
+          type: integer
+          format: int32
+        cdnStems:
+          type: array
+          nullable: true
+          items:
+            type: string
+        isMetadataExtractionEnabled:
+          type: boolean
+        auId:
+          type: string
+          nullable: true
+    AuStatus:
+      # Modeled from org.lockss.ws.entities.AuStatus in lockss-util-entities
+      # Returned by org.lockss.laaws.config.impl.AustatusesApiServiceImpl.getAuStatus(String) and declared in GET /austatuses/{auid} 
+      description: The status of an archival unit
+      type: object
+      properties:
+        volume:
+          type: string
+          nullable: true
+        journalTitle:
+          type: string
+          nullable: true
+        pluginName:
+          type: string
+          nullable: true
+        year:
+          type: string
+          nullable: true
+        accessType:
+          type: string
+          nullable: true
+        contentSize:
+          type: integer
+          format: int64
+          nullable: true
+        diskUsage:
+          type: integer
+          format: int64
+          nullable: true
+        repository:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        recentPollAgreement:
+          type: number
+          format: double
+          nullable: true
+        publishingPlatform:
+          type: string
+          nullable: true
+        publisher:
+          type: string
+          nullable: true
+        availableFromPublisher:
+          type: boolean
+          nullable: true
+        substanceState:
+          type: string
+          nullable: true
+        creationTime:
+          type: integer
+          format: int64
+          nullable: true
+        crawlProxy:
+          type: string
+          nullable: true
+        crawlWindow:
+          type: string
+          nullable: true
+        crawlPool:
+          type: string
+          nullable: true
+        lastCompletedCrawl:
+          type: integer
+          format: int64
+          nullable: true
+        lastCrawl:
+          type: integer
+          format: int64
+          nullable: true
+        lastCrawlResult:
+          type: string
+          nullable: true
+        lastCompletedDeepCrawl:
+          type: integer
+          format: int64
+          nullable: true
+        lastDeepCrawl:
+          type: integer
+          format: int64
+          nullable: true
+        lastDeepCrawlResult:
+          type: string
+          nullable: true
+        lastCompletedDeepCrawlDepth:
+          type: integer
+          format: int32
+        lastMetadataIndex:
+          type: integer
+          format: int64
+          nullable: true
+        lastCompletedPoll:
+          type: integer
+          format: int64
+          nullable: true
+        lastPoll:
+          type: integer
+          format: int64
+          nullable: true
+        lastPollResult:
+          type: string
+          nullable: true
+        currentlyCrawling:
+          type: boolean
+          nullable: true
+        currentlyPolling:
+          type: boolean
+          nullable: true
+        subscriptionStatus:
+          type: string
+          nullable: true
+        provider:
+          type: string
+          nullable: true
+    AuSuspectUrlVersions:
+      # Modeled from org.lockss.state.AuSuspectUrlVersions in lockss-core
+      # Returned by org.lockss.laaws.config.impl.AususpecturlsApiServiceImpl.getAuSuspectUrlVersions(String) but *not* declared in GET /aususpecturls/{auid}
+      # Received by org.lockss.laaws.config.impl.AususpecturlsApiServiceImpl.putAuSuspectUrlVersions(String, String, String) but *not* declared in PUT /aususpecturls/{auid}
+      type: object
+      properties:
+        auid:
+          type: string
+          nullable: true
+        suspectVersions:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/SuspectUrlVersion'
+    auWsResult:
+      required:
+        - auId
+      type: object
+      properties:
+        auId:
+          type: string
+          description: The identifier of the archival unit
+      description: The properties of an archival unit
+    checkSubstanceResult:
+      required:
+        - errorMessage
+        - id
+        - newState
+        - oldState
+      type: object
+      properties:
+        id:
+          type: string
+          description: The identifier of the archival unit
+        oldState:
+          $ref: '#/components/schemas/SubstanceCheckerState'
+        newState:
+          $ref: '#/components/schemas/SubstanceCheckerState'
+        errorMessage:
+          type: string
+          description: The error message as a result of the operation
+      description: The status of an archival unit
     contentConfigurationResult:
       required:
         - auId
@@ -1274,96 +1646,206 @@ components:
           type: string
           description: A descriptive message regarding the result of the operation
       description: The encapsulation of the result of adding an Archival Unit
-    tdbAuWsResult:
+    DatedPeerIdSetImpl:
+      # Modeled from org.lockss.protocol.DatedPeerIdSetImpl in lockss-core
+      # Returned by org.lockss.laaws.config.impl.NoaupeersApiServiceImpl.getNoAuPeers(String) but *not* declared in GET /noaupeers/{auid}
+      # Received by org.lockss.laaws.config.impl.NoaupeersApiServiceImpl.putNoAuPeers(String, String, String) but *not* declared in PUT /noaupeers/{auid}
       type: object
       properties:
-        auId:
+        auid:
           type: string
-          description: The identifier of the Archival Unit
-        name:
-          type: string
-          description: The name of the Archival Unit
-        pluginName:
-          type: string
-          description: The name of the Archival Unit plugin
-        tdbTitle:
-          $ref: '#/components/schemas/tdbTitleWsResult'
-        tdbPublisher:
-          $ref: '#/components/schemas/tdbPublisherWsResult'
-        down:
-          type: boolean
-          description: An indication of whether the AU is marked as down or not
-        active:
-          type: boolean
-          description: An indication of whether the AU is active or not
-        params:
-          type: object
-          additionalProperties:
+          nullable: true
+        rawSet:
+          type: array
+          nullable: true
+          items:
             type: string
-            description: The value of the parameter for the key
-          description: The map of Archival Unit parameters
-        attrs:
-          type: object
-          additionalProperties:
-            type: string
-            description: The value of the attribute for the key
-          description: The map of Archival Unit attributes
-        props:
-          type: object
-          additionalProperties:
-            type: string
-            description: The value of the property for the key
-          description: The map of Archival Unit properties
-      description: The properties of a TDB Archival Unit
-    tdbTitleWsResult:
+        date:
+          type: integer
+          format: int64
+    HashResult:
+      # Modeled from org.lockss.hasher.HashResult in lockss-core
+      # Used by SuspectUrlVersion
       type: object
       properties:
-        name:
+        bytes:
           type: string
-          description: The name of the TDB Title
-        tdbPublisher:
-          $ref: '#/components/schemas/tdbPublisherWsResult'
+          # 'format' should be 'byte' if base64-encoded
+          format: binary
+          nullable: true
+        algorithm:
+          type: string
+          nullable: true
+    PeerAgreement:
+      # Modeled from org.lockss.protocol.PeerAgreement in lockss-core
+      # Used in PeerAgreements
+      type: object
+      properties:
+        percentAgreement:
+          type: number
+          format: float
+        percentAgreementTime:
+          type: integer
+          format: int64
+        highestPercentAgreement:
+          type: number
+          format: float
+        highestPercentAgreementTime:
+          type: integer
+          format: int64
+    PeerAgreements:
+      # Modeled from org.lockss.protocol.PeerAgreements in lockss-core
+      # Used in AuAgreements
+      type: object
+      properties:
         id:
           type: string
-          description: The identifier of the TDB Title
-        proprietaryid:
-          type: string
-          description: The proprietary identifier of the TDB Title
-        proprietaryids:
-          type: array
-          description: The proprietary identifiers of the TDB Title
-          items:
-            type: string
-        publicationtype:
-          type: string
-          description: The publication type of the TDB Title
-        issn:
-          type: string
-          description: The ISSN of the TDB Title
-        issnl:
-          type: string
-          description: The ISSNL of the TDB Title
-        eissn:
-          type: string
-          description: The eISSN of the TDB Title
-        printissn:
-          type: string
-          description: The print ISSN of the TDB Title
-        issns:
-          type: array
-          description: The ISSNs of the TDB Title
-          items:
-            type: string
-      description: The properties of a TDB Title
-    tdbPublisherWsResult:
+          nullable: true
+        map:
+          type: object
+          nullable: true
+          additionalProperties:
+            $ref: '#/components/schemas/PeerAgreement'
+    PageInfo:
+      title: Page Information
+      description: The information related to pagination of content
+      type: object
       required:
-        - name
+        - totalCount
+        - itemsInPage
+        - continuationToken
+        - curLink
+        - nextLink
+      properties:
+        totalCount:
+          title: Total Count
+          description: The total number of items
+          type: integer
+          format: int32
+          nullable: true
+        itemsInPage:
+          title: Items in Page
+          description: The number of items in the page
+          type: integer
+          format: int32
+          nullable: false
+        continuationToken:
+          title: Continuation Token
+          description: The continuation token
+          type: string
+          nullable: true
+        curLink:
+          title: Current Request
+          description: The link of the current request
+          type: string
+          nullable: false
+        nextLink:
+          title: Next Request
+          description: The link of the next request
+          type: string
+          nullable: true
+    platformConfigurationWsResult:
+      description: The configuration of the platform
       type: object
       properties:
-        name:
+        hostName:
           type: string
-          description: The name of the TDB Publisher
-      description: The properties of a TDB Publisher
+          nullable: true
+        ipAddress:
+          type: string
+          nullable: true
+        groups:
+          type: array
+          nullable: true
+          items:
+            type: string
+        project:
+          type: string
+          nullable: true
+        v3Identity:
+          type: string
+          nullable: true
+        mailRelay:
+          type: string
+          nullable: true
+        adminEmail:
+          type: string
+          nullable: true
+        disks:
+          type: array
+          nullable: true
+          items:
+            type: string
+        currentTime:
+          type: integer
+          format: int64
+          nullable: true
+        uptime:
+          type: integer
+          format: int64
+          nullable: true
+        daemonVersion:
+          type: object
+          nullable: true
+          properties:
+            fullVersion:
+              type: string
+              nullable: true
+            majorVersion:
+              type: integer
+              format: int32
+              nullable: true
+            minorVersion:
+              type: integer
+              format: int32
+              nullable: true
+            buildVersion:
+              type: integer
+              format: int32
+              nullable: true
+        javaVersion:
+          type: object
+          nullable: true
+          properties:
+            version:
+              type: string
+              nullable: true
+            specificationVersion:
+              type: string
+              nullable: true
+            runtimeVersion:
+              type: string
+              nullable: true
+            runtimeName:
+              type: string
+              nullable: true
+        platform:
+          type: object
+          properties:
+            name:
+              type: string
+              nullable: true
+            version:
+              type: string
+              nullable: true
+            suffix:
+              type: string
+              nullable: true
+        currentWorkingDirectory:
+          type: string
+          nullable: true
+        properties:
+          type: array
+          nullable: true
+          items:
+            type: string
+        buildHost:
+          type: string
+          nullable: true
+        buildTimestamp:
+          type: integer
+          format: int64
+          nullable: true
     pluginWsResult:
       required:
         - auCount
@@ -1408,15 +1890,6 @@ components:
           type: string
           description: The publishing platform of the plugin
       description: The properties of a plugin
-    auWsResult:
-      required:
-        - auId
-      type: object
-      properties:
-        auId:
-          type: string
-          description: The identifier of the archival unit
-      description: The properties of an archival unit
     requestAuControlResult:
       required:
         - errorMessage
@@ -1434,90 +1907,125 @@ components:
           type: string
           description: The error message as a result of the operation
       description: The result of an archival unit generic control request
-    auStatus:
-      required:
-        - volume
+    SubstanceCheckerState:
+      # Modeled from org.lockss.state.SubstanceChecker.State in lockss-core
+      # Used in AuStateBean and checkSubstanceResult
+      type: string
+      nullable: true
+      enum:
+        - Unknown
+        - Yes
+        - No
+    SuspectUrlVersion:
+      # Modeled from org.lockss.state.AuSuspectUrlVersions.SuspectUrlVersion in lockss-core
+      # Used by AuSuspectUrlVersions
       type: object
       properties:
-        volume:
+        url:
           type: string
-          description: The volume of the archival unit
-      description: The status of an archival unit
-    checkSubstanceResult:
-      required:
-        - errorMessage
-        - id
-        - newState
-        - oldState
+          nullable: true
+        version:
+          type: integer
+          format: int32
+        created:
+          type: integer
+          format: int64
+        computedHash:
+          $ref: '#/components/schemas/HashResult'
+        storedHash:
+          $ref: '#/components/schemas/HashResult'
+    tdbAuWsResult:
       type: object
       properties:
+        auId:
+          type: string
+          description: The identifier of the Archival Unit
+        name:
+          type: string
+          description: The name of the Archival Unit
+        pluginName:
+          type: string
+          description: The name of the Archival Unit plugin
+        tdbTitle:
+          $ref: '#/components/schemas/tdbTitleWsResult'
+        tdbPublisher:
+          $ref: '#/components/schemas/tdbPublisherWsResult'
+        down:
+          type: boolean
+          description: An indication of whether the AU is marked as down or not
+        active:
+          type: boolean
+          description: An indication of whether the AU is active or not
+        params:
+          type: object
+          additionalProperties:
+            type: string
+            description: The value of the parameter for the key
+          description: The map of Archival Unit parameters
+        attrs:
+          type: object
+          additionalProperties:
+            type: string
+            description: The value of the attribute for the key
+          description: The map of Archival Unit attributes
+        props:
+          type: object
+          additionalProperties:
+            type: string
+            description: The value of the property for the key
+          description: The map of Archival Unit properties
+      description: The properties of a TDB Archival Unit
+    tdbPublisherWsResult:
+      required:
+        - name
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the TDB Publisher
+      description: The properties of a TDB Publisher
+    tdbTitleWsResult:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the TDB Title
+        tdbPublisher:
+          $ref: '#/components/schemas/tdbPublisherWsResult'
         id:
           type: string
-          description: The identifier of the archival unit
-        oldState:
+          description: The identifier of the TDB Title
+        proprietaryid:
           type: string
-          description: An indication of whether the result is successful
-          enum:
-            - Unknown
-            - "Yes"
-            - "No"
-        newState:
+          description: The proprietary identifier of the TDB Title
+        proprietaryids:
+          type: array
+          description: The proprietary identifiers of the TDB Title
+          items:
+            type: string
+        publicationtype:
           type: string
-          description: An indication of whether the result is successful
-          enum:
-            - Unknown
-            - "Yes"
-            - "No"
-        errorMessage:
+          description: The publication type of the TDB Title
+        issn:
           type: string
-          description: The error message as a result of the operation
-      description: The status of an archival unit
-    apiStatus:
-      required:
-        - apiVersion
-        - ready
-      type: object
-      properties:
-        apiVersion:
+          description: The ISSN of the TDB Title
+        issnl:
           type: string
-          description: The version of the API
-        componentName:
+          description: The ISSNL of the TDB Title
+        eissn:
           type: string
-          description: The name of the component
-        componentVersion:
+          description: The eISSN of the TDB Title
+        printissn:
           type: string
-          description: The version of the component software
-        lockssVersion:
-          type: string
-          description: The version of the LOCKSS system
-        ready:
-          type: boolean
-          description: The indication of whether the service is available
-        serviceName:
-          type: string
-          description: The name of the service
-        readyTime:
-          type: integer
-          description: The time the service last became ready.
-          format: int64
-        reason:
-          type: string
-          description: The reason the service isn't ready.
-        startupStatus:
-          type: string
-          description: Enum indicating progress of plugin/AU processing at startup.
-          enum:
-            - NONE
-            - PLUGINS_CRAWLING
-            - PLUGINS_COLLECTED
-            - PLUGINS_LOADING
-            - PLUGINS_LOADED
-            - AUS_STARTING
-            - AUS_STARTED
-      description: The status information of the service
+          description: The print ISSN of the TDB Title
+        issns:
+          type: array
+          description: The ISSNs of the TDB Title
+          items:
+            type: string
+      description: The properties of a TDB Title
   securitySchemes:
     basicAuth:
       type: http
       description: HTTP Basic Authentication. Works over HTTP and HTTPS.
       scheme: basic
-
