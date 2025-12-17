@@ -29,9 +29,13 @@ package org.lockss.laaws.config.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockserver.integration.ClientAndServer;
+import org.mockserver.model.Header;
 import org.lockss.config.*;
 import org.lockss.laaws.config.ConfigApplication;
 import org.lockss.log.L4JLogger;
@@ -76,10 +80,16 @@ import java.lang.reflect.MalformedParametersException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static org.lockss.config.RestConfigClient.CONFIG_PART_NAME;
 import static org.lockss.laaws.config.impl.ConfigApiServiceImpl.*;
+import static org.mockserver.integration.ClientAndServer.startClientAndServer;
+import static org.mockserver.model.HttpRequest.request;
+import static org.mockserver.model.HttpResponse.response;
 
 /**
  * Test class for org.lockss.laaws.config.api.ConfigApiController.
@@ -127,9 +137,63 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
   @Autowired
   ApplicationContext appCtx;
 
+  // MockServer for mocking external HTTP requests
+  private static ClientAndServer mockServer;
+  private static int mockServerPort;
+  private static String mockServerUrl;
+
+  // HTML content that mimics example.com response
+  private static final String MOCK_HTML_CONTENT =
+      "<!doctype html>\n" +
+      "<html>\n" +
+      "<head>\n" +
+      "    <title>Example Domain</title>\n" +
+      "</head>\n" +
+      "<body>\n" +
+      "<div>\n" +
+      "    <h1>Example Domain</h1>\n" +
+      "</div>\n" +
+      "</body>\n" +
+      "</html>";
+
+  /**
+   * Start the MockServer before any tests run.
+   */
+  @BeforeClass
+  public static void startMockServer() {
+    mockServer = startClientAndServer(0);
+    mockServerPort = mockServer.getLocalPort();
+    mockServerUrl = "http://localhost:" + mockServerPort;
+
+    long currentTime = TimeBase.nowMs();
+    String lastModified =
+        DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC));
+    String etag = "\"" + currentTime + "\"";
+
+    // Set up a mock response for the root path
+    mockServer
+        .when(request().withMethod("GET").withPath("/"))
+        .respond(response()
+            .withStatusCode(200)
+            .withHeader(new Header("Content-Type", "text/html; charset=UTF-8"))
+            .withHeader(new Header("Last-Modified", lastModified))
+            .withHeader(new Header("ETag", etag))
+            .withBody(MOCK_HTML_CONTENT));
+  }
+
+  /**
+   * Stop the MockServer after all tests complete.
+   */
+  @AfterClass
+  public static void stopMockServer() {
+    if (mockServer != null && mockServer.isRunning()) {
+      mockServer.stop();
+    }
+  }
+
   /**
    * Set up code to be run before each test.
-   * 
+   *
    * @throws IOException if there are problems.
    */
   @Before
@@ -1468,7 +1532,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, ANYBODY,
 	HttpStatus.UNAUTHORIZED);
 
-    url = "http://example.com";
+    url = mockServerUrl;
 
     // Missing Accept header for UNAUTHORIZED response.
     runTestGetConfigUrl(url, null, null, null, HttpStatus.UNAUTHORIZED);
@@ -1628,7 +1692,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     runTestGetConfigUrl(url, MediaType.MULTIPART_FORM_DATA, hrp, USER_ADMIN,
 	HttpStatus.NOT_FOUND);
 
-    url = "http://example.com";
+    url = mockServerUrl;
 
     // Bad Accept header content type.
     MultipartResponse configOutput = runTestGetConfigUrl(url, null, null,

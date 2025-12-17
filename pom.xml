@@ -104,6 +104,13 @@ POSSIBILITY OF SUCH DAMAGE.
       <version>${version.group.jackson}</version>
     </dependency>
 
+    <dependency>
+      <groupId>org.mock-server</groupId>
+      <artifactId>mockserver-netty</artifactId>
+      <version>${version.group.mockserver}</version>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
 </project>
