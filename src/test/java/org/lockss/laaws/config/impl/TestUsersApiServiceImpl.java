@@ -158,7 +158,7 @@ public class TestUsersApiServiceImpl extends SpringLockssTestCase4 {
   }
 
   /** Tests for POST /users REST endpoint. */
-  public void postUserAccountsAuthenticatedTest() throws Exception {
+  private void postUserAccountsAuthenticatedTest() throws Exception {
     StateManager stateManager =
         LockssDaemon.getLockssDaemon().getManagerByType(StateManager.class);
 
@@ -211,7 +211,7 @@ public class TestUsersApiServiceImpl extends SpringLockssTestCase4 {
   }
 
   /** Tests for GET /users/{username} REST endpoint. */
-  public void getUserAccountAuthenticatedTest() throws Exception {
+  private void getUserAccountAuthenticatedTest() throws Exception {
     UserAccount acct1 = makeUser();
 
     // Run tests using a RestTemplate directly
