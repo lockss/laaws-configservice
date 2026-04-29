@@ -90,7 +90,7 @@ public class PutAusAuidClient extends BaseClient {
 	HttpMethod.PUT, new HttpEntity<AuConfiguration>(auConfiguration,
 	    getHttpHeaders()), AuConfiguration.class);
 
-    int status = response.getStatusCodeValue();
+    int status = response.getStatusCode().value();
     System.out.println("status = " + status);
     AuConfiguration result = response.getBody();
     System.out.println("result = " + result);

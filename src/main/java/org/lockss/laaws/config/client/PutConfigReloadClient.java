@@ -42,7 +42,7 @@ public class PutConfigReloadClient extends BaseClient {
 	HttpMethod.PUT, new HttpEntity<String>(null, getHttpHeaders()),
 	Object.class);
 
-    int status = response.getStatusCodeValue();
+    int status = response.getStatusCode().value();
     System.out.println("status = " + status);
     Object result = response.getBody();
     System.out.println("result = " + result);

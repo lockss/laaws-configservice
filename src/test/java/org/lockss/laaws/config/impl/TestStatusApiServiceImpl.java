@@ -36,12 +36,13 @@ import org.lockss.app.LockssDaemon;
 import org.lockss.laaws.config.ConfigApplication;
 import org.lockss.log.L4JLogger;
 import org.lockss.spring.test.SpringLockssTestCase4;
+import org.lockss.util.rest.RestUtil;
+import org.springframework.web.client.RestTemplate;
 import org.lockss.util.rest.status.ApiStatus;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpMethod;
@@ -170,7 +171,7 @@ public class TestStatusApiServiceImpl extends SpringLockssTestCase4 {
   private void getStatusTest() throws JsonProcessingException {
     log.debug2("Invoked");
 
-    ResponseEntity<String> successResponse = new TestRestTemplate().exchange(
+    ResponseEntity<String> successResponse = RestUtil.buildRestTemplate(0, 0).exchange(
 	getTestUrlTemplate("/status"), HttpMethod.GET, null, String.class);
 
     HttpStatusCode statusCode = successResponse.getStatusCode();

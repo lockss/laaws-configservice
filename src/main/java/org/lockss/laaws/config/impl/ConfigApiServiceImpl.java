@@ -763,7 +763,7 @@ public class ConfigApiServiceImpl
 	status = HttpStatus.PRECONDITION_FAILED;
 	log.trace("status = {}", () -> status);
 
-	return new ResponseEntity<String>(null, null, status);
+	return new ResponseEntity<String>(null, (HttpHeaders) null, status);
       }
     }
 

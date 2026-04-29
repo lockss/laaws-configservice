@@ -36,6 +36,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.Header;
+import org.mockserver.model.NottableString;
 import org.lockss.config.*;
 import org.lockss.laaws.config.ConfigApplication;
 import org.lockss.log.L4JLogger;
@@ -59,9 +60,8 @@ import org.lockss.util.time.TimeBase;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageConversionException;
@@ -69,7 +69,6 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -170,7 +169,19 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
         DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC));
     String etag = "\"" + currentTime + "\"";
 
-    // Set up a mock response for the root path
+    // Set up a conditional (304) response for requests with If-Modified-Since
+    // header. MockServer matches expectations in creation order, so this more
+    // specific expectation must be registered before the general 200 one.
+    mockServer
+        .when(request().withMethod("GET").withPath("/")
+            .withHeader(NottableString.string("If-Modified-Since"),
+                NottableString.string(".*")))
+        .respond(response()
+            .withStatusCode(304)
+            .withHeader(new Header("Last-Modified", lastModified))
+            .withHeader(new Header("ETag", etag)));
+
+    // Set up the default 200 response for the root path
     mockServer
         .when(request().withMethod("GET").withPath("/"))
         .respond(response()
@@ -435,7 +446,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     HttpEntity<String> requestEntity = null;
 
@@ -467,10 +478,10 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    TestRestTemplate testRestTemplate = new TestRestTemplate(templateBuilder);
+    // restTemplate already assigned above
 
     try {
-      ResponseEntity<String> response = testRestTemplate
+      ResponseEntity<String> response = restTemplate
           .exchange(uri, method, requestEntity, String.class);
 
     } catch (LockssResponseErrorHandler.WrappedLockssRestHttpException e) {
@@ -1087,14 +1098,14 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     // Add our MultipartMessageHttpMessageConverter
-//    templateBuilder.additionalMessageConverters(new MultipartMessageHttpMessageConverter());
+
     List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
     messageConverters.add(new MultipartMessageHttpMessageConverter());
     messageConverters.addAll(new RestTemplate().getMessageConverters());
-    templateBuilder = templateBuilder.messageConverters(messageConverters);
+    restTemplate.setMessageConverters(messageConverters);
 
     HttpEntity<String> requestEntity = null;
 
@@ -1175,10 +1186,10 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response.
-    TestRestTemplate testTemplate = new TestRestTemplate(templateBuilder);
+    // restTemplate already assigned above
 
     try {
-      ResponseEntity<MultipartMessage> response = testTemplate
+      ResponseEntity<MultipartMessage> response = restTemplate
           .exchange(uri, HttpMethod.GET, requestEntity, MultipartMessage.class);
 
       // Get the response status.
@@ -1332,7 +1343,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 
     // Validate the response content type.
     HttpHeaders responseHeaders = response.getResponseHeaders();
-    assertTrue(responseHeaders.containsKey(HttpHeaders.CONTENT_TYPE));
+    assertTrue(responseHeaders.containsHeader(HttpHeaders.CONTENT_TYPE));
 
     assertTrue(responseHeaders.getContentType().toString()
 	.startsWith(MediaType.MULTIPART_FORM_DATA_VALUE + ";boundary="));
@@ -1344,13 +1355,13 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 
     // Validate the part content type.
     HttpHeaders partHeaders = part.getHeaders();
-    assertTrue(partHeaders.containsKey(HttpHeaders.CONTENT_TYPE));
+    assertTrue(partHeaders.containsHeader(HttpHeaders.CONTENT_TYPE));
     assertEquals(expectedContentType.toString(),
 	HeaderUtil.getMimeTypeFromContentType(partHeaders.getFirst(
 	    HttpHeaders.CONTENT_TYPE)));
 
     // Get the part payload content length.
-    assertTrue(partHeaders.containsKey(HttpHeaders.CONTENT_LENGTH));
+    assertTrue(partHeaders.containsHeader(HttpHeaders.CONTENT_LENGTH));
     long contentLength = part.getContentLength();
 
     // Get the part payload.
@@ -1367,8 +1378,8 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Validate the part last modification timestamp headers.
-    assertTrue(partHeaders.containsKey(HttpHeaders.LAST_MODIFIED));
-    assertTrue(partHeaders.containsKey(HttpHeaders.ETAG));
+    assertTrue(partHeaders.containsHeader(HttpHeaders.LAST_MODIFIED));
+    assertTrue(partHeaders.containsHeader(HttpHeaders.ETAG));
 
     log.debug2("part = {}", part);
     return part;
@@ -1894,14 +1905,14 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     // Add our MultipartMessageHttpMessageConverter
-//    templateBuilder.additionalMessageConverters(new MultipartMessageHttpMessageConverter());
+
     List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
     messageConverters.add(new MultipartMessageHttpMessageConverter());
     messageConverters.addAll(new RestTemplate().getMessageConverters());
-    templateBuilder = templateBuilder.messageConverters(messageConverters);
+    restTemplate.setMessageConverters(messageConverters);
 
     HttpEntity<String> requestEntity = null;
 
@@ -1984,10 +1995,10 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 
     try {
       // Make the request and get the response.
-      TestRestTemplate testTemplate = new TestRestTemplate(templateBuilder);
-//      templateBuilder.setErrorHandler(new LockssResponseErrorHandler(templateBuilder.getMessageConverters()));
+      // restTemplate already assigned above
 
-      ResponseEntity<MultipartMessage> response = testTemplate
+
+      ResponseEntity<MultipartMessage> response = restTemplate
           .exchange(uri, HttpMethod.GET, requestEntity, MultipartMessage.class);
 
     // Get the response status.
@@ -2096,7 +2107,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     HttpEntity<String> requestEntity = null;
 
@@ -2116,7 +2127,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<OffsetDateTime> response = new TestRestTemplate(templateBuilder)
+    ResponseEntity<OffsetDateTime> response = restTemplate
 	.exchange(uri, HttpMethod.GET, requestEntity, OffsetDateTime.class);
 
     // Get the response status.
@@ -2200,7 +2211,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     HttpEntity<String> requestEntity = null;
 
@@ -2220,7 +2231,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<?> response = new TestRestTemplate(templateBuilder)
+    ResponseEntity<?> response = restTemplate
 	.exchange(uri, HttpMethod.GET, requestEntity, String.class);
 
     // Get the response status.
@@ -2324,7 +2335,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
       fail("Should have thrown HttpMessageConversionException");
     } catch (HttpMessageConversionException e) {
       // FIXME
-      assertMatchesRE("Type definition error", e.getMessage());
+      assertMatchesRE("Type definition error|Could not write JSON", e.getMessage());
     }
 
     // Bad Content-Type header.
@@ -2334,7 +2345,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
       fail("Should have thrown HttpMessageConversionException");
     } catch (HttpMessageConversionException e) {
       // FIXME
-      assertMatchesRE("Type definition error", e.getMessage());
+      assertMatchesRE("Type definition error|Could not write JSON", e.getMessage());
     }
 
     // Bad Content-Type header.
@@ -2345,7 +2356,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
       fail("Should have thrown HttpMessageConversionException");
     } catch (HttpMessageConversionException e) {
       // FIXME
-      assertMatchesRE("Type definition error", e.getMessage());
+      assertMatchesRE("Type definition error|Could not write JSON", e.getMessage());
     }
 
     // Missing credentials.
@@ -2851,7 +2862,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     HttpEntity<MultiValueMap<String, Object>> requestEntity = null;
 
@@ -2952,7 +2963,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<?> response = new TestRestTemplate(templateBuilder)
+    ResponseEntity<?> response = restTemplate
 	.exchange(uri, HttpMethod.PUT, requestEntity, Void.class);
 
     // Get the response status.
@@ -3120,7 +3131,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     HttpEntity<String> requestEntity = null;
 
@@ -3146,7 +3157,7 @@ public class TestConfigApiServiceImpl extends SpringLockssTestCase4 {
 	configManager.getConfigReloadRequestCounter();
 
     // Make the request and get the response. 
-    ResponseEntity<?> response = new TestRestTemplate(templateBuilder)
+    ResponseEntity<?> response = restTemplate
 	.exchange(uri, HttpMethod.PUT, requestEntity, Void.class);
 
     // Get the response status.

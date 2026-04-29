@@ -46,7 +46,7 @@ public class GetAusClient extends BaseClient {
 	new HttpEntity<Collection<AuConfiguration>>(null, getHttpHeaders()),
 	String.class);
 
-    int status = response.getStatusCodeValue();
+    int status = response.getStatusCode().value();
     System.out.println("status = " + status);
     Collection<AuConfiguration> result =
 	new ObjectMapper().readValue((String)response.getBody(),

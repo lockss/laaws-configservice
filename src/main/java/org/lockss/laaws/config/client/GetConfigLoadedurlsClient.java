@@ -44,7 +44,7 @@ public class GetConfigLoadedurlsClient extends BaseClient {
 	HttpMethod.GET, new HttpEntity<String>(null, getHttpHeaders()),
 	List.class);
 
-    int status = response.getStatusCodeValue();
+    int status = response.getStatusCode().value();
     System.out.println("status = " + status);
     @SuppressWarnings("unchecked")
     List<String> result = response.getBody();

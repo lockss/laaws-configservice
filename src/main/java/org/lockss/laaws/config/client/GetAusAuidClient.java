@@ -65,7 +65,7 @@ public class GetAusAuidClient extends BaseClient {
 	HttpMethod.GET, new HttpEntity<String>(null, getHttpHeaders()),
 	AuConfiguration.class);
 
-    int status = response.getStatusCodeValue();
+    int status = response.getStatusCode().value();
     System.out.println("status = " + status);
     AuConfiguration result = response.getBody();
     System.out.println("result = " + result);

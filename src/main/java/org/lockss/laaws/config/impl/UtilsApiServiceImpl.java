@@ -59,7 +59,7 @@ public class UtilsApiServiceImpl extends BaseSpringApiServiceImpl
 
     if (!pluginMgr.areAusStarted()) {
       String msg = "AUs still starting";
-      return new ResponseEntity<>(null, HttpStatus.SERVICE_UNAVAILABLE);
+      return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
     }
 
     try {

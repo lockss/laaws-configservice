@@ -50,9 +50,8 @@ import org.lockss.util.rest.exception.LockssRestHttpException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.*;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -190,7 +189,7 @@ public class TestUsernamesApiServiceImpl extends SpringLockssTestCase4 {
   }
 
   /**
-   * Performs a GET operation directly using a {@link TestRestTemplate}.
+   * Performs a GET operation directly using a {@link RestTemplate}.
    *
    * @param credentials
    *          A Credentials with the request credentials.
@@ -212,7 +211,9 @@ public class TestUsernamesApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    // Use buildRestTemplate (no error handler) so error responses are returned
+    // directly rather than thrown as WrappedLockssRestHttpException.
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     HttpEntity<String> requestEntity = null;
 
@@ -244,7 +245,7 @@ public class TestUsernamesApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response.
-    ResponseEntity<String> response = new TestRestTemplate(templateBuilder).
+    ResponseEntity<String> response = restTemplate.
         exchange(uri, HttpMethod.GET, requestEntity, String.class);
 
     // Get the response status.

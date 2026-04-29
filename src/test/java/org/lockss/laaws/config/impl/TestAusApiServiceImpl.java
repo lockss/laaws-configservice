@@ -51,9 +51,8 @@ import org.lockss.util.rest.exception.LockssRestHttpException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.*;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -352,7 +351,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     HttpEntity<String> requestEntity = null;
 
@@ -384,7 +383,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<String> response = new TestRestTemplate(templateBuilder)
+    ResponseEntity<String> response = restTemplate
 	.exchange(uri, method, requestEntity, String.class);
 
     // Get the response status.
@@ -822,7 +821,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
@@ -860,7 +859,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response. 
-    ResponseEntity<?> response = new TestRestTemplate(templateBuilder)
+    ResponseEntity<?> response = restTemplate
 	.exchange(uri, HttpMethod.PUT, requestEntity, String.class);
 
     // Get the response status.
@@ -1107,7 +1106,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
@@ -1140,7 +1139,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
 
     // Make the request and get the response. 
     ResponseEntity<AuConfiguration> response =
-	new TestRestTemplate(templateBuilder). exchange(uri, HttpMethod.GET,
+	restTemplate. exchange(uri, HttpMethod.GET,
 	    requestEntity, AuConfiguration.class);
 
     // Get the response status.
@@ -1432,7 +1431,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     HttpEntity<AuConfigPageInfo> requestEntity = null;
 
@@ -1465,7 +1464,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response.
-    ResponseEntity<?> response = new TestRestTemplate(templateBuilder)
+    ResponseEntity<?> response = restTemplate
 	.exchange(uri, HttpMethod.GET, requestEntity, String.class);
 
     // Get the response status.
@@ -1537,7 +1536,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     HttpEntity<AuConfigPageInfo> requestEntity = null;
 
@@ -1568,7 +1567,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     }
 
     // Make the request and get the response.
-    ResponseEntity<?> response = new TestRestTemplate(templateBuilder)
+    ResponseEntity<?> response = restTemplate
         .exchange(uri, HttpMethod.GET, requestEntity, String.class);
 
     // Get the response status.
@@ -1970,7 +1969,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     log.trace("uri = {}", uri);
 
     // Initialize the request to the REST service.
-    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+    RestTemplate restTemplate = RestUtil.buildRestTemplate(0, 0);
 
     HttpEntity<AuConfiguration> requestEntity = null;
 
@@ -2003,7 +2002,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
 
     // Make the request and get the response. 
     ResponseEntity<AuConfiguration> response =
-	new TestRestTemplate(templateBuilder). exchange(uri, HttpMethod.DELETE,
+	restTemplate. exchange(uri, HttpMethod.DELETE,
 	    requestEntity, AuConfiguration.class);
 
     // Get the response status.

@@ -106,7 +106,7 @@ public class PutConfigSnidClient extends BaseClient {
   	HttpMethod.PUT, new HttpEntity<ConfigModSpec>(modSpec,
   	    getHttpHeaders()), Void.class);
 
-      int status = response.getStatusCodeValue();
+      int status = response.getStatusCode().value();
       System.out.println("status = " + status);
     } else {
       System.err.println("ERROR: Missing command line argument(s) "
