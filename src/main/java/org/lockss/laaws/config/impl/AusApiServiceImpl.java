@@ -89,10 +89,10 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
   static final String ENABLE_METADATA_INDEXING_ERROR_MESSAGE =
       "Cannot enable AU metadata indexing";
 
-  // TODO: Avoid repeating here the values of the constants defined in
-  // the not accessible MetadataExtractorManager.
+  // Repeated here to avoid a compile-time dependency on the not-publicly-
+  // accessible MetadataExtractorManager.PARAM_INDEXING_ENABLED. Keep in sync.
   static final String PARAM_INDEXING_ENABLED =
-      "org.lockss.metadataManager.indexing_enabled";
+      "org.lockss.metadataManager.indexingEnabled";
   static final boolean DEFAULT_INDEXING_ENABLED = false;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -453,8 +453,8 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
       }
 
       try {
-	// TODO: Implement via AU state.
-	//metadataMgr.enableAuIndexing(au);
+	ConfigManager.getConfigManager()
+	    .setAuMetadataExtractionEnabled(au, true);
 	result = new RequestAuControlResult(auId, true, null);
       } catch (Exception e) {
 	result = new RequestAuControlResult(auId, false,
@@ -532,8 +532,8 @@ public class AusApiServiceImpl extends BaseSpringApiServiceImpl
       }
 
       try {
-	// TODO: Implement via AU state.
-	//metadataMgr.disableAuIndexing(au);
+	ConfigManager.getConfigManager()
+	    .setAuMetadataExtractionEnabled(au, false);
 	result = new RequestAuControlResult(auId, true, null);
       } catch (Exception e) {
 	result = new RequestAuControlResult(auId, false,
