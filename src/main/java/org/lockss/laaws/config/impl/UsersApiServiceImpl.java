@@ -40,7 +40,10 @@ import org.lockss.account.UserAccount;
 import org.lockss.laaws.config.api.UsersApiDelegate;
 import org.lockss.log.L4JLogger;
 import org.lockss.plugin.AuUtil;
+import org.lockss.spring.auth.AuthUtil;
+import org.lockss.spring.auth.Roles;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
+import org.lockss.spring.error.LockssRestServiceException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -60,6 +63,12 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
 
   @Override
   public ResponseEntity<String> addUserAccounts(String userAccountsJson) {
+    if (!waitConfig()) {
+      throw new LockssRestServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Not ready");
+    }
+
+    AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
+
     try {
       UserAccount[] userAccounts = UserAccount.getUserAccountObjectMapper()
           .readerFor(UserAccount[].class)
@@ -76,8 +85,8 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
         try {
           getStateManager().storeUserAccount(acct);
           successfullyAdded.add(acct);
-        } catch (IOException e) {
-          log.error("Could not add user account: {}", acct);
+        } catch (IOException | IllegalStateException e) {
+          log.error("Could not add user account: {}: {}", acct.getName(), e);
         }
       }
 
@@ -91,6 +100,12 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
 
   @Override
   public ResponseEntity<String> getUserAccount(String username) {
+    if (!waitConfig()) {
+      throw new LockssRestServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Not ready");
+    }
+
+    AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
+
     try {
       UserAccount acct = getStateManager().getUserAccount(username);
 
@@ -111,6 +126,12 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
 
   @Override
   public ResponseEntity<Void> removeUserAccount(String username) {
+    if (!waitConfig()) {
+      throw new LockssRestServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Not ready");
+    }
+
+    AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
+
     try {
       UserAccount acct = getStateManager().getUserAccount(username);
       getStateManager().removeUserAccount(acct);
@@ -123,6 +144,12 @@ public class UsersApiServiceImpl extends BaseSpringApiServiceImpl
 
   @Override
   public ResponseEntity<String> updateUserAccount(String username, String userAccountUpdates, String cookie) {
+    if (!waitConfig()) {
+      throw new LockssRestServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Not ready");
+    }
+
+    AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
+
     try {
       UserAccount result = getStateManager().updateUserAccountFromJson(username, userAccountUpdates, cookie);
       if (result == null) {

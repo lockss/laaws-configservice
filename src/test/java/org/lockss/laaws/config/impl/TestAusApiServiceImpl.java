@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package org.lockss.laaws.config.impl;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,12 +38,14 @@ import org.junit.runner.RunWith;
 import org.lockss.app.LockssDaemon;
 import org.lockss.config.AuConfiguration;
 import org.lockss.config.RestConfigClient;
+import org.lockss.config.rest.AuConfigPageInfo;
 import org.lockss.db.DbException;
 import org.lockss.laaws.config.ConfigApplication;
 import org.lockss.log.L4JLogger;
 import org.lockss.plugin.PluginManager;
 import org.lockss.spring.test.SpringLockssTestCase4;
 import org.lockss.util.rest.RestUtil;
+import org.lockss.util.rest.config.PageInfo;
 import org.lockss.util.rest.exception.LockssRestException;
 import org.lockss.util.rest.exception.LockssRestHttpException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1002,16 +1003,16 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     runTestGetAuConfigClient(UNKNOWN_AUID, ANYBODY, HttpStatus.UNAUTHORIZED);
 
     AuConfiguration result =
-	runTestGetAuConfig(GOOD_AUID_1, CONTENT_ADMIN, HttpStatus.OK);
+	runTestGetAuConfig(GOOD_AUID_1, AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(pluginManager.getStoredAuConfiguration(GOOD_AUID_1), result);
 
     // Using the REST service client.
     assertEquals(result,
-	runTestGetAuConfigClient(GOOD_AUID_1, CONTENT_ADMIN, HttpStatus.OK));
+	runTestGetAuConfigClient(GOOD_AUID_1, AU_ADMIN, HttpStatus.OK));
 
-    result = runTestGetAuConfig(UNKNOWN_AUID, CONTENT_ADMIN, HttpStatus.OK);
+    result = runTestGetAuConfig(UNKNOWN_AUID, AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertNull(result);
@@ -1021,7 +1022,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
 
     // Using the REST service client.
     assertEquals(result,
-	runTestGetAuConfigClient(UNKNOWN_AUID, CONTENT_ADMIN, HttpStatus.OK));
+	runTestGetAuConfigClient(UNKNOWN_AUID, AU_ADMIN, HttpStatus.OK));
 
     getAuConfigCommonTest();
 
@@ -1268,16 +1269,16 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     runTestGetAllAuConfigClient(ANYBODY, HttpStatus.UNAUTHORIZED);
 
     Collection<AuConfiguration> configOutput =
-	runTestGetAllAuConfig(CONTENT_ADMIN, HttpStatus.OK);
+	runTestGetAllAuConfig(AU_ADMIN, HttpStatus.OK);
 
     // Verify.
     assertEquals(2, configOutput.size());
 
     assertTrue(configOutput.contains(
-	runTestGetAuConfig(GOOD_AUID_1, CONTENT_ADMIN, HttpStatus.OK)));
+	runTestGetAuConfig(GOOD_AUID_1, AU_ADMIN, HttpStatus.OK)));
 
     assertTrue(configOutput.contains(
-	runTestGetAuConfig(GOOD_AUID_2, CONTENT_ADMIN, HttpStatus.OK)));
+	runTestGetAuConfig(GOOD_AUID_2, AU_ADMIN, HttpStatus.OK)));
 
     // Verify independently.
     assertTrue(configOutput.contains(
@@ -1288,7 +1289,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
 
     // Using the REST service client.
     assertEquals(configOutput,
-	runTestGetAllAuConfigClient(CONTENT_ADMIN, HttpStatus.OK));
+	runTestGetAllAuConfigClient(AU_ADMIN, HttpStatus.OK));
 
     getAllAuConfigCommonTest();
 
@@ -1349,19 +1350,68 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     assertEquals(configOutput,
 	runTestGetAllAuConfigClient(AU_ADMIN, HttpStatus.OK));
 
+    // Test pagination with small page size
+    testPaginationWithSmallPageSize();
+
     log.debug2("Done");
   }
 
   /**
-   * Performs a GET operation for all Archival Units.
-   * 
+   * Tests pagination by requesting with a small limit to force multiple pages.
+   */
+  private void testPaginationWithSmallPageSize() throws Exception {
+    log.debug2("Invoked");
+
+    AuConfigPageInfo all = runTestGetAllAuConfigWithLimit(USER_ADMIN, 100, null, HttpStatus.OK);
+
+    // Request first page with limit=1
+    AuConfigPageInfo firstPage = runTestGetAllAuConfigWithLimit(USER_ADMIN, 1, null, HttpStatus.OK);
+
+    // Verify first page has 1 item
+    assertNotNull(firstPage);
+    assertEquals(1, firstPage.getAuConfigs().size());
+
+    // Verify PageInfo
+    PageInfo firstPageInfo = firstPage.getPageInfo();
+    assertNotNull(firstPageInfo);
+    assertEquals(Integer.valueOf(1), firstPageInfo.getItemsInPage());
+    assertNotNull(firstPageInfo.getContinuationToken());
+    assertNotNull(firstPageInfo.getCurLink());
+    assertNotNull(firstPageInfo.getNextLink());
+
+    // Request second page using continuation token
+    String continuationToken = firstPageInfo.getContinuationToken();
+    AuConfigPageInfo secondPage = runTestGetAllAuConfigWithLimit(USER_ADMIN, 1, continuationToken, HttpStatus.OK);
+
+    // Verify second page has 1 item
+    assertNotNull(secondPage);
+    assertEquals(1, secondPage.getAuConfigs().size());
+
+    // Verify the two pages have different AUs
+    assertNotEquals(firstPage.getAuConfigs().get(0).getAuId(),
+        secondPage.getAuConfigs().get(0).getAuId());
+
+    // Second page should have null continuation token (no more pages)
+    PageInfo secondPageInfo = secondPage.getPageInfo();
+    assertNotNull(secondPageInfo);
+    assertEquals(Integer.valueOf(1), secondPageInfo.getItemsInPage());
+    assertNull(secondPageInfo.getContinuationToken());
+    assertNotNull(secondPageInfo.getCurLink());
+    assertNull(secondPageInfo.getNextLink());
+
+    log.debug2("Done");
+  }
+
+  /**
+   * Performs a GET operation for all Archival Units with limit and continuationToken.
+   *
    * @param credentials
    *          A Credentials with the request credentials.
    * @param expectedStatus
    *          An HttpStatus with the HTTP status of the result.
    * @return a {@code Collection<AuConfiguration>} with the configuration of all
    *         Archival Units.
-   * 
+   *
    * @throws Exception
    *           if there are problems.
    */
@@ -1384,7 +1434,7 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
     // Initialize the request to the REST service.
     RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
 
-    HttpEntity<Collection<AuConfiguration>> requestEntity = null;
+    HttpEntity<AuConfigPageInfo> requestEntity = null;
 
     // Get the individual credentials elements.
     String user = null;
@@ -1411,10 +1461,10 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
 
       // Create the request entity.
       requestEntity =
-	  new HttpEntity<Collection<AuConfiguration>>(null, headers);
+	  new HttpEntity<AuConfigPageInfo>(null, headers);
     }
 
-    // Make the request and get the response. 
+    // Make the request and get the response.
     ResponseEntity<?> response = new TestRestTemplate(templateBuilder)
 	.exchange(uri, HttpMethod.GET, requestEntity, String.class);
 
@@ -1427,10 +1477,116 @@ public class TestAusApiServiceImpl extends SpringLockssTestCase4 {
 
     // Check whether it is a success response.
     if (RestUtil.isSuccess(status)) {
-      // Yes: Parse it.
+      // Yes: Parse it as paginated response.
       ObjectMapper mapper = new ObjectMapper();
-      result = mapper.readValue((String)response.getBody(),
-	  new TypeReference<Collection<AuConfiguration>>(){});
+      String responseBody = (String)response.getBody();
+      log.debug2("Response body: {}", responseBody);
+
+      AuConfigPageInfo pageInfo = mapper.readValue(responseBody,
+	  AuConfigPageInfo.class);
+      log.debug2("Parsed pageInfo: {}", pageInfo);
+
+      // Extract the AU configurations from the page
+      result = pageInfo.getAuConfigs();
+      log.debug2("Extracted auConfigs: {}", result);
+    }
+
+    log.debug2("result = {}", result);
+    return result;
+  }
+
+  /**
+   * Performs a GET operation for all Archival Units with pagination parameters.
+   *
+   * @param credentials
+   *          A Credentials with the request credentials.
+   * @param limit
+   *          An Integer with the maximum number of items per page.
+   * @param continuationToken
+   *          A String with the continuation token for the next page.
+   * @param expectedStatus
+   *          An HttpStatus with the HTTP status of the result.
+   * @return an AuConfigPageInfo with the paginated results.
+   *
+   * @throws Exception
+   *           if there are problems.
+   */
+  private AuConfigPageInfo runTestGetAllAuConfigWithLimit(
+      Credentials credentials, Integer limit, String continuationToken,
+      HttpStatus expectedStatus) throws Exception {
+    log.debug2("credentials = {}", credentials);
+    log.debug2("limit = {}", limit);
+    log.debug2("continuationToken = {}", continuationToken);
+    log.debug2("expectedStatus = {}", expectedStatus);
+
+    // Build the URL with query parameters
+    UriComponentsBuilder builder =
+        UriComponentsBuilder.fromUriString(getTestUrlTemplate("/aus"));
+
+    if (limit != null) {
+      builder.queryParam("limit", limit);
+    }
+
+    if (continuationToken != null) {
+      builder.queryParam("continuationToken", continuationToken);
+    }
+
+    UriComponents uriComponents = builder.build();
+    URI uri = UriComponentsBuilder.newInstance().uriComponents(uriComponents)
+        .build().encode().toUri();
+    log.trace("uri = {}", uri);
+
+    // Initialize the request to the REST service.
+    RestTemplateBuilder templateBuilder = RestUtil.getRestTemplateBuilder(0, 0);
+
+    HttpEntity<AuConfigPageInfo> requestEntity = null;
+
+    // Get the individual credentials elements.
+    String user = null;
+    String password = null;
+
+    if (credentials != null) {
+      user = credentials.getUser();
+      password = credentials.getPassword();
+    }
+
+    // Check whether there are any custom headers to be specified in the
+    // request.
+    if (user != null || password != null) {
+
+      // Initialize the request headers.
+      HttpHeaders headers = new HttpHeaders();
+
+      // Set up the authentication credentials
+      credentials.setUpBasicAuthentication(headers);
+
+      log.trace("requestHeaders = {}", () -> headers.toSingleValueMap());
+
+      // Create the request entity.
+      requestEntity =
+          new HttpEntity<AuConfigPageInfo>(null, headers);
+    }
+
+    // Make the request and get the response.
+    ResponseEntity<?> response = new TestRestTemplate(templateBuilder)
+        .exchange(uri, HttpMethod.GET, requestEntity, String.class);
+
+    // Get the response status.
+    HttpStatusCode statusCode = response.getStatusCode();
+    HttpStatus status = HttpStatus.valueOf(statusCode.value());
+    assertEquals(expectedStatus, status);
+
+    AuConfigPageInfo result = null;
+
+    // Check whether it is a success response.
+    if (RestUtil.isSuccess(status)) {
+      // Yes: Parse it as paginated response.
+      ObjectMapper mapper = new ObjectMapper();
+      String responseBody = (String)response.getBody();
+      log.debug2("Response body: {}", responseBody);
+
+      result = mapper.readValue(responseBody, AuConfigPageInfo.class);
+      log.debug2("Parsed pageInfo: {}", result);
     }
 
     log.debug2("result = {}", result);

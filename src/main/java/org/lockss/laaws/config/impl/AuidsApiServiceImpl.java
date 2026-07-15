@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package org.lockss.laaws.config.impl;
 
-import java.security.AccessControlException;
 import java.io.*;
 import java.util.*;
 
@@ -75,13 +74,7 @@ public class AuidsApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check for required role
-    try {
-      AuthUtil.checkHasRole(Roles.ROLE_ANY);
-    } catch (AccessControlException ace) {
-      log.warn(ace.getMessage());
-      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
-    }
+    AuthUtil.checkHasRole(Roles.ROLE_ANY);
 
     if (handle != null) {
       if (auConfig != null) {

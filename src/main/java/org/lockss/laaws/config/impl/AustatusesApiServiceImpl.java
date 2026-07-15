@@ -33,6 +33,8 @@ package org.lockss.laaws.config.impl;
 
 import org.lockss.laaws.config.api.AustatusesApiDelegate;
 import org.lockss.log.L4JLogger;
+import org.lockss.spring.auth.AuthUtil;
+import org.lockss.spring.auth.Roles;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
 import org.lockss.util.StringUtil;
 import org.lockss.ws.entities.AuStatus;
@@ -65,6 +67,8 @@ implements AustatusesApiDelegate {
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
+    AuthUtil.checkHasRole(Roles.ROLE_CONTENT_ACCESS, Roles.ROLE_AU_ADMIN);
+
     // Input validation.
     if (StringUtil.isNullString(auId)) {
       String message = "Cannot getAuStatus() for auId = '" + auId
@@ -78,11 +82,14 @@ implements AustatusesApiDelegate {
       AuStatus result = new AuHelper().getAuStatus(auId);
       log.debug2("result = " + result);
       return new ResponseEntity<AuStatus>(result, HttpStatus.OK);
+    } catch (IllegalArgumentException iae) {
+      String message = "No Archival Unit found for auId = '" + auId + "'";
+      log.warn(message);
+      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     } catch (Exception e) {
       String message = "Cannot getAuStatus() for auId = '" + auId + "'";
       log.error(message, e);
-      return new ResponseEntity<String>(message,
-	  HttpStatus.INTERNAL_SERVER_ERROR);
+      return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }

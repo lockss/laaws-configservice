@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2000-2023, Board of Trustees of Leland Stanford Jr. University
+Copyright (c) 2000-2025, Board of Trustees of Leland Stanford Jr. University
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -28,56 +28,46 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 
-*/
+ */
 
 package org.lockss.laaws.config.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.collections4.IterableUtils;
 import org.lockss.app.LockssDaemon;
-import org.lockss.laaws.config.api.UsernamesApiDelegate;
+import org.lockss.laaws.config.api.UtilsApiDelegate;
 import org.lockss.log.L4JLogger;
-import org.lockss.spring.auth.AuthUtil;
-import org.lockss.spring.auth.Roles;
+import org.lockss.plugin.PluginManager;
 import org.lockss.spring.base.BaseSpringApiServiceImpl;
-import org.lockss.spring.error.LockssRestServiceException;
-import org.lockss.state.StateManager;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
+import java.net.MalformedURLException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Service
-public class UsernamesApiServiceImpl extends BaseSpringApiServiceImpl
-    implements UsernamesApiDelegate {
+public class UtilsApiServiceImpl extends BaseSpringApiServiceImpl
+    implements UtilsApiDelegate {
+
   private static L4JLogger log = L4JLogger.getLogger();
 
-  @Autowired
-  private ObjectMapper objMapper;
-
-  protected StateManager getStateManager() {
-    return LockssDaemon.getLockssDaemon()
-        .getManagerByType(StateManager.class);
-  }
-
   @Override
-  public ResponseEntity<List<String>> getUserAccountNames() {
-    if (!waitConfig()) {
-      throw new LockssRestServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Not ready");
+  public ResponseEntity<List<String>> normalizeUrl(String url) {
+    LockssDaemon theDaemon = LockssDaemon.getLockssDaemon();
+    PluginManager pluginMgr = theDaemon.getPluginManager();
+
+    if (!pluginMgr.areAusStarted()) {
+      String msg = "AUs still starting";
+      return new ResponseEntity<>(null, HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    AuthUtil.checkHasRole(Roles.ROLE_USER_ADMIN);
-
     try {
-      List<String> usernames =
-          IterableUtils.toList(getStateManager().getUserAccountNames());
-      return ResponseEntity.ok(usernames);
-    } catch (IOException e) {
-      log.error("Could not get user account names", e);
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+      Set<String> normalizedUrls = pluginMgr.normalizeUrl(url);
+      return new ResponseEntity<>(new ArrayList<>(normalizedUrls), HttpStatus.OK);
+    } catch (MalformedURLException e) {
+      String msg = "Malformed URL: " + url;
+      return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
   }
 }

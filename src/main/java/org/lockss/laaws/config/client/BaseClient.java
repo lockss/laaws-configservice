@@ -41,7 +41,7 @@ public class BaseClient {
   private static final String userName = "lockss-u";
   private static final String password = "lockss-p";
 
-  protected static final String baseUri = "http://localhost:24620";
+  protected static final String baseUri = "http://localhost:24612";
 
   /**
    * Provides a RestTemplate that does not throw exceptions when the received

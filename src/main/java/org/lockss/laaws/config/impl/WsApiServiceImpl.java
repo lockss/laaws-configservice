@@ -19,7 +19,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.security.AccessControlException;
 import java.util.*;
 
 @Service
@@ -48,12 +47,7 @@ public class WsApiServiceImpl extends BaseSpringApiServiceImpl
     }
 
     // Check for required role
-    try {
-      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
-    } catch (AccessControlException ace) {
-      log.warn(ace.getMessage());
-      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
-    }
+    AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
 
     try {
       List<ContentConfigurationResult> results =
@@ -143,13 +137,7 @@ public class WsApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check for required role
-    try {
-      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
-    } catch (AccessControlException ace) {
-      log.warn(ace.getMessage());
-      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
-    }
+    AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
 
     try {
       List<ContentConfigurationResult> results =
@@ -224,13 +212,7 @@ public class WsApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check for required role
-    try {
-      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
-    } catch (AccessControlException ace) {
-      log.warn(ace.getMessage());
-      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
-    }
+    AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
 
     try {
       List<ContentConfigurationResult> results =
@@ -306,13 +288,7 @@ public class WsApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    // Check for required role
-    try {
-      AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
-    } catch (AccessControlException ace) {
-      log.warn(ace.getMessage());
-      return new ResponseEntity<Void>(HttpStatus.FORBIDDEN);
-    }
+    AuthUtil.checkHasRole(Roles.ROLE_AU_ADMIN);
 
     try {
       List<ContentConfigurationResult> results =
@@ -379,6 +355,14 @@ public class WsApiServiceImpl extends BaseSpringApiServiceImpl
   public ResponseEntity getAuqueries(String auQuery) {
     log.debug2("auQuery = {}", auQuery);
 
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    AuthUtil.checkHasRole(Roles.ROLE_CONTENT_ACCESS, Roles.ROLE_AU_ADMIN);
+
     AuHelper auHelper = new AuHelper();
     List<AuWsResult> results = null;
 
@@ -430,6 +414,14 @@ public class WsApiServiceImpl extends BaseSpringApiServiceImpl
   @Override
   public ResponseEntity getPlugins(String pluginQuery) {
     log.debug2("pluginQuery = {}", pluginQuery);
+
+    // Check whether the service has not been fully initialized.
+    if (!waitReady()) {
+      // Yes: Notify the client.
+      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    AuthUtil.checkHasRole(Roles.ROLE_CONTENT_ACCESS, Roles.ROLE_AU_ADMIN);
 
     PluginHelper pluginHelper = new PluginHelper();
     List<PluginWsResult> results = null;
@@ -492,6 +484,8 @@ public class WsApiServiceImpl extends BaseSpringApiServiceImpl
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
+    AuthUtil.checkHasRole(Roles.ROLE_CONTENT_ACCESS, Roles.ROLE_AU_ADMIN);
+
     TdbAuHelper tdbAuHelper = new TdbAuHelper();
     List<TdbAuWsResult> results = null;
 
@@ -551,6 +545,8 @@ public class WsApiServiceImpl extends BaseSpringApiServiceImpl
       // Yes: Notify the client.
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
+
+    AuthUtil.checkHasRole(Roles.ROLE_CONTENT_ACCESS, Roles.ROLE_AU_ADMIN);
 
     TdbPublisherHelper tdbPublisherHelper = new TdbPublisherHelper();
     List<TdbPublisherWsResult> results = null;
@@ -613,6 +609,8 @@ public class WsApiServiceImpl extends BaseSpringApiServiceImpl
       // Yes: Notify the client.
       return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
     }
+
+    AuthUtil.checkHasRole(Roles.ROLE_CONTENT_ACCESS, Roles.ROLE_AU_ADMIN);
 
     TdbTitleHelper tdbTitleHelper = new TdbTitleHelper();
     List<TdbTitleWsResult> results = null;
